@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const ENDPOINT = import.meta.env.VITE_API_URL || 'https://backend.godofgraphics.in';
+const ENDPOINT = 'https://backend.godofgraphics.in';
 const socket = io(ENDPOINT, {
     autoConnect: false,
     withCredentials: true,
