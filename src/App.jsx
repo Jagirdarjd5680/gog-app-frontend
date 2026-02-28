@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from './context/AuthContext';
@@ -49,7 +49,7 @@ function App() {
   const recaptchaKey = settings?.integrations?.recaptchaKey;
 
   const renderApp = () => (
-    <BrowserRouter>
+    <>
       {/* ... previous content ... */}
       <ToastContainer
         position="top-right"
@@ -283,7 +283,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </BrowserRouter>
+    </>
   );
 
   let content = renderApp();
