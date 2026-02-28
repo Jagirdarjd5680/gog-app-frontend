@@ -5,15 +5,10 @@ services:
     buildCommand: npm run build
     staticPublishPath: ./dist
     routes:
-      # SPA routing - all non-static routes go to index.html
+      # Handle all routes for SPA
       - type: rewrite
-        source: /.*
+        source: /{path*}
         destination: /index.html
-        # Exclude static assets from rewrite
-        exclude:
-          - /static/**
-          - /assets/**
-          - /*.*
     headers:
       - path: /static/**
         name: Cache-Control
