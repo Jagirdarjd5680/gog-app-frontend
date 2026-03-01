@@ -25,6 +25,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { format } from 'date-fns';
 import VideoPreview from '../../components/Common/VideoPreview';
+import { fixUrl } from '../../utils/api';
 
 const formatSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -98,7 +99,7 @@ const MediaCard = ({
                 {file.type === 'image' ? (
                     <CardMedia
                         component="img"
-                        image={file.url}
+                        image={fixUrl(file.url)}
                         alt={file.name}
                         sx={{
                             position: 'absolute',
@@ -111,7 +112,7 @@ const MediaCard = ({
                     />
                 ) : file.type === 'video' ? (
                     <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                        <VideoPreview url={file.url} height="100%" />
+                        <VideoPreview url={fixUrl(file.url)} height="100%" />
                     </Box>
                 ) : (
                     <Box
@@ -181,17 +182,18 @@ const MediaCard = ({
                     <Tooltip title="Copy Public Link">
                         <IconButton
                             size="small"
-                            onClick={() => onCopy(file.url)}
+                            onClick={() => onCopy(fixUrl(file.url))}
                             sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'primary.light', color: 'primary.main' } }}
                         >
                             <ContentCopyIcon fontSize="inherit" />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="Download File">
+
+                    <Tooltip title="Download">
                         <IconButton
                             size="small"
                             component="a"
-                            href={file.url}
+                            href={fixUrl(file.url)}
                             download
                             sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'success.light', color: 'success.main' } }}
                         >
