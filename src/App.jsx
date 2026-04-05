@@ -39,6 +39,7 @@ const BannerManagement = lazy(() => import('./pages/Banners/BannerManagement'));
 const AppReviewManagement = lazy(() => import('./pages/AppReviews/AppReviewManagement'));
 const NewsTickerManagement = lazy(() => import('./pages/Banners/NewsTickerManagement'));
 const FreeMaterialList = lazy(() => import('./pages/FreeMaterials/FreeMaterialList'));
+const IndividualResult = lazy(() => import('./pages/Exams/IndividualResult'));
 
 
 function App() {
@@ -170,10 +171,14 @@ function App() {
             />
 
             <Route
-              path="exam-results"
+              path="exam-results/*"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <ExamResults />
+                  <Routes>
+                    <Route index element={<ExamResults />} />
+                    <Route path=":examId" element={<ExamResults />} />
+                    <Route path="details/:resultId" element={<IndividualResult />} />
+                  </Routes>
                 </ProtectedRoute>
               }
             />

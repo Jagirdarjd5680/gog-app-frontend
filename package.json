@@ -28,6 +28,8 @@
     "axios": "^1.6.2",
     "date-fns": "^3.0.6",
     "formik": "^2.4.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "papaparse": "^5.5.3",
     "paytm-blink-checkout-react": "^0.0.4",
     "razorpay-checkout": "^1.0.4",

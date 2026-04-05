@@ -18,6 +18,9 @@ import GoogleIcon from '@mui/icons-material/Google';
 import EmailIcon from '@mui/icons-material/Email';
 import AppleIcon from '@mui/icons-material/Apple';
 import PhoneIcon from '@mui/icons-material/Phone';
+import PeopleIcon from '@mui/icons-material/People';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MetricsCard from '../../components/Dashboard/MetricsCard';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import UserFormModal from '../../components/Users/UserFormModal';
@@ -333,37 +336,79 @@ const UserList = () => {
             const userAuth = user.authMethod || 'email'; // Default to email for legacy data
             if (userAuth !== authFilter) return false;
         }
-
         return true;
     });
 
-    return (
-        <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-            <UserTableHeader
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-                sourceFilter={sourceFilter}
-                setSourceFilter={setSourceFilter}
-                authFilter={authFilter}
-                setAuthFilter={setAuthFilter}
-                handleAdd={handleAdd}
-                setRecycleBinOpen={setRecycleBinOpen}
-                binCount={binCount}
-                totalCount={filteredUsers.length}
-                isDark={isDark}
-            />
+    const activeUsers = users.filter(u => u.isActive).length;
+    const googleUsers = users.filter(u => u.authMethod === 'google').length;
+    const emailUsers = users.filter(u => u.authMethod === 'email').length;
 
-            <DataTable
-                rowData={filteredUsers}
-                columnDefs={columnDefs}
-                loading={loading}
-                enableGlobalSearch={false} // We handled it externally
-                externalSearchTerm={searchTerm}
-                pagination={true}
-                paginationPageSize={10}
-            />
+    return (
+        <Box sx={{ p: 2 }}>
+            {/* Small Metrics Cards */}
+            <Grid container spacing={2} mb={3}>
+                <Grid item xs={12} sm={6} md={3}>
+                    <MetricsCard
+                        title="Total Students"
+                        value={users.length}
+                        icon={<PeopleIcon sx={{ fontSize: 24 }} />}
+                        color="primary"
+                    />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <MetricsCard
+                        title="Active Students"
+                        value={activeUsers}
+                        icon={<CheckCircleIcon sx={{ fontSize: 24 }} />}
+                        color="success"
+                    />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <MetricsCard
+                        title="From Google"
+                        value={googleUsers}
+                        icon={<GoogleIcon sx={{ fontSize: 24 }} />}
+                        color="error"
+                    />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <MetricsCard
+                        title="From Email"
+                        value={emailUsers}
+                        icon={<EmailIcon sx={{ fontSize: 24 }} />}
+                        color="info"
+                    />
+                </Grid>
+            </Grid>
+
+            <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                <UserTableHeader
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    statusFilter={statusFilter}
+                    setStatusFilter={setStatusFilter}
+                    sourceFilter={sourceFilter}
+                    setSourceFilter={setSourceFilter}
+                    authFilter={authFilter}
+                    setAuthFilter={setAuthFilter}
+                    handleAdd={handleAdd}
+                    setRecycleBinOpen={setRecycleBinOpen}
+                    binCount={binCount}
+                    totalCount={filteredUsers.length}
+                    isDark={isDark}
+                />
+
+                <DataTable
+                    rowData={filteredUsers}
+                    columnDefs={columnDefs}
+                    loading={loading}
+                    enableGlobalSearch={false} // We handled it externally
+                    externalSearchTerm={searchTerm}
+                    pagination={true}
+                    paginationPageSize={10}
+                    height="auto"
+                />
+            </Box>
 
             <UserFormModal
                 open={modalOpen}

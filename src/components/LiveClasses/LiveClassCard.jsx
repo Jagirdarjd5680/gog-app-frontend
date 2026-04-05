@@ -29,7 +29,9 @@ const GoogleMeetIcon = () => (
 );
 
 const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
-    const isLive = liveClass.status === 'ongoing';
+    const isExpired = liveClass.endDate && isPast(new Date(liveClass.endDate));
+    const isLive = liveClass.status === 'ongoing' && !isExpired;
+    const displayDate = liveClass.startDate || liveClass.scheduledDate;
 
     return (
         <Card sx={{
@@ -39,6 +41,8 @@ const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
             transition: 'all 0.2s ease',
             border: '1px solid',
             borderColor: 'divider',
+            position: 'relative',
+            opacity: isExpired ? 0.7 : 1,
             '&:hover': {
                 boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
                 transform: 'translateY(-2px)'
@@ -49,16 +53,16 @@ const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                bgcolor: isLive ? 'error.50' : 'background.paper',
+                bgcolor: isExpired ? 'grey.100' : isLive ? 'error.50' : 'background.paper',
                 borderBottom: '1px solid',
                 borderColor: 'divider'
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <GoogleMeetIcon />
                     <Chip
-                        label={liveClass.status}
+                        label={isExpired ? "EXPIRED" : liveClass.status}
                         size="small"
-                        color={isLive ? "error" : "primary"}
+                        color={isExpired ? "default" : isLive ? "error" : "primary"}
                         variant={isLive ? "filled" : "outlined"}
                         sx={{ height: 18, fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}
                     />
@@ -80,7 +84,7 @@ const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
                             <CalendarMonthIcon sx={{ fontSize: 14 }} />
                             <Typography variant="caption" fontWeight={600}>
-                                {format(new Date(liveClass.scheduledDate), 'dd MMM')}
+                                {format(new Date(displayDate), 'dd MMM')}
                             </Typography>
                         </Box>
                     </Grid>
@@ -88,7 +92,7 @@ const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
                             <AccessTimeIcon sx={{ fontSize: 14 }} />
                             <Typography variant="caption" fontWeight={600}>
-                                {format(new Date(liveClass.scheduledDate), 'p')}
+                                {format(new Date(displayDate), 'p')}
                             </Typography>
                         </Box>
                     </Grid>
@@ -118,7 +122,7 @@ const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
                         color={isLive ? "error" : "primary"}
                         href={liveClass.meetingLink}
                         target="_blank"
-                        disabled={!liveClass.meetingLink || liveClass.status === 'completed'}
+                        disabled={!liveClass.meetingLink || liveClass.status === 'completed' || isExpired}
                         sx={{
                             fontSize: '0.7rem',
                             fontWeight: 800,
@@ -127,7 +131,7 @@ const LiveClassCard = ({ liveClass, onEdit, onDelete, isAdmin }) => {
                             textTransform: 'none'
                         }}
                     >
-                        {isLive ? 'Join Now' : 'Join Link'}
+                        {isExpired ? 'Expired' : isLive ? 'Join Now' : 'Join Link'}
                     </Button>
                 </Box>
             </CardContent>

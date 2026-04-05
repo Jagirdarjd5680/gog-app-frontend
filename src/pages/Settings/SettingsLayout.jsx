@@ -25,6 +25,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import SearchIcon from '@mui/icons-material/Search';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import AndroidIcon from '@mui/icons-material/Android';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useTheme } from '../../context/ThemeContext';
 import { useSettings } from '../../context/SettingsContext';
 import api from '../../utils/api';
@@ -40,6 +41,7 @@ import PaymentSettings from './PaymentSettings';
 import SocialMediaSettings from './SocialMediaSettings';
 import ResultSettings from './ResultSettings';
 import AppSettings from './AppSettings';
+import BackupSettings from './BackupSettings';
 
 const SettingsLayout = () => {
     const { mode, isDark } = useTheme();
@@ -60,6 +62,7 @@ const SettingsLayout = () => {
         { id: 'integrations', label: 'Integrations', icon: <IntegrationInstructionsIcon /> },
         { id: 'social', label: 'Social Media', icon: <ShareIcon /> },
         { id: 'app', label: 'App Settings', icon: <AndroidIcon /> },
+        { id: 'backup', label: 'Backup & Restore', icon: <StorageIcon /> },
     ];
 
     useEffect(() => {
@@ -114,6 +117,7 @@ const SettingsLayout = () => {
             case 'integrations': return <IntegrationSettings {...props} />;
             case 'social': return <SocialMediaSettings {...props} />;
             case 'app': return <AppSettings {...props} />;
+            case 'backup': return <BackupSettings />;
             default: return <GeneralSettings {...props} />;
         }
     };

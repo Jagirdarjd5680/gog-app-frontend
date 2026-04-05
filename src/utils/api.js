@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const ENDPOINT = 'https://backend.godofgraphics.in';
-const API_BASE_URL = `${ENDPOINT}/api`;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const ENDPOINT = API_BASE_URL.replace('/api', '');
 
 // Create axios instance with default config
 const api = axios.create({
@@ -86,7 +86,7 @@ export const fixUrl = (url) => {
     // If it's a blob/data URL, return as is
     if (url.startsWith('blob:') || url.startsWith('data:')) return url;
 
-    const endpoint = 'https://backend.godofgraphics.in';
+    const endpoint = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
 
     // Handle full localhost URLs when environment is different
     if (url.includes('localhost:5000') && !endpoint.includes('localhost')) {

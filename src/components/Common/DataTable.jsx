@@ -34,6 +34,7 @@ const DataTable = ({
     title,
     actions,
     externalSearchTerm,
+    borderRadius = 2,
     ...props
 }) => {
     const gridRef = useRef();
@@ -98,7 +99,13 @@ const DataTable = ({
     }
 
     return (
-        <Box sx={{ width: '100%', height: height, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{
+            width: '100%',
+            height: height === 'auto' ? 'auto' : height,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2
+        }}>
             {/* Header Toolbar */}
             <Box sx={{
                 display: 'flex',
@@ -169,7 +176,7 @@ const DataTable = ({
                     width: '100%',
                     '& .ag-root-wrapper': {
                         border: `1px solid ${isDark ? '#333' : '#eaecf0'}`,
-                        borderRadius: 2,
+                        borderRadius: borderRadius,
                         boxShadow: 'none',
                     },
                     '& .ag-header': {
@@ -203,6 +210,7 @@ const DataTable = ({
                     suppressPaginationPanel={true}
                     animateRows={true}
                     onPaginationChanged={onPaginationChanged}
+                    domLayout={height === 'auto' ? 'autoHeight' : undefined}
                     defaultColDef={{
                         sortable: true,
                         filter: false,
@@ -228,7 +236,7 @@ const DataTable = ({
                     alignItems: 'center',
                     p: 2,
                     bgcolor: isDark ? 'action.hover' : '#f8f9fa',
-                    borderRadius: 2,
+                    borderRadius: borderRadius,
                     mt: 1
                 }}>
                     <Typography variant="body2" color="text.secondary">
@@ -244,7 +252,7 @@ const DataTable = ({
                         size="medium"
                         sx={{
                             '& .MuiPaginationItem-root': {
-                                borderRadius: 1.5,
+                                borderRadius: borderRadius,
                                 fontWeight: 600,
                                 bgcolor: 'background.paper'
                             }

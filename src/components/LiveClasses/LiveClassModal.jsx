@@ -26,6 +26,8 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
         description: '',
         course: '',
         scheduledDate: '',
+        startDate: '',
+        endDate: '',
         duration: 60,
         meetingLink: '',
         status: 'scheduled'
@@ -38,7 +40,9 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                 setFormData({
                     ...initialData,
                     course: initialData.course?._id || initialData.course,
-                    scheduledDate: new Date(initialData.scheduledDate).toISOString().slice(0, 16)
+                    scheduledDate: new Date(initialData.scheduledDate || initialData.startDate).toISOString().slice(0, 16),
+                    startDate: new Date(initialData.startDate || initialData.scheduledDate).toISOString().slice(0, 16),
+                    endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().slice(0, 16) : ''
                 });
             } else {
                 setFormData({
@@ -46,6 +50,8 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                     description: '',
                     course: '',
                     scheduledDate: '',
+                    startDate: '',
+                    endDate: '',
                     duration: 60,
                     meetingLink: '',
                     status: 'scheduled'
@@ -69,7 +75,12 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
     };
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        if (name === 'startDate') {
+            setFormData(prev => ({ ...prev, startDate: value, scheduledDate: value }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -178,13 +189,25 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
-                                label="Date & Time"
-                                name="scheduledDate"
+                                label="Start Date & Time"
+                                name="startDate"
                                 type="datetime-local"
-                                value={formData.scheduledDate}
+                                value={formData.startDate}
                                 onChange={handleChange}
                                 required
                                 InputLabelProps={{ shrink: true }}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="End Date & Time (Optional)"
+                                name="endDate"
+                                type="datetime-local"
+                                value={formData.endDate}
+                                onChange={handleChange}
+                                InputLabelProps={{ shrink: true }}
+                                helperText="Meeting will auto-expire after this date if set"
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>

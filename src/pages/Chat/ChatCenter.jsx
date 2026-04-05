@@ -179,10 +179,31 @@ const ChatCenter = () => {
                         height: '100%',
                         color: 'text.disabled',
                         flexDirection: 'column',
-                        gap: 2
+                        gap: 3,
+                        textAlign: 'center',
+                        p: 4
                     }}>
-                        <img src="/chat-placeholder.svg" alt="Select user" style={{ width: 200, opacity: 0.5 }} />
-                        <h3 style={{ fontWeight: 600 }}>Select a conversation to start chatting</h3>
+                        <img 
+                            src="https://img.freepik.com/premium-vector/vector-illustration-black-mans-face-chatting-speech-bubble-him-place-text-dark-background_419010-626.jpg" 
+                            alt="Select user" 
+                            style={{ 
+                                width: 300, 
+                                borderRadius: '15px',
+                                opacity: 1,
+                                marginBottom: '15px'
+                            }} 
+                        />
+                        <h3 style={{ 
+                            fontWeight: 600, 
+                            color: theme.palette.text.primary,
+                            fontSize: '1.25rem',
+                            margin: 0
+                        }}>
+                            Select a conversation to start chatting
+                        </h3>
+                        <p style={{ maxWidth: 300, fontSize: '0.9rem', color: theme.palette.text.secondary }}>
+                           Connect with your students or staff members and stay updated in real-time.
+                        </p>
                     </Box>
                 )}
             </Paper>
