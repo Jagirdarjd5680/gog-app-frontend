@@ -132,7 +132,8 @@ const UserTableHeader = ({
                         >
                             <MenuItem value="all">All Sources</MenuItem>
                             <MenuItem value="web">Web</MenuItem>
-                            <MenuItem value="android">Android</MenuItem>
+                            <MenuItem value="android">Android App</MenuItem>
+                            <MenuItem value="ios">iOS App</MenuItem>
                         </Select>
                     </FormControl>
 
@@ -147,6 +148,7 @@ const UserTableHeader = ({
                             <MenuItem value="all">All Auth Types</MenuItem>
                             <MenuItem value="google">Google</MenuItem>
                             <MenuItem value="email">Email</MenuItem>
+                            <MenuItem value="mobile">Mobile OTP</MenuItem>
                         </Select>
                     </FormControl>
                 </Stack>

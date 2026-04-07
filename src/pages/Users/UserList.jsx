@@ -207,14 +207,16 @@ const UserList = () => {
                     <AndroidIcon fontSize="small" sx={{ color: '#3ddc84' }} titleAccess="Android App" />
                 ) : source === 'ios' ? (
                     <AppleIcon fontSize="small" sx={{ color: '#000000' }} titleAccess="iOS App" />
+                ) : source === 'mobile' ? (
+                    <PhoneIcon fontSize="small" sx={{ color: '#1a73e8' }} titleAccess="Mobile App" />
                 ) : (
                     <LanguageIcon fontSize="small" sx={{ color: '#00bcd4' }} titleAccess="Web Portal" />
                 )}
 
                 {authMethod === 'google' ? (
                     <GoogleIcon fontSize="small" sx={{ color: '#DB4437' }} titleAccess="Google Login" />
-                ) : authMethod === 'phone' ? (
-                    <PhoneIcon fontSize="small" sx={{ color: '#4caf50' }} titleAccess="Phone Login" />
+                ) : (authMethod === 'phone' || authMethod === 'mobile' || authMethod === 'otp') ? (
+                    <PhoneIcon fontSize="small" sx={{ color: '#1a73e8' }} titleAccess="OTP Login" />
                 ) : (
                     <EmailIcon fontSize="small" sx={{ color: '#757575' }} titleAccess="Email/Password" />
                 )}

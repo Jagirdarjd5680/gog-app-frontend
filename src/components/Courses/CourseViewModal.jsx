@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -18,7 +18,9 @@ import {
     ListItemText,
     Accordion,
     AccordionSummary,
-    AccordionDetails
+    AccordionDetails,
+    TextField,
+    InputAdornment
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -36,14 +38,54 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import SearchIcon from '@mui/icons-material/Search';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import VideoPreview from '../Common/VideoPreview';
 import { fixUrl } from '../../utils/api';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
 const CourseViewModal = ({ open, onClose, course }) => {
-    const [loading, setLoading] = React.useState(false);
+    const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
     if (!course) return null;
+
+    const stats = useMemo(() => {
+        let videos = 0;
+        let pdfs = 0;
+        let audios = 0;
+        let others = 0;
+
+        (course.modules || []).forEach(mod => {
+            (mod.videos || []).forEach(v => {
+                if (v.type === 'video') videos++;
+                else if (v.type === 'pdf') pdfs++;
+                else if (v.type === 'audio') audios++;
+                else others++;
+            });
+        });
+
+        return { videos, pdfs, audios, others };
+    }, [course]);
+
+    const filteredModules = useMemo(() => {
+        if (!searchQuery) return course.modules || [];
+        const query = searchQuery.toLowerCase();
+        
+        return (course.modules || []).filter(mod => {
+            const modTitleMatches = mod.title.toLowerCase().includes(query);
+            const lessonMatches = (mod.videos || []).some(v => v.title.toLowerCase().includes(query));
+            return modTitleMatches || lessonMatches;
+        }).map(mod => {
+            // Further filter the lessons within matching modules
+            if (mod.title.toLowerCase().includes(query)) return mod;
+            return {
+                ...mod,
+                videos: mod.videos.filter(v => v.title.toLowerCase().includes(query))
+            };
+        });
+    }, [course, searchQuery]);
 
     const handleSyncAllEnrollments = async () => {
         setLoading(true);
@@ -51,7 +93,7 @@ const CourseViewModal = ({ open, onClose, course }) => {
             const response = await api.post(`/courses/${course._id}/sync-enrollments`);
             if (response.data.success) {
                 toast.success(response.data.message);
-                onClose(); // Close and let parent refresh if needed, or just stay open
+                onClose();
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to sync enrollments');
@@ -62,28 +104,27 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
     const handleOpenResource = (url, download = false) => {
         if (!url) return;
-
         let targetUrl = url;
         if (download) {
-            // For Cloudinary images/videos (NOT raw files or PDFs), we can use fl_attachment
-            if (url.includes('cloudinary.com') &&
-                (url.includes('/image/upload/') || url.includes('/video/upload/')) &&
-                !url.toLowerCase().endsWith('.pdf')) {
+            if (url.includes('cloudinary.com') && (url.includes('/image/upload/') || url.includes('/video/upload/')) && !url.toLowerCase().endsWith('.pdf')) {
                 targetUrl = url.replace('/upload/', '/upload/fl_attachment/');
             }
-
-            // Create a hidden anchor to force download
             const link = document.createElement('a');
             link.href = targetUrl;
-            link.setAttribute('download', ''); // Native browser download hint
+            link.setAttribute('download', '');
             link.setAttribute('target', '_blank');
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         } else {
-            // VIEW mode - just open in new tab
             window.open(targetUrl, '_blank');
         }
+    };
+
+    const handleCopyLink = (url) => {
+        if (!url) return;
+        navigator.clipboard.writeText(url);
+        toast.success('Link copied to clipboard!');
     };
 
     const getResourceIcon = (type) => {
@@ -92,7 +133,7 @@ const CourseViewModal = ({ open, onClose, course }) => {
             case 'pdf': return <DescriptionIcon fontSize="small" color="secondary" />;
             case 'audio': return <AudiotrackIcon fontSize="small" color="warning" />;
             case 'zip': return <FolderZipIcon fontSize="small" color="error" />;
-            default: return <PlayCircleOutlineIcon fontSize="small" color="action" />;
+            default: return <LayersIcon fontSize="small" color="action" />;
         }
     };
 
@@ -102,172 +143,117 @@ const CourseViewModal = ({ open, onClose, course }) => {
             onClose={onClose}
             fullWidth
             maxWidth="lg"
-            PaperProps={{
-                sx: { borderRadius: 2 }
-            }}
+            PaperProps={{ sx: { borderRadius: 2 } }}
         >
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-                <Typography variant="h6" component="span" fontWeight={700} color="primary">
-                    Course Details
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    {course.durationValue > 0 && (
-                        <Button
-                            startIcon={<SyncIcon />}
-                            variant="outlined"
-                            size="small"
-                            onClick={handleSyncAllEnrollments}
-                            disabled={loading}
-                            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
-                        >
-                            Sync All Enrollments
-                        </Button>
-                    )}
-                    <IconButton onClick={onClose} size="small">
-                        <CloseIcon />
-                    </IconButton>
+                <Typography variant="h6" fontWeight={800} color="primary">Course Portfolio Manager</Typography>
+                <Box>
+                    <Button startIcon={<SyncIcon />} variant="outlined" size="small" onClick={handleSyncAllEnrollments} disabled={loading} sx={{ borderRadius: 1.5, textTransform: 'none', mr: 1 }}>
+                        Sync Access
+                    </Button>
+                    <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
                 </Box>
             </DialogTitle>
             <Divider />
 
-            <DialogContent sx={{ p: 3 }}>
-                <Grid container spacing={3}>
+            <DialogContent sx={{ p: 4 }}>
+                <Grid container spacing={4}>
                     {/* Left Column: Info & Curriculum */}
-                    <Grid item xs={12} md={7}>
-                        <Box sx={{ mb: 3 }}>
-                            <Typography variant="h5" fontWeight={700} gutterBottom>
-                                {course.title}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
-                                <Chip label={course.category?.name || course.category || 'Uncategorized'} size="small" variant="outlined" />
-                                <Chip label={course.level || 'Beginner'} size="small" color="primary" variant="outlined" sx={{ textTransform: 'capitalize' }} />
-                                <Chip
-                                    label={course.price === 0 ? 'FREE' : `₹${course.price}`}
-                                    size="small"
-                                    color={course.price === 0 ? "success" : "default"}
-                                    sx={{ fontWeight: 700 }}
-                                />
-                                <Chip
-                                    icon={<ThumbUpIcon style={{ fontSize: 14 }} />}
-                                    label={`${(course.fakeLikes || 0) + (course.likes?.length || 0)} Likes`}
-                                    size="small"
-                                    sx={{ bgcolor: 'rgba(25, 118, 210, 0.08)', color: 'primary.main', fontWeight: 600 }}
-                                />
-                                <Chip
-                                    icon={<StarIcon style={{ fontSize: 14, color: '#f57c00' }} />}
-                                    label={`${course.totalReviews || 0} Reviews`}
-                                    size="small"
-                                    sx={{ bgcolor: 'rgba(245, 124, 0, 0.08)', color: '#f57c00', fontWeight: 600 }}
-                                />
-                                <Chip
-                                    icon={<VisibilityIcon style={{ fontSize: 14 }} />}
-                                    label={`${course.enrolledStudents?.length || 0} Students`}
-                                    size="small"
-                                    sx={{ bgcolor: 'rgba(76, 175, 80, 0.08)', color: 'success.main', fontWeight: 600 }}
-                                />
+                    <Grid item xs={12} md={7.5}>
+                        <Box sx={{ mb: 4 }}>
+                            <Typography variant="h4" fontWeight={900} gutterBottom>{course.title}</Typography>
+                            <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+                                <Chip label={course.category?.name || 'Uncategorized'} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                                <Chip label={course.level} color="primary" size="small" sx={{ textTransform: 'capitalize', fontWeight: 600 }} />
+                                <Chip label={course.price === 0 ? 'FREE' : `₹${course.price}`} color={course.price === 0 ? "success" : "default"} size="small" sx={{ fontWeight: 900 }} />
+                                <Chip label={`${stats.videos} Videos`} size="small" color="info" variant="outlined" />
+                                <Chip label={`${stats.pdfs} PDFs`} size="small" color="secondary" variant="outlined" />
                             </Box>
 
-                            {/* Duration Row */}
-                            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <TimerIcon fontSize="small" color="action" />
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {course.durationValue === 0 ? 'Lifetime Access' : `${course.durationValue || 0} ${course.durationUnit || 'Months'}`}
-                                    </Typography>
-                                </Box>
-                                {(course.readingDurationValue > 0 || course.readingDuration) && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                        <MenuBookIcon fontSize="small" color="action" />
-                                        <Typography variant="body2" fontWeight={600}>
-                                            {course.readingDurationValue !== undefined
-                                                ? `${course.readingDurationValue} ${course.readingDurationUnit || 'Hours'}`
-                                                : course.readingDuration}
-                                        </Typography>
+                            <Box sx={{ display: 'flex', gap: 4, mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <VisibilityIcon color="success" />
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">Students</Typography>
+                                        <Typography variant="subtitle2" fontWeight={800}>{course.enrolledStudents?.length || 0}</Typography>
                                     </Box>
-                                )}
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <StarIcon sx={{ color: 'orange' }} />
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">Rating</Typography>
+                                        <Typography variant="subtitle2" fontWeight={800}>{course.rating || 0} ({course.totalReviews || 0} reviews)</Typography>
+                                    </Box>
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <TimerIcon color="primary" />
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">Validity</Typography>
+                                        <Typography variant="subtitle2" fontWeight={800}>{course.durationValue === 0 ? 'Unlimited' : `${course.durationValue} ${course.durationUnit}`}</Typography>
+                                    </Box>
+                                </Box>
                             </Box>
 
-                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mb: 3 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mb: 4, lineHeight: 1.6 }}>
                                 {course.description}
                             </Typography>
-
-                            {/* GST & Certificate Box */}
-                            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-                                {course.isCertificate && (
-                                    <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 1.5, flex: '1 1 200px' }}>
-                                        <WorkspacePremiumIcon color="success" />
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary" display="block">Certificate Issued</Typography>
-                                            <Typography variant="body2" fontWeight={700}>{course.certificateName || 'Completion Certificate'}</Typography>
-                                        </Box>
-                                    </Box>
-                                )}
-                                <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 1.5, flex: '1 1 200px' }}>
-                                    <ReceiptLongIcon color="primary" />
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">GST Details</Typography>
-                                        <Typography variant="body2" fontWeight={700}>
-                                            {course.gstType === 'none' ? 'No GST Applied' : `${course.gstType ? course.gstType.toUpperCase() : 'NONE'} (${course.gstPercent || 0}%)`}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Box>
                         </Box>
 
-                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <LayersIcon fontSize="small" color="primary" /> Curriculum
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            {course.modules && course.modules.length > 0 ? (
-                                course.modules.map((module, index) => (
-                                    <Accordion key={index} variant="outlined" sx={{ borderRadius: 1, '&:before': { display: 'none' } }}>
-                                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                            <Typography variant="subtitle2" fontWeight={600}>
-                                                {index + 1}. {module.title}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
-                                                ({(module.videos?.length || 0) + (module.pdfs?.length || 0)} Resources)
-                                            </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6" fontWeight={900}>Curriculum Dashboard</Typography>
+                            <TextField
+                                placeholder="Search materials..."
+                                size="small"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+                                    sx: { borderRadius: 2, bgcolor: 'white' }
+                                }}
+                            />
+                        </Box>
+
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            {filteredModules.length > 0 ? (
+                                filteredModules.map((module, index) => (
+                                    <Accordion key={index} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #eee', '&:before': { display: 'none' } }}>
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'action.hover' }}>
+                                            <Typography variant="subtitle2" fontWeight={800}>{module.title}</Typography>
+                                            <Typography variant="caption" sx={{ ml: 'auto', mr: 2, opacity: 0.7 }}>{module.videos?.length || 0} items</Typography>
                                         </AccordionSummary>
-                                        <AccordionDetails sx={{ pt: 0 }}>
-                                            <List size="small" disablePadding>
+                                        <AccordionDetails sx={{ p: 0 }}>
+                                            <List disablePadding>
                                                 {module.videos && module.videos.map((vid, vIdx) => (
                                                     <ListItem
                                                         key={vIdx}
-                                                        sx={{ px: 1, py: 0.5 }}
+                                                        divider={vIdx < module.videos.length - 1}
+                                                        sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}
                                                         secondaryAction={
-                                                            <Box>
-                                                                {/* Only show View for video/audio/pdf */}
-                                                                {(vid.type === 'video' || vid.type === 'pdf' || vid.type === 'audio') && (
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={() => handleOpenResource(vid.url || vid.videoUrl)}
-                                                                        color="primary"
-                                                                        title="View"
-                                                                    >
+                                                            <Stack direction="row" spacing={0.5}>
+                                                                <Tooltip title="View">
+                                                                    <IconButton size="small" color="primary" onClick={() => handleOpenResource(vid.url || vid.videoUrl)}>
                                                                         <VisibilityIcon sx={{ fontSize: 18 }} />
                                                                     </IconButton>
-                                                                )}
-                                                                {/* Show Download for all except video maybe? Or all. Let's do all except video if user prefers, but typically all are downloadable */}
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => handleOpenResource(vid.url || vid.videoUrl, true)}
-                                                                    color="primary"
-                                                                    title="Download"
-                                                                >
-                                                                    <DownloadIcon sx={{ fontSize: 18 }} />
-                                                                </IconButton>
-                                                            </Box>
+                                                                </Tooltip>
+                                                                <Tooltip title="Copy Link">
+                                                                    <IconButton size="small" onClick={() => handleCopyLink(vid.url || vid.videoUrl)}>
+                                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                                <Tooltip title="Download">
+                                                                    <IconButton size="small" color="info" onClick={() => handleOpenResource(vid.url || vid.videoUrl, true)}>
+                                                                        <DownloadIcon sx={{ fontSize: 18 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                            </Stack>
                                                         }
                                                     >
-                                                        <ListItemIcon sx={{ minWidth: 32 }}>
-                                                            {getResourceIcon(vid.type)}
-                                                        </ListItemIcon>
+                                                        <ListItemIcon sx={{ minWidth: 40 }}>{getResourceIcon(vid.type)}</ListItemIcon>
                                                         <ListItemText
                                                             primary={vid.title}
-                                                            secondary={`${vid.type.toUpperCase()} ${vid.duration ? `• ${vid.duration} min/MB` : ''}`}
-                                                            primaryTypographyProps={{ variant: 'body2' }}
-                                                            secondaryTypographyProps={{ variant: 'caption', sx: { textTransform: 'uppercase' } }}
+                                                            secondary={`${vid.type?.toUpperCase()} ${vid.duration ? `• ${vid.duration} min/MB` : ''}`}
+                                                            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                                                            secondaryTypographyProps={{ variant: 'caption' }}
                                                         />
                                                     </ListItem>
                                                 ))}
@@ -276,57 +262,45 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                     </Accordion>
                                 ))
                             ) : (
-                                <Typography variant="body2" color="text.secondary" fontStyle="italic">
-                                    No modules added yet.
-                                </Typography>
+                                <Box sx={{ p: 4, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 2 }}>
+                                    <Typography color="text.secondary">No materials match your search.</Typography>
+                                </Box>
                             )}
                         </Box>
                     </Grid>
 
-                    {/* Right Column: Media */}
-                    <Grid item xs={12} md={5}>
-                        <Box sx={{ position: 'sticky', top: 0 }}>
-                            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                                Course Thumbnail
-                            </Typography>
-                            <Card variant="outlined" sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
-                                {course.thumbnail ? (
-                                    <Box
-                                        component="img"
-                                        src={fixUrl(course.thumbnail)}
-                                        alt={course.title}
-                                        sx={{ width: '100%', height: 180, objectFit: 'cover' }}
-                                    />
-                                ) : (
-                                    <Box sx={{ height: 180, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <DescriptionIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-                                    </Box>
-                                )}
+                    {/* Right Column: Visuals */}
+                    <Grid item xs={12} md={4.5}>
+                        <Box sx={{ position: 'sticky', top: 20 }}>
+                            <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ mb: 2 }}>Course Media assets</Typography>
+                            <Card variant="outlined" sx={{ mb: 4, borderRadius: 3, border: '1px solid #eee' }}>
+                                <Box component="img" src={fixUrl(course.thumbnail)} sx={{ width: '100%', height: 220, objectFit: 'cover' }} />
+                                <CardContent sx={{ py: 1.5 }}>
+                                    <Typography variant="caption" fontWeight={700}>THUMBNAIL IMAGE</Typography>
+                                </CardContent>
                             </Card>
 
-                            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-                                Demo Video
-                            </Typography>
-                            <Card variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', p: 1, minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.paper' }}>
-                                {course.demoVideoUrl ? (
-                                    <VideoPreview url={course.demoVideoUrl} height={160} />
-                                ) : (
-                                    <Box sx={{ textAlign: 'center', color: 'text.disabled' }}>
-                                        <PlayCircleOutlineIcon sx={{ fontSize: 40, mb: 1 }} />
-                                        <Typography variant="caption" display="block">No Demo Video</Typography>
-                                    </Box>
-                                )}
+                            <Card variant="outlined" sx={{ borderRadius: 3, p: 0.5, border: '1px solid #eee' }}>
+                                <Box sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="caption" fontWeight={700}>DEMO PREVIEW</Typography>
+                                    {course.demoVideoUrl && (
+                                        <IconButton size="small" onClick={() => handleCopyLink(course.demoVideoUrl)}>
+                                            <ContentCopyIcon sx={{ fontSize: 14 }} />
+                                        </IconButton>
+                                    )}
+                                </Box>
+                                <Box sx={{ height: 200, bgcolor: 'black', borderRadius: 2.5, overflow: 'hidden' }}>
+                                    {course.demoVideoUrl ? <VideoPreview url={course.demoVideoUrl} height={200} /> : <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No Demo</Box>}
+                                </Box>
                             </Card>
 
-                            <Box sx={{ mt: 3, p: 2, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
-                                <Typography variant="caption" sx={{ opacity: 0.9 }}>Created On</Typography>
-                                <Typography variant="body2" fontWeight={600}>
-                                    {new Date(course.createdAt).toLocaleDateString('en-IN', {
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric'
-                                    })}
-                                </Typography>
+                            <Box sx={{ mt: 4, p: 3, borderRadius: 3, bgcolor: 'primary.main', color: 'white', boxShadow: '0 10px 20px rgba(25, 118, 210, 0.2)' }}>
+                                <Typography variant="h5" fontWeight={900} fontStyle="italic" sx={{ mb: 1.5 }}>Advance Ready.</Typography>
+                                <Typography variant="body2" sx={{ opacity: 0.9, lineHeight: 1.5 }}>All materials are double-checked for accessibility and streaming performance.</Typography>
+                                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                                    <Typography variant="caption" display="block">CREATED DATE</Typography>
+                                    <Typography variant="subtitle2" fontWeight={700}>{new Date(course.createdAt).toLocaleDateString()}</Typography>
+                                </Box>
                             </Box>
                         </Box>
                     </Grid>

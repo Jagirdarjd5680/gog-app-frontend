@@ -7,9 +7,11 @@ import {
     Switch,
     Button,
     Box,
-    CircularProgress
+    CircularProgress,
+    Alert
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import WarningIcon from '@mui/icons-material/Warning';
 
 const AuthSettings = ({ settings, onSave, isSaving }) => {
     const [formData, setFormData] = useState(settings?.auth || {});
@@ -93,6 +95,40 @@ const AuthSettings = ({ settings, onSave, isSaving }) => {
                         <Typography variant="caption" color="text.secondary" sx={{ ml: 4, mt: -1 }}>
                             If enabled, users can register and login using their Google account.
                         </Typography>
+
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={formData.allowEmailLogin ?? true}
+                                    onChange={handleChange}
+                                    name="allowEmailLogin"
+                                />
+                            }
+                            label="Allow Email Login"
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 4, mt: -1 }}>
+                            If disabled, the standard email/password login tab will be hidden in the app.
+                        </Typography>
+
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={formData.allowMobileOtpLogin ?? false}
+                                    onChange={handleChange}
+                                    name="allowMobileOtpLogin"
+                                />
+                            }
+                            label="Allow Mobile OTP Login"
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 4, mt: -1 }}>
+                            If enabled, users can login via OTP sent to their mobile number.
+                        </Typography>
+
+                        {formData.allowMobileOtpLogin && !settings?.integrations?.smsApiKey && (
+                            <Alert severity="warning" icon={<WarningIcon />} sx={{ mt: 1, borderRadius: 2 }}>
+                                SMS service is not configured. Please set the <strong>2Factor.in API Key</strong> in the <strong>Integrations</strong> tab to enable this feature.
+                            </Alert>
+                        )}
                     </Box>
 
                     <Button

@@ -280,6 +280,47 @@ const IntegrationSettings = ({ settings, onSave, isSaving }) => {
                             </Grid>
                         )}
 
+                        <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
+
+                        {/* SMS Gateway Integration */}
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle1" fontWeight={600} gutterBottom color="primary">SMS Gateway Integration (2Factor.in)</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Configure your SMS provider for Mobile OTP login and 2-Factor Authentication.
+                            </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="SMS Provider"
+                                name="smsProvider"
+                                value={formData.smsProvider || '2Factor.in'}
+                                onChange={handleChange}
+                                disabled
+                                helperText="Currently only 2Factor.in is supported."
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="2Factor.in API Key"
+                                name="smsApiKey"
+                                type={showRecaptchaSecret ? 'text' : 'password'}
+                                value={formData.smsApiKey || ''}
+                                onChange={handleChange}
+                                placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowRecaptchaSecret(!showRecaptchaSecret)} edge="end">
+                                                {showRecaptchaSecret ? <VisibilityOff /> : <Visibility />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
+                            />
+                        </Grid>
+
                         <Grid item xs={12} sx={{ mt: 2 }}>
                             <Button
                                 variant="contained"

@@ -57,7 +57,7 @@ const NotificationForm = () => {
         type: 'info',
         recipientRole: 'all',
         recipients: [],
-        sendPush: false,
+        sendPush: true,
     };
 
     const handleSubmit = async (values, { resetForm }) => {

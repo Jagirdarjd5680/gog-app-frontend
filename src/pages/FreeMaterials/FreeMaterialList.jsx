@@ -11,6 +11,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import QuizIcon from '@mui/icons-material/Quiz';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { format } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -56,6 +57,19 @@ const FreeMaterialList = () => {
             case 'test': return <QuizIcon fontSize="small" color="success" />;
             case 'zoom': return <VideoCallIcon fontSize="small" color="secondary" />;
             default: return null;
+        }
+    };
+
+    const handleViewResource = (material) => {
+        const url = material.pdfUrl || material.videoUrl || material.zipUrl;
+        if (url) {
+            window.open(url, '_blank');
+        } else if (material.type === 'test' && material.exam) {
+            toast.info('Test material: Check in Exams section');
+        } else if (material.type === 'zoom' && material.meeting) {
+            toast.info('Zoom meeting: Check in Live Classes section');
+        } else {
+            toast.warning('No URL found for this material');
         }
     };
 
@@ -148,6 +162,11 @@ const FreeMaterialList = () => {
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="right">
+                                        <Tooltip title="View/Check">
+                                            <IconButton size="small" color="primary" onClick={() => handleViewResource(m)}>
+                                                <VisibilityIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
                                         <Tooltip title="Edit">
                                             <IconButton size="small" color="info" onClick={() => {
                                                 setSelectedMaterial(m);

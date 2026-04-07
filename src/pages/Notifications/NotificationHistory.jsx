@@ -104,11 +104,12 @@ const NotificationHistory = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [selected, setSelected] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [sentOnly, setSentOnly] = useState(true); // Default to true as per user request
 
-    const fetchNotifications = async (pg = 1) => {
+    const fetchNotifications = async (pg = 1, onlyMe = sentOnly) => {
         setLoading(true);
         try {
-            const { data } = await api.get(`/notifications?page=${pg}&limit=10`);
+            const { data } = await api.get(`/notifications?page=${pg}&limit=10&sentByMe=${onlyMe}`);
             setNotifications(data.data || []);
             setTotalPages(data.totalPages || 1);
         } catch {
@@ -118,13 +119,13 @@ const NotificationHistory = () => {
         }
     };
 
-    useEffect(() => { fetchNotifications(page); }, [page]);
+    useEffect(() => { fetchNotifications(page, sentOnly); }, [page, sentOnly]);
 
     const handleDelete = async (id) => {
         try {
             await api.delete(`/notifications/${id}`);
             toast.success('Notification deleted');
-            fetchNotifications(page);
+            fetchNotifications(page, sentOnly);
         } catch {
             toast.error('Failed to delete notification');
         }
@@ -142,10 +143,30 @@ const NotificationHistory = () => {
 
     return (
         <Box>
-            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
                     <Typography variant="h5" fontWeight={800}>Notification History</Typography>
                     <Typography variant="body2" color="text.secondary">All sent notifications log</Typography>
+                </Box>
+                
+                {/* Filter Toggle */}
+                <Box sx={{ display: 'flex', bgcolor: 'action.hover', p: 0.5, borderRadius: 2 }}>
+                    <Button 
+                        size="small"
+                        variant={sentOnly ? 'contained' : 'text'}
+                        onClick={() => setSentOnly(true)}
+                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Sent by Me
+                    </Button>
+                    <Button 
+                        size="small"
+                        variant={!sentOnly ? 'contained' : 'text'}
+                        onClick={() => setSentOnly(false)}
+                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
+                    >
+                        All History
+                    </Button>
                 </Box>
             </Box>
 
