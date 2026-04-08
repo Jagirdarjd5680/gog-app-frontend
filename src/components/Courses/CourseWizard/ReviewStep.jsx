@@ -18,9 +18,17 @@ const ReviewStep = ({ values }) => {
                             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                                 {values.title || 'Untitled Course'}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" paragraph>
-                                {values.description || 'No description provided.'}
-                            </Typography>
+                            <Box 
+                                sx={{ 
+                                    color: 'text.secondary',
+                                    fontSize: '0.875rem',
+                                    '& p': { mb: 1.5 },
+                                    '& ul, & ol': { mb: 1.5, pl: 2 },
+                                    '& li': { mb: 0.5 },
+                                    '& strong': { fontWeight: 700, color: 'text.primary' }
+                                }}
+                                dangerouslySetInnerHTML={{ __html: values.description || 'No description provided.' }}
+                            />
 
                             <Grid container spacing={1}>
                                 <Grid item xs={4}>

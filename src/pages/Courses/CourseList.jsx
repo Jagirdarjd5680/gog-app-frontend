@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Box, Typography, Button, Chip, IconButton } from '@mui/material';
 import DataTable from '../../components/Common/DataTable';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,13 +19,18 @@ import { useAuth } from '../../context/AuthContext';
 
 const CourseList = () => {
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [courseToDelete, setCourseToDelete] = useState(null);
-    // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedCourseId, setSelectedCourseId] = useState(null);
+    
+    // Derived state from URL
+    const wizardType = searchParams.get('wizard'); // 'add' or 'edit'
+    const wizardCourseId = searchParams.get('id');
+    const isModalOpen = wizardType === 'add' || wizardType === 'edit';
+    const selectedCourseId = wizardType === 'edit' ? wizardCourseId : null;
+
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [selectedCourseData, setSelectedCourseData] = useState(null);
@@ -55,18 +61,17 @@ const CourseList = () => {
     };
 
     const handleAddCourse = () => {
-        setSelectedCourseId(null);
-        setIsModalOpen(true);
+        setSearchParams({ wizard: 'add' });
     };
 
     const handleEditCourse = (courseId) => {
-        setSelectedCourseId(courseId);
-        setIsModalOpen(true);
+        setSearchParams({ wizard: 'edit', id: courseId });
     };
 
     const handleModalClose = () => {
-        setIsModalOpen(false);
-        setSelectedCourseId(null);
+        searchParams.delete('wizard');
+        searchParams.delete('id');
+        setSearchParams(searchParams);
     };
 
     const handleViewCourse = (course) => {

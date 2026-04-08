@@ -194,9 +194,20 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                 </Box>
                             </Box>
 
-                            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line', mb: 4, lineHeight: 1.6 }}>
-                                {course.description}
-                            </Typography>
+                            <Box 
+                                sx={{ 
+                                    color: 'text.secondary',
+                                    fontSize: '1rem',
+                                    lineHeight: 1.7,
+                                    mb: 4,
+                                    '& p': { mb: 2 },
+                                    '& ul, & ol': { mb: 2, pl: 3 },
+                                    '& li': { mb: 1 },
+                                    '& strong': { fontWeight: 700, color: 'text.primary' },
+                                    '& hr': { my: 3, border: 0, borderTop: '1px solid rgba(0,0,0,0.06)' }
+                                }}
+                                dangerouslySetInnerHTML={{ __html: course.description || 'No description provided.' }}
+                            />
                         </Box>
 
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

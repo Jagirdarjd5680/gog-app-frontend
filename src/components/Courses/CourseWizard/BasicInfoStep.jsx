@@ -1,24 +1,48 @@
 import { useRef, useState, useEffect } from 'react';
 import {
     Grid, TextField, MenuItem, FormControl, InputLabel, Select, Box, Typography, Button, Divider,
-    Card, CardContent, InputAdornment, CircularProgress, Switch, FormControlLabel
+    Card, CardContent, InputAdornment, CircularProgress, Switch, FormControlLabel, Stack, Chip
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import TitleIcon from '@mui/icons-material/Title';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import CategoryIcon from '@mui/icons-material/Category';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import SettingsIcon from '@mui/icons-material/Settings';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import CollectionsIcon from '@mui/icons-material/Collections';
 import VideoPreview from '../../Common/VideoPreview';
 import { uploadFile } from '../../../utils/upload';
 import api from '../../../utils/api';
 import { toast } from 'react-toastify';
 import MediaPickerModal from '../../Media/MediaPickerModal';
-import CollectionsIcon from '@mui/icons-material/Collections';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
+const SectionHeader = ({ icon, title, subtitle }) => (
+    <Box sx={{ mb: 3 }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box sx={{ 
+                p: 1, borderRadius: '10px', bgcolor: 'primary.light', color: 'primary.main',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+                {icon}
+            </Box>
+            <Box>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.2 }}>
+                    {title}
+                </Typography>
+                {subtitle && <Typography variant="caption" color="text.secondary">{subtitle}</Typography>}
+            </Box>
+        </Stack>
+    </Box>
+);
 
 const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
     const [categories, setCategories] = useState([]);
 
-    // Media Picker State
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState('image');
     const [pickerTarget, setPickerTarget] = useState('thumbnail');
@@ -76,350 +100,352 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
 
     return (
         <Box sx={{ p: 1 }}>
-            <Grid container spacing={2}>
-                {/* Main Info Column */}
+            <Grid container spacing={3}>
+                {/* Main Content Area */}
                 <Grid item xs={12} md={8}>
-                    <Card sx={{ height: '100%', borderRadius: 1 }} variant="outlined">
-                        <CardContent>
-                            <Typography variant="subtitle1" fontWeight={600} gutterBottom display="flex" alignItems="center" gap={1}>
-                                <TitleIcon color="primary" fontSize="small" /> Basic Information
-                            </Typography>
-                            <Divider sx={{ mb: 2 }} />
-
-                            <Grid container spacing={2}>
-                                <Grid item xs={12}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        id="title"
-                                        name="title"
-                                        label="Course Title"
-                                        value={values.title || ''}
-                                        onChange={handleChange}
-                                        error={touched.title && Boolean(errors.title)}
-                                        helperText={touched.title && errors.title}
-                                    />
-                                </Grid>
-
-                                <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth size="small" error={touched.category && Boolean(errors.category)}>
-                                        <InputLabel id="category-label">Category</InputLabel>
-                                        <Select
-                                            labelId="category-label"
-                                            id="category"
-                                            name="category"
-                                            value={values.category || ''}
-                                            label="Category"
+                    <Stack spacing={3}>
+                        {/* General Information Card */}
+                        <Card className="premium-card">
+                            <CardContent sx={{ p: 4 }}>
+                                <SectionHeader 
+                                    icon={<TitleIcon />} 
+                                    title="General Information" 
+                                    subtitle="Define your course title, category, and level"
+                                />
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12}>
+                                        <TextField
+                                            fullWidth
+                                            id="title"
+                                            name="title"
+                                            label="Course Title"
+                                            placeholder="e.g. Complete React Mastery 2024"
+                                            value={values.title || ''}
                                             onChange={handleChange}
-                                        >
-                                            <MenuItem value=""><em>Select Category</em></MenuItem>
-                                            {categories.map((cat) => (
-                                                <MenuItem key={cat._id} value={cat._id}>
-                                                    {cat.name}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
+                                            error={touched.title && Boolean(errors.title)}
+                                            helperText={touched.title && errors.title}
+                                            InputProps={{ sx: { borderRadius: '10px' } }}
+                                        />
+                                    </Grid>
 
-                                <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel id="level-label">Level</InputLabel>
-                                        <Select
-                                            labelId="level-label"
-                                            id="level"
-                                            name="level"
-                                            value={values.level}
-                                            label="Level"
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth error={touched.category && Boolean(errors.category)}>
+                                            <InputLabel id="category-label">Category</InputLabel>
+                                            <Select
+                                                labelId="category-label"
+                                                id="category"
+                                                name="category"
+                                                value={categories.some(cat => cat._id === values.category) ? values.category : ''}
+                                                label="Category"
+                                                onChange={handleChange}
+                                                sx={{ borderRadius: '10px' }}
+                                            >
+                                                <MenuItem value=""><em>Select Category</em></MenuItem>
+                                                {categories.map((cat) => (
+                                                    <MenuItem key={cat._id} value={cat._id}>
+                                                        {cat.name}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth>
+                                            <InputLabel id="level-label">Level</InputLabel>
+                                            <Select
+                                                labelId="level-label"
+                                                id="level"
+                                                name="level"
+                                                value={values.level}
+                                                label="Level"
+                                                onChange={handleChange}
+                                                sx={{ borderRadius: '10px' }}
+                                            >
+                                                <MenuItem value="beginner">Beginner</MenuItem>
+                                                <MenuItem value="intermediate">Intermediate</MenuItem>
+                                                <MenuItem value="advanced">Advanced</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                    
+                                    <Grid item xs={12}>
+                                        <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+                                            Course Overview (Rich Text)
+                                        </Typography>
+                                        <Box sx={{ 
+                                            '& .ql-toolbar': { 
+                                                borderRadius: '12px 12px 0 0', 
+                                                border: '1px solid rgba(0,0,0,0.1) !important',
+                                                bgcolor: '#f8fafc' 
+                                            },
+                                            '& .ql-container': { 
+                                                borderRadius: '0 0 12px 12px', 
+                                                border: '1px solid rgba(0,0,0,0.1) !important',
+                                                minHeight: '220px',
+                                                fontSize: '1rem',
+                                                bgcolor: 'white'
+                                            },
+                                            '& .ql-editor': {
+                                                minHeight: '220px'
+                                            }
+                                        }}>
+                                            <ReactQuill
+                                                theme="snow"
+                                                value={values.description || ''}
+                                                onChange={(content) => setFieldValue('description', content)}
+                                                placeholder="Write a comprehensive guide on what this course covers..."
+                                            />
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pricing & GST Card */}
+                        <Card className="premium-card">
+                            <CardContent sx={{ p: 4 }}>
+                                <SectionHeader 
+                                    icon={<PaymentsIcon />} 
+                                    title="Pricing & Tax" 
+                                    subtitle="Configure your course price and GST settings"
+                                />
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            id="originalPrice"
+                                            name="originalPrice"
+                                            label="List Price (Stripped)"
+                                            type="number"
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                                                inputProps: { min: 0 },
+                                                sx: { borderRadius: '10px' }
+                                            }}
+                                            value={values.originalPrice}
                                             onChange={handleChange}
-                                        >
-                                            <MenuItem value="beginner">Beginner</MenuItem>
-                                            <MenuItem value="intermediate">Intermediate</MenuItem>
-                                            <MenuItem value="advanced">Advanced</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
+                                            helperText="Original price shown to users"
+                                        />
+                                    </Grid>
 
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        id="originalPrice"
-                                        name="originalPrice"
-                                        label="Original Price (₹) (Fake)"
-                                        type="number"
-                                        InputProps={{
-                                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                                            inputProps: { min: 0 }
-                                        }}
-                                        value={values.originalPrice}
-                                        onChange={handleChange}
-                                        helperText="Higher price shown with a strikethrough"
-                                    />
-                                </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            id="price"
+                                            name="price"
+                                            label="Selling Price (Active)"
+                                            type="number"
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                                                inputProps: { min: 0 },
+                                                sx: { borderRadius: '10px' }
+                                            }}
+                                            value={values.price}
+                                            onChange={handleChange}
+                                            error={touched.price && Boolean(errors.price)}
+                                            helperText={touched.price && errors.price}
+                                        />
+                                    </Grid>
 
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        id="price"
-                                        name="price"
-                                        label="Selling Price (₹) (Real)"
-                                        type="number"
-                                        InputProps={{
-                                            startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                                            inputProps: { min: 0 }
-                                        }}
-                                        value={values.price}
-                                        onChange={handleChange}
-                                        error={touched.price && Boolean(errors.price)}
-                                        helperText={touched.price && errors.price}
-                                    />
-                                </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth>
+                                            <InputLabel id="gst-type-label">GST Status</InputLabel>
+                                            <Select
+                                                labelId="gst-type-label"
+                                                id="gstType"
+                                                name="gstType"
+                                                value={values.gstType || 'none'}
+                                                label="GST Status"
+                                                onChange={handleChange}
+                                                sx={{ borderRadius: '10px' }}
+                                            >
+                                                <MenuItem value="none">No GST</MenuItem>
+                                                <MenuItem value="inclusive">GST Inclusive</MenuItem>
+                                                <MenuItem value="exclusive">GST Exclusive</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
 
-                                <Grid item xs={12} sm={6}>
-                                    <Grid container spacing={1}>
-                                        <Grid item xs={8}>
+                                    {values.gstType !== 'none' && (
+                                        <Grid item xs={12} sm={6}>
                                             <TextField
                                                 fullWidth
-                                                size="small"
-                                                id="durationValue"
-                                                name="durationValue"
-                                                label="Course Duration"
+                                                id="gstPercent"
+                                                name="gstPercent"
+                                                label="GST rate (%)"
                                                 type="number"
-                                                value={values.durationValue || 0}
+                                                InputProps={{
+                                                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                                                    inputProps: { min: 0, max: 100 },
+                                                    sx: { borderRadius: '10px' }
+                                                }}
+                                                value={values.gstPercent}
                                                 onChange={handleChange}
-                                                helperText="0 = Lifetime"
                                             />
                                         </Grid>
-                                        <Grid item xs={4}>
-                                            <FormControl fullWidth size="small">
-                                                <InputLabel id="duration-unit-label">Unit</InputLabel>
+                                    )}
+                                </Grid>
+                            </CardContent>
+                        </Card>
+
+                        {/* Additional Settings Card */}
+                        <Card className="premium-card">
+                            <CardContent sx={{ p: 4 }}>
+                                <SectionHeader 
+                                    icon={<SettingsIcon />} 
+                                    title="Additional Options" 
+                                    subtitle="Course duration, certificates, and social proof"
+                                />
+                                <Grid container spacing={4}>
+                                    <Grid item xs={12} sm={6}>
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2" fontWeight={600}>Course Valid For</Typography>
+                                            <Stack direction="row" spacing={1}>
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    id="durationValue"
+                                                    name="durationValue"
+                                                    type="number"
+                                                    value={values.durationValue || 0}
+                                                    onChange={handleChange}
+                                                    placeholder="0 = Forever"
+                                                    InputProps={{ sx: { borderRadius: '8px' } }}
+                                                />
                                                 <Select
-                                                    labelId="duration-unit-label"
-                                                    id="durationUnit"
+                                                    size="small"
                                                     name="durationUnit"
                                                     value={values.durationUnit || 'months'}
-                                                    label="Unit"
                                                     onChange={handleChange}
+                                                    sx={{ minWidth: 100, borderRadius: '8px' }}
                                                 >
                                                     <MenuItem value="days">Days</MenuItem>
                                                     <MenuItem value="months">Months</MenuItem>
                                                     <MenuItem value="years">Years</MenuItem>
                                                 </Select>
-                                            </FormControl>
-                                        </Grid>
+                                            </Stack>
+                                        </Stack>
                                     </Grid>
-                                </Grid>
 
-                                <Grid item xs={12} sm={6}>
-                                    <Grid container spacing={1}>
-                                        <Grid item xs={8}>
-                                            <TextField
-                                                fullWidth
-                                                size="small"
-                                                id="readingDurationValue"
-                                                name="readingDurationValue"
-                                                label="Reading Duration"
-                                                type="number"
-                                                value={values.readingDurationValue || 0}
-                                                onChange={handleChange}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <FormControl fullWidth size="small">
-                                                <InputLabel id="reading-duration-unit-label">Unit</InputLabel>
+                                    <Grid item xs={12} sm={6}>
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2" fontWeight={600}>Estimated Reading Time</Typography>
+                                            <Stack direction="row" spacing={1}>
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    id="readingDurationValue"
+                                                    name="readingDurationValue"
+                                                    type="number"
+                                                    value={values.readingDurationValue || 0}
+                                                    onChange={handleChange}
+                                                    InputProps={{ sx: { borderRadius: '8px' } }}
+                                                />
                                                 <Select
-                                                    labelId="reading-duration-unit-label"
-                                                    id="readingDurationUnit"
+                                                    size="small"
                                                     name="readingDurationUnit"
                                                     value={values.readingDurationUnit || 'hours'}
-                                                    label="Unit"
                                                     onChange={handleChange}
+                                                    sx={{ minWidth: 100, borderRadius: '8px' }}
                                                 >
                                                     <MenuItem value="hours">Hours</MenuItem>
                                                     <MenuItem value="days">Days</MenuItem>
-                                                    <MenuItem value="months">Months</MenuItem>
                                                 </Select>
-                                            </FormControl>
-                                        </Grid>
+                                            </Stack>
+                                        </Stack>
                                     </Grid>
-                                </Grid>
 
-                                {/* ── GST Section ── */}
-                                <Grid item xs={12} sm={6}>
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel id="gst-type-label">GST Status</InputLabel>
-                                        <Select
-                                            labelId="gst-type-label"
-                                            id="gstType"
-                                            name="gstType"
-                                            value={values.gstType || 'none'}
-                                            label="GST Status"
-                                            onChange={handleChange}
-                                        >
-                                            <MenuItem value="none">No GST</MenuItem>
-                                            <MenuItem value="inclusive">GST Inclusive (Included in Price)</MenuItem>
-                                            <MenuItem value="exclusive">GST Exclusive (Extra on top)</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
+                                    <Grid item xs={12}>
+                                        <Divider />
+                                    </Grid>
 
-                                {values.gstType !== 'none' && (
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
-                                            fullWidth
-                                            size="small"
-                                            id="gstPercent"
-                                            name="gstPercent"
-                                            label="GST Percentage (%)"
-                                            type="number"
-                                            InputProps={{
-                                                endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                                                inputProps: { min: 0, max: 100 }
-                                            }}
-                                            value={values.gstPercent}
-                                            onChange={handleChange}
-                                        />
-                                    </Grid>
-                                )}
-
-                                <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-
-                                {/* ── Certificate Section ── */}
-                                <Grid item xs={12} sm={4}>
-                                    <FormControlLabel
-                                        control={
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight={700}>Certificate Issuance</Typography>
+                                                <Typography variant="caption" color="text.secondary">Offer a verified certificate on completion</Typography>
+                                            </Box>
                                             <Switch
-                                                id="isCertificate"
                                                 name="isCertificate"
                                                 checked={values.isCertificate || false}
                                                 onChange={handleChange}
                                                 color="primary"
                                             />
-                                        }
-                                        label="Issue Certificate"
-                                    />
-                                </Grid>
+                                        </Stack>
+                                    </Grid>
 
-                                {values.isCertificate && (
-                                    <Grid item xs={12} sm={8}>
+                                    {values.isCertificate && (
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                id="certificateName"
+                                                name="certificateName"
+                                                label="Certificate Title"
+                                                value={values.certificateName || ''}
+                                                onChange={handleChange}
+                                                placeholder="e.g. Certified Data Scientist"
+                                                InputProps={{ sx: { borderRadius: '10px' } }}
+                                            />
+                                        </Grid>
+                                    )}
+
+                                    <Grid item xs={12} sm={6}>
                                         <TextField
                                             fullWidth
-                                            size="small"
-                                            id="certificateName"
-                                            name="certificateName"
-                                            label="Certificate Name (e.g. Master in Graphic Design)"
-                                            value={values.certificateName || ''}
+                                            id="fakeLikes"
+                                            name="fakeLikes"
+                                            label="Social Proof (Bonus Likes)"
+                                            type="number"
+                                            value={values.fakeLikes || 0}
                                             onChange={handleChange}
-                                            placeholder="Enter the name printed on certificate"
+                                            InputProps={{ 
+                                                startAdornment: <InputAdornment position="start">♥</InputAdornment>,
+                                                sx: { borderRadius: '10px' } 
+                                            }}
+                                            helperText="Initial likes shown to prospective students"
                                         />
                                     </Grid>
-                                )}
-
-                                <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-
-                                <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        id="fakeLikes"
-                                        name="fakeLikes"
-                                        label="Fake Likes (Social Proof)"
-                                        type="number"
-                                        value={values.fakeLikes || 0}
-                                        onChange={handleChange}
-                                        helperText="These likes are added to real user likes in the app"
-                                    />
                                 </Grid>
-
-                                <Grid item xs={12}><Divider sx={{ my: 1 }} /></Grid>
-
-                                <Grid item xs={12}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        id="description"
-                                        name="description"
-                                        label="Description"
-                                        multiline
-                                        rows={4}
-                                        value={values.description || ''}
-                                        onChange={handleChange}
-                                        error={touched.description && Boolean(errors.description)}
-                                        helperText={touched.description && errors.description}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </Stack>
                 </Grid>
 
-                {/* Sidebar Column */}
+                {/* Sidebar Media Area */}
                 <Grid item xs={12} md={4}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {/* Thumbnail Card */}
-                        <Card sx={{ borderRadius: 1 }} variant="outlined">
-                            <CardContent>
-                                <Typography variant="subtitle1" fontWeight={600} gutterBottom display="flex" alignItems="center" gap={1}>
-                                    <CloudUploadIcon color="info" fontSize="small" /> Course Thumbnail
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-
+                    <Stack spacing={3}>
+                        {/* Course Thumbnail */}
+                        <Card className="premium-card">
+                            <CardContent sx={{ p: 3 }}>
+                                <SectionHeader icon={<CloudUploadIcon />} title="Course Thumbnail" subtitle="Ideal size: 1280x720 (16:9)" />
+                                
                                 <Box
                                     sx={{
                                         width: '100%',
-                                        height: 160,
-                                        border: '1px dashed',
-                                        borderColor: 'divider',
-                                        borderRadius: 1,
+                                        height: 200,
+                                        border: '2px dashed #cbd5e1',
+                                        borderRadius: '16px',
                                         display: 'flex',
+                                        flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         cursor: 'pointer',
                                         overflow: 'hidden',
                                         position: 'relative',
-                                        bgcolor: 'background.default',
-                                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' }
+                                        transition: 'all 0.3s ease',
+                                        bgcolor: 'rgba(0,0,0,0.02)',
+                                        '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(99, 102, 241, 0.05)' }
                                     }}
                                     onClick={() => fileInputRef.current?.click()}
-                                    onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.currentTarget.style.borderColor = 'primary.main';
-                                    }}
-                                    onDragLeave={(e) => {
-                                        e.preventDefault();
-                                        e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.12)';
-                                    }}
-                                    onDrop={async (e) => {
-                                        e.preventDefault();
-                                        const file = e.dataTransfer.files[0];
-                                        if (file) {
-                                            try {
-                                                setUploading(true);
-                                                setFieldValue('thumbnailPreview', URL.createObjectURL(file));
-                                                const result = await uploadFile(file);
-                                                if (result.success) {
-                                                    setFieldValue('thumbnail', result.url);
-                                                    setFieldValue('thumbnailPreview', result.url);
-                                                    toast.success('Image uploaded successfully');
-                                                }
-                                            } catch (error) {
-                                                console.error('Upload error:', error);
-                                                toast.error('Upload failed');
-                                            } finally {
-                                                setUploading(false);
-                                            }
-                                        }
-                                    }}
                                 >
                                     {uploading && (
                                         <Box sx={{
                                             position: 'absolute', inset: 0, zIndex: 10,
-                                            bgcolor: 'rgba(255,255,255,0.7)',
+                                            bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                                         }}>
-                                            <CircularProgress size={30} />
+                                            <CircularProgress size={40} />
                                         </Box>
                                     )}
                                     {values.thumbnailPreview ? (
@@ -429,11 +455,13 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     ) : (
-                                        <Box sx={{ textAlign: 'center' }}>
-                                            <CloudUploadIcon sx={{ fontSize: 32, color: 'text.secondary', mb: 1 }} />
-                                            <Typography variant="body2" color="text.secondary">Drag & Drop Image</Typography>
-                                            <Typography variant="caption" color="text.disabled">Supports: JPG, PNG, WEBP</Typography>
-                                        </Box>
+                                        <Stack spacing={1} alignItems="center">
+                                            <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                                                <CloudUploadIcon color="primary" sx={{ fontSize: 32 }} />
+                                            </Box>
+                                            <Typography variant="body2" fontWeight={600}>Click to upload</Typography>
+                                            <Typography variant="caption" color="text.secondary">v. PNG, JPG or WEBP</Typography>
+                                        </Stack>
                                     )}
                                     <input
                                         accept="image/*"
@@ -444,66 +472,62 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
                                     />
                                 </Box>
 
-                                <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    <TextField
+                                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                                    <Button
                                         fullWidth
+                                        variant="contained"
                                         size="small"
-                                        label="Thumbnail URL"
-                                        placeholder="Paste image URL here"
-                                        value={values.thumbnail || ''}
-                                        onChange={(e) => {
-                                            const url = e.target.value;
-                                            setFieldValue('thumbnail', url);
-                                            setFieldValue('thumbnailPreview', url);
-                                        }}
-                                        InputProps={{
-                                            sx: { borderRadius: 1 }
-                                        }}
-                                    />
+                                        startIcon={<CategoryIcon />}
+                                        sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: '#1e293b', '&:hover': { bgcolor: '#0f172a' } }}
+                                        onClick={() => handleOpenPicker('image', 'thumbnail')}
+                                    >
+                                        Library
+                                    </Button>
                                     <Button
                                         fullWidth
                                         variant="outlined"
                                         size="small"
-                                        startIcon={<CollectionsIcon fontSize="small" />}
-                                        sx={{ borderRadius: 1 }}
-                                        onClick={() => handleOpenPicker('image', 'thumbnail')}
+                                        startIcon={<CollectionsIcon />}
+                                        sx={{ borderRadius: '8px', textTransform: 'none' }}
+                                        onClick={() => fileInputRef.current?.click()}
                                     >
-                                        Select from Library
+                                        Change
                                     </Button>
-                                </Box>
+                                </Stack>
                             </CardContent>
                         </Card>
 
-                        {/* Demo Video Card */}
-                        <Card sx={{ borderRadius: 1 }} variant="outlined">
-                            <CardContent>
-                                <Typography variant="subtitle1" fontWeight={600} gutterBottom display="flex" alignItems="center" gap={1}>
-                                    <VideoLibraryIcon color="error" fontSize="small" /> Demo Video
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
+                        {/* Demo/Promo Video */}
+                        <Card className="premium-card">
+                            <CardContent sx={{ p: 3 }}>
+                                <SectionHeader icon={<VideoLibraryIcon />} title="Course Teaser" subtitle="A short preview video for students" />
+                                
+                                <Box sx={{ mb: 2 }}>
+                                    <VideoPreview url={values.demoVideoUrl} height={180} />
+                                </Box>
 
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                <Stack spacing={1.5}>
                                     <TextField
                                         fullWidth
                                         size="small"
                                         id="demoVideoUrl"
                                         name="demoVideoUrl"
-                                        label="Video URL"
-                                        placeholder="YouTube / Video Link"
+                                        label="YouTube / Vimeo URL"
+                                        placeholder="Paste link here..."
                                         value={values.demoVideoUrl || ''}
                                         onChange={handleChange}
+                                        InputProps={{ sx: { borderRadius: '8px' } }}
                                     />
-                                    <Divider>OR</Divider>
-                                    <Box sx={{ display: 'flex', gap: 1 }}>
-                                        <Button
+                                    <Divider><Typography variant="caption" color="text.disabled">OR</Typography></Divider>
+                                    <Stack direction="row" spacing={1}>
+                                         <Button
                                             variant="outlined"
                                             size="small"
                                             component="label"
-                                            startIcon={<VideoLibraryIcon fontSize="small" />}
                                             fullWidth
-                                            sx={{ borderRadius: 1 }}
+                                            sx={{ borderRadius: '8px' }}
                                         >
-                                            Upload
+                                            Upload File
                                             <input
                                                 type="file"
                                                 hidden
@@ -531,22 +555,17 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
                                         <Button
                                             variant="outlined"
                                             size="small"
-                                            startIcon={<CollectionsIcon fontSize="small" />}
                                             fullWidth
-                                            sx={{ borderRadius: 1 }}
+                                            sx={{ borderRadius: '8px' }}
                                             onClick={() => handleOpenPicker('video', 'demoVideoUrl')}
                                         >
-                                            Library
+                                            Media Hub
                                         </Button>
-                                    </Box>
-                                </Box>
-
-                                <Box sx={{ mt: 2 }}>
-                                    <VideoPreview url={values.demoVideoUrl} height={180} />
-                                </Box>
+                                    </Stack>
+                                </Stack>
                             </CardContent>
                         </Card>
-                    </Box>
+                    </Stack>
                 </Grid>
             </Grid>
 
@@ -562,3 +581,4 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
 };
 
 export default BasicInfoStep;
+
