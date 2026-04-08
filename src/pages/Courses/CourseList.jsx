@@ -120,7 +120,7 @@ const CourseList = () => {
         setDeleteDialogOpen(false); // Close the dialog after action
     };
 
-    const columnDefs = [
+    const columnDefs = useMemo(() => [
         {
             headerName: '#',
             valueGetter: (params) => params.node.rowIndex + 1,
@@ -325,7 +325,7 @@ const CourseList = () => {
                 );
             }
         }
-    ];
+    ], [user, handleViewCourse, handleAssignExam, handleReviewCourse, handleEditCourse, handleTogglePublish]);
 
     return (
         <Box sx={{ p: 1 }}>
