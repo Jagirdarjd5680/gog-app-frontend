@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend.godofgraphics.in/api';
 const ENDPOINT = API_BASE_URL.replace('/api', '');
 const socket = io(ENDPOINT, {
     autoConnect: false,

@@ -294,7 +294,7 @@ const IndividualResult = () => {
                                     Question {selectedQuestion.qIndex}
                                 </Typography>
                                 <Chip
-                                    label={`${selectedQuestion.marksObtained} / ${selectedQuestion.question.marks} Marks`}
+                                    label={`${selectedQuestion.marksObtained || 0} / ${selectedQuestion.question?.marks || 0} Marks`}
                                     color={selectedQuestion.isCorrect ? 'success' : 'error'}
                                     variant="outlined"
                                     sx={{ borderRadius: 1, fontWeight: 800 }}
@@ -304,7 +304,7 @@ const IndividualResult = () => {
                         <DialogContent sx={{ p: 4 }}>
                             <Box sx={{ mb: 4 }}>
                                 <Typography variant="subtitle1" fontWeight={800} gutterBottom>
-                                    {selectedQuestion.question.content || selectedQuestion.question.text}
+                                    {selectedQuestion.question?.content || selectedQuestion.question?.text || 'Question has been deleted.'}
                                 </Typography>
                             </Box>
 
@@ -313,12 +313,12 @@ const IndividualResult = () => {
                             </Typography>
 
                             <Stack spacing={1.5}>
-                                {selectedQuestion.question.options.map((opt) => {
+                                {selectedQuestion.question?.options?.map((opt) => {
                                     const isSelected = selectedQuestion.selectedOptionId === opt._id || 
                                                      selectedQuestion.selectedOptionIds?.includes(opt._id);
                                     
                                     const textMatch = selectedQuestion.selectedText === opt.text;
-                                    const effectivelySelected = isSelected || (selectedQuestion.question.type === 'true_false' && textMatch);
+                                    const effectivelySelected = isSelected || (selectedQuestion.question?.type === 'true_false' && textMatch);
                                     const isCorrect = opt.isCorrect;
 
                                     // Determine the status/color
@@ -385,7 +385,7 @@ const IndividualResult = () => {
                                 })}
                             </Stack>
 
-                            {selectedQuestion.question.explanation && (
+                            {selectedQuestion.question?.explanation && (
                                 <Box sx={{ mt: 4, p: 2, bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderLeft: '4px solid', borderColor: 'primary.main', borderRadius: 1 }}>
                                     <Typography variant="caption" fontWeight={900} color="primary">EXPLANATION:</Typography>
                                     <Typography variant="body2" sx={{ mt: 1 }}>{selectedQuestion.question.explanation}</Typography>
