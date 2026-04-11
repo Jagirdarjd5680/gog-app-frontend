@@ -1,5 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
+import socket from '../utils/socket';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, CircularProgress } from '@mui/material';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 const AuthContext = createContext(null);
 
@@ -14,6 +17,9 @@ const useAuth = () => {
 const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [forceLogoutData, setForceLogoutData] = useState(null);
+    const [countdown, setCountdown] = useState(5);
+    const timerRef = useRef(null);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -47,6 +53,45 @@ const AuthProvider = ({ children }) => {
 
         checkAuth();
     }, []);
+
+    // ─── Socket Listener for Single Device Login ───────────────────────────
+    useEffect(() => {
+        if (!user?._id || user.role !== 'student') {
+            if (socket.connected) socket.disconnect();
+            return;
+        }
+
+        if (!socket.connected) {
+            socket.connect();
+        }
+        socket.emit('setup', user._id);
+
+        const handleForceLogout = (data) => {
+            console.log('📣 Real-time Force Logout Event Received:', data);
+            setForceLogoutData(data);
+            setCountdown(5);
+            
+            // Start countdown
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timerRef.current);
+                        logout();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        };
+
+        socket.on('force_logout', handleForceLogout);
+
+        return () => {
+            socket.off('force_logout', handleForceLogout);
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [user?._id, user?.role]);
 
     const login = async (email, password, recaptchaToken = '') => {
         try {
@@ -174,7 +219,76 @@ const AuthProvider = ({ children }) => {
         return <div>Loading...</div>;
     }
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+
+            {/* Force Logout Dialog */}
+            <Dialog 
+                open={!!forceLogoutData} 
+                maxWidth="xs" 
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3, p: 1 }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+                    <WarningAmberIcon color="error" fontSize="large" />
+                    <Typography variant="h6" fontWeight="bold">Security Alert</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
+                        {forceLogoutData?.message || 'You have been logged out because your account was logged in from another device.'}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2 }}>
+                        <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
+                            <CircularProgress 
+                                variant="determinate" 
+                                value={(countdown / 5) * 100} 
+                                color="error" 
+                                size={70} 
+                                thickness={5}
+                            />
+                            <Box
+                                sx={{
+                                    top: 0,
+                                    left: 0,
+                                    bottom: 0,
+                                    right: 0,
+                                    position: 'absolute',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Typography variant="h5" component="div" fontWeight="bold" color="error">
+                                    {countdown}
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <Typography variant="caption" color="text.disabled">
+                            Logging out automatically...
+                        </Typography>
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button 
+                        variant="contained" 
+                        color="error" 
+                        fullWidth 
+                        onClick={() => {
+                            if (timerRef.current) clearInterval(timerRef.current);
+                            logout();
+                        }}
+                        sx={{ py: 1.2, fontWeight: 'bold' }}
+                    >
+                        Logout Now
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </AuthContext.Provider>
+    );
 };
 
 export { AuthProvider, useAuth };
