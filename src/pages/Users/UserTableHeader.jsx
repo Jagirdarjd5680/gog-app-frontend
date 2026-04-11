@@ -25,6 +25,8 @@ const UserTableHeader = ({
     setSourceFilter,
     authFilter,
     setAuthFilter,
+    roleFilter,
+    setRoleFilter,
     handleAdd,
     setRecycleBinOpen,
     binCount,
@@ -149,6 +151,21 @@ const UserTableHeader = ({
                             <MenuItem value="google">Google</MenuItem>
                             <MenuItem value="email">Email</MenuItem>
                             <MenuItem value="mobile">Mobile OTP</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <Select
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                            displayEmpty
+                            sx={selectStyles}
+                            MenuProps={menuStyles}
+                        >
+                            <MenuItem value="all">All Roles</MenuItem>
+                            <MenuItem value="admin">Admin</MenuItem>
+                            <MenuItem value="teacher">Teacher</MenuItem>
+                            <MenuItem value="student">Student</MenuItem>
                         </Select>
                     </FormControl>
                 </Stack>

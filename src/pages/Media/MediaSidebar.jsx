@@ -37,7 +37,7 @@ const MediaSidebar = ({
         { id: 'image', label: 'Images', icon: <ImageIcon size="small" /> },
         { id: 'video', label: 'Videos', icon: <VideoLibraryIcon size="small" /> },
         { id: 'pdf', label: 'PDF Documents', icon: <PictureAsPdfIcon size="small" /> },
-        { id: 'audio', label: 'Audio Lessons', icon: <AudioFileIcon size="small" /> },
+        { id: 'chat', label: 'Chat Media', icon: <SupervisorAccountIcon size="small" /> },
         { id: 'other', label: 'Other Files', icon: <ArchiveIcon size="small" /> },
     ];
 

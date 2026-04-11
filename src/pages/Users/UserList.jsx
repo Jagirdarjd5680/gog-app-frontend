@@ -58,6 +58,7 @@ const UserList = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
     const [authFilter, setAuthFilter] = useState('all');
+    const [roleFilter, setRoleFilter] = useState('all');
     const [recycleBinOpen, setRecycleBinOpen] = useState(false);
     const [binCount, setBinCount] = useState(0);
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -338,6 +339,11 @@ const UserList = () => {
             const userAuth = user.authMethod || 'email'; // Default to email for legacy data
             if (userAuth !== authFilter) return false;
         }
+
+        // Role Filter
+        if (roleFilter !== 'all') {
+            if (user.role !== roleFilter) return false;
+        }
         return true;
     });
 
@@ -351,7 +357,7 @@ const UserList = () => {
             <Grid container spacing={2} mb={3}>
                 <Grid item xs={12} sm={6} md={3}>
                     <MetricsCard
-                        title="Total Students"
+                        title="Total Users"
                         value={users.length}
                         icon={<PeopleIcon sx={{ fontSize: 24 }} />}
                         color="primary"
@@ -359,7 +365,7 @@ const UserList = () => {
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                     <MetricsCard
-                        title="Active Students"
+                        title="Active Users"
                         value={activeUsers}
                         icon={<CheckCircleIcon sx={{ fontSize: 24 }} />}
                         color="success"
@@ -393,6 +399,8 @@ const UserList = () => {
                     setSourceFilter={setSourceFilter}
                     authFilter={authFilter}
                     setAuthFilter={setAuthFilter}
+                    roleFilter={roleFilter}
+                    setRoleFilter={setRoleFilter}
                     handleAdd={handleAdd}
                     setRecycleBinOpen={setRecycleBinOpen}
                     binCount={binCount}

@@ -32,6 +32,7 @@ import { useAuth } from '../../context/AuthContext';
 
 import MediaSidebar from './MediaSidebar';
 import MediaCard from './MediaCard';
+import ChatMediaLibrary from './ChatMediaLibrary';
 
 const MediaLibrary = () => {
     const theme = useTheme();
@@ -94,13 +95,13 @@ const MediaLibrary = () => {
     };
 
     useEffect(() => {
-        if (user) {
+        if (user && activeTab !== 'chat') {
             fetchFiles();
             if (user.role === 'admin') {
                 fetchTeachers();
             }
         }
-    }, [user, uploaderTab, selectedTeacherId, page, rowsPerPage]);
+    }, [user, uploaderTab, selectedTeacherId, page, rowsPerPage, activeTab]);
 
     const handlePageChange = (event, newPage) => {
         setPage(newPage);
@@ -217,231 +218,237 @@ const MediaLibrary = () => {
 
             {/* Main Content Area */}
             <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 4 }, bgcolor: 'action.hover' }}>
-                {/* Bulk Action Bar */}
-                <Collapse in={selectedFiles.length > 0}>
-                    <Paper
-                        elevation={4}
-                        sx={{
-                            mb: 3,
-                            p: 2,
-                            borderRadius: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            bgcolor: 'primary.main',
-                            color: 'white'
-                        }}
-                    >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Typography variant="h6" fontWeight={700}>
-                                {selectedFiles.length} items selected
-                            </Typography>
-                            <Button
-                                variant="outlined"
-                                color="inherit"
-                                size="small"
-                                onClick={() => setSelectedFiles([])}
-                                sx={{ borderRadius: 1.5, textTransform: 'none' }}
-                            >
-                                Clear Selection
-                            </Button>
-                        </Box>
-                        <Button
-                            variant="contained"
-                            color="error"
-                            startIcon={<DeleteSweepIcon />}
-                            onClick={() => setBulkDeleteDialogOpen(true)}
-                            sx={{ borderRadius: 1.5, fontWeight: 700 }}
-                        >
-                            Delete Selected
-                        </Button>
-                    </Paper>
-                </Collapse>
-
-                <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Checkbox
-                            indeterminate={selectedFiles.length > 0 && selectedFiles.length < files.length}
-                            checked={files.length > 0 && selectedFiles.length === files.length}
-                            onChange={handleSelectAll}
-                            sx={{ p: 0 }}
-                        />
-                        <Box>
-                            <Typography variant="h4" fontWeight={800} color="primary" sx={{ mb: 0.5 }}>
-                                Media Library
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                {totalCount} items total • Page {page + 1} of {Math.ceil(totalCount / rowsPerPage)}
-                            </Typography>
-                        </Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                p: '4px 12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                width: { xs: '100%', sm: 300 },
-                                borderRadius: 1.5,
-                                border: `1px solid ${theme.palette.divider}`,
-                                bgcolor: 'background.paper'
-                            }}
-                        >
-                            <SearchIcon color="action" fontSize="small" />
-                            <TextField
-                                fullWidth
-                                placeholder="Search your library..."
-                                variant="standard"
-                                InputProps={{ disableUnderline: true, sx: { px: 1, fontSize: '0.9rem' } }}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </Paper>
-
-                        <input
-                            type="file"
-                            id="media-upload-input"
-                            style={{ display: 'none' }}
-                            onChange={handleFileUpload}
-                            disabled={uploading}
-                        />
-                        <label htmlFor="media-upload-input">
-                            <Button
-                                variant="contained"
-                                component="span"
-                                startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
-                                disabled={uploading}
-                                sx={{
-                                    borderRadius: 1.5,
-                                    textTransform: 'none',
-                                    px: 3,
-                                    py: 1.1,
-                                    fontWeight: 700,
-                                    boxShadow: theme.shadows[4],
-                                    '&:hover': { boxShadow: theme.shadows[8] }
-                                }}
-                            >
-                                {uploading ? `Uploading ${uploadProgress}%` : 'Upload New'}
-                            </Button>
-                        </label>
-                    </Box>
-                </Box>
-
-                {uploading && (
-                    <Box sx={{ mb: 4 }}>
-                        <Paper sx={{ p: 2, borderRadius: 1.5, border: `1px solid ${theme.palette.primary.light}`, bgcolor: 'primary.50' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="body2" fontWeight={700} color="primary">
-                                    Uploading your file...
-                                </Typography>
-                                <Typography variant="caption" fontWeight={800} color="primary">
-                                    {uploadProgress}%
-                                </Typography>
-                            </Box>
-                            <LinearProgress
-                                variant="determinate"
-                                value={uploadProgress}
-                                sx={{ height: 8, borderRadius: 4 }}
-                            />
-                        </Paper>
-                    </Box>
-                )}
-
-                {/* Mobile Filters (Only visible on small screens) */}
-                <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 3 }}>
-                    <Tabs
-                        value={activeTab}
-                        onChange={(e, v) => setActiveTab(v)}
-                        variant="scrollable"
-                        scrollButtons="auto"
-                        sx={{ borderBottom: 1, borderColor: 'divider' }}
-                    >
-                        <Tab value="all" label="All" />
-                        <Tab value="image" label="Images" />
-                        <Tab value="video" label="Videos" />
-                        <Tab value="pdf" label="PDFs" />
-                        <Tab value="other" label="Others" />
-                    </Tabs>
-                </Box>
-
-                {loading ? (
-                    <Grid container spacing={3}>
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                            <Grid item xs={12} sm={6} lg={4} xl={3} key={n}>
-                                <Skeleton variant="rectangular" height={220} sx={{ borderRadius: 2 }} />
-                                <Box sx={{ pt: 1.5, px: 0.5 }}>
-                                    <Skeleton width="90%" height={24} />
-                                    <Skeleton width="50%" />
-                                </Box>
-                            </Grid>
-                        ))}
-                    </Grid>
-                ) : filteredFiles.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 12 }}>
-                        <Paper
-                            elevation={0}
-                            sx={{
-                                display: 'inline-flex',
-                                p: 4,
-                                borderRadius: '50%',
-                                bgcolor: 'background.paper',
-                                mb: 3,
-                                boxShadow: theme.shadows[1]
-                            }}
-                        >
-                            <InsertDriveFileIcon sx={{ fontSize: 80, color: 'text.disabled' }} />
-                        </Paper>
-                        <Typography variant="h5" fontWeight={700} color="text.secondary" gutterBottom>
-                            No matching files found
-                        </Typography>
-                        <Button
-                            variant="outlined"
-                            onClick={() => { setSearchTerm(''); setActiveTab('all'); }}
-                            sx={{ borderRadius: 3, mt: 1 }}
-                        >
-                            Reset all filters
-                        </Button>
-                    </Box>
+                {activeTab === 'chat' ? (
+                    <ChatMediaLibrary />
                 ) : (
-                    <Grid container spacing={4}>
-                        {filteredFiles.map((file) => (
-                            <Grid item xs={12} sm={6} lg={4} xl={3} key={file.name}>
-                                <MediaCard
-                                    file={file}
-                                    isSelected={selectedFiles.includes(file.name)}
-                                    onToggleSelection={toggleFileSelection}
-                                    onDelete={(f) => {
-                                        setSelectedFile(f);
-                                        setDeleteDialogOpen(true);
-                                    }}
-                                    onCopy={copyToClipboard}
-                                />
-                            </Grid>
-                        ))}
-                    </Grid>
-                )}
-
-                {!loading && totalCount > 0 && (
-                    <Box sx={{ mt: 6, display: 'flex', justifyContent: 'center' }}>
-                        <Paper elevation={0} sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
-                            <TablePagination
-                                component="div"
-                                count={totalCount}
-                                page={page}
-                                onPageChange={handlePageChange}
-                                rowsPerPage={rowsPerPage}
-                                onRowsPerPageChange={handleRowsPerPageChange}
-                                rowsPerPageOptions={[12, 24, 48, 96]}
+                    <>
+                        {/* Bulk Action Bar */}
+                        <Collapse in={selectedFiles.length > 0}>
+                            <Paper
+                                elevation={4}
                                 sx={{
-                                    '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                                        fontWeight: 600,
-                                        color: 'text.secondary'
-                                    }
+                                    mb: 3,
+                                    p: 2,
+                                    borderRadius: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    bgcolor: 'primary.main',
+                                    color: 'white'
                                 }}
-                            />
-                        </Paper>
-                    </Box>
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Typography variant="h6" fontWeight={700}>
+                                        {selectedFiles.length} items selected
+                                    </Typography>
+                                    <Button
+                                        variant="outlined"
+                                        color="inherit"
+                                        size="small"
+                                        onClick={() => setSelectedFiles([])}
+                                        sx={{ borderRadius: 1.5, textTransform: 'none' }}
+                                    >
+                                        Clear Selection
+                                    </Button>
+                                </Box>
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    startIcon={<DeleteSweepIcon />}
+                                    onClick={() => setBulkDeleteDialogOpen(true)}
+                                    sx={{ borderRadius: 1.5, fontWeight: 700 }}
+                                >
+                                    Delete Selected
+                                </Button>
+                            </Paper>
+                        </Collapse>
+
+                        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Checkbox
+                                    indeterminate={selectedFiles.length > 0 && selectedFiles.length < files.length}
+                                    checked={files.length > 0 && selectedFiles.length === files.length}
+                                    onChange={handleSelectAll}
+                                    sx={{ p: 0 }}
+                                />
+                                <Box>
+                                    <Typography variant="h4" fontWeight={800} color="primary" sx={{ mb: 0.5 }}>
+                                        Media Library
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {totalCount} items total • Page {page + 1} of {Math.ceil(totalCount / rowsPerPage)}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', width: { xs: '100%', sm: 'auto' } }}>
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: '4px 12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        width: { xs: '100%', sm: 300 },
+                                        borderRadius: 1.5,
+                                        border: `1px solid ${theme.palette.divider}`,
+                                        bgcolor: 'background.paper'
+                                    }}
+                                >
+                                    <SearchIcon color="action" fontSize="small" />
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Search your library..."
+                                        variant="standard"
+                                        InputProps={{ disableUnderline: true, sx: { px: 1, fontSize: '0.9rem' } }}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </Paper>
+
+                                <input
+                                    type="file"
+                                    id="media-upload-input"
+                                    style={{ display: 'none' }}
+                                    onChange={handleFileUpload}
+                                    disabled={uploading}
+                                />
+                                <label htmlFor="media-upload-input">
+                                    <Button
+                                        variant="contained"
+                                        component="span"
+                                        startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+                                        disabled={uploading}
+                                        sx={{
+                                            borderRadius: 1.5,
+                                            textTransform: 'none',
+                                            px: 3,
+                                            py: 1.1,
+                                            fontWeight: 700,
+                                            boxShadow: theme.shadows[4],
+                                            '&:hover': { boxShadow: theme.shadows[8] }
+                                        }}
+                                    >
+                                        {uploading ? `Uploading ${uploadProgress}%` : 'Upload New'}
+                                    </Button>
+                                </label>
+                            </Box>
+                        </Box>
+
+                        {uploading && (
+                            <Box sx={{ mb: 4 }}>
+                                <Paper sx={{ p: 2, borderRadius: 1.5, border: `1px solid ${theme.palette.primary.light}`, bgcolor: 'primary.50' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                        <Typography variant="body2" fontWeight={700} color="primary">
+                                            Uploading your file...
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight={800} color="primary">
+                                            {uploadProgress}%
+                                        </Typography>
+                                    </Box>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={uploadProgress}
+                                        sx={{ height: 8, borderRadius: 4 }}
+                                    />
+                                </Paper>
+                            </Box>
+                        )}
+
+                        {/* Mobile Filters (Only visible on small screens) */}
+                        <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 3 }}>
+                            <Tabs
+                                value={activeTab}
+                                onChange={(e, v) => setActiveTab(v)}
+                                variant="scrollable"
+                                scrollButtons="auto"
+                                sx={{ borderBottom: 1, borderColor: 'divider' }}
+                            >
+                                <Tab value="all" label="All" />
+                                <Tab value="image" label="Images" />
+                                <Tab value="video" label="Videos" />
+                                <Tab value="pdf" label="PDFs" />
+                                <Tab value="other" label="Others" />
+                            </Tabs>
+                        </Box>
+
+                        {loading ? (
+                            <Grid container spacing={3}>
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                                    <Grid item xs={12} sm={6} lg={4} xl={3} key={n}>
+                                        <Skeleton variant="rectangular" height={220} sx={{ borderRadius: 2 }} />
+                                        <Box sx={{ pt: 1.5, px: 0.5 }}>
+                                            <Skeleton width="90%" height={24} />
+                                            <Skeleton width="50%" />
+                                        </Box>
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        ) : filteredFiles.length === 0 ? (
+                            <Box sx={{ textAlign: 'center', py: 12 }}>
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        display: 'inline-flex',
+                                        p: 4,
+                                        borderRadius: '50%',
+                                        bgcolor: 'background.paper',
+                                        mb: 3,
+                                        boxShadow: theme.shadows[1]
+                                    }}
+                                >
+                                    <InsertDriveFileIcon sx={{ fontSize: 80, color: 'text.disabled' }} />
+                                </Paper>
+                                <Typography variant="h5" fontWeight={700} color="text.secondary" gutterBottom>
+                                    No matching files found
+                                </Typography>
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => { setSearchTerm(''); setActiveTab('all'); }}
+                                    sx={{ borderRadius: 3, mt: 1 }}
+                                >
+                                    Reset all filters
+                                </Button>
+                            </Box>
+                        ) : (
+                            <Grid container spacing={4}>
+                                {filteredFiles.map((file) => (
+                                    <Grid item xs={12} sm={6} lg={4} xl={3} key={file.name}>
+                                        <MediaCard
+                                            file={file}
+                                            isSelected={selectedFiles.includes(file.name)}
+                                            onToggleSelection={toggleFileSelection}
+                                            onDelete={(f) => {
+                                                setSelectedFile(f);
+                                                setDeleteDialogOpen(true);
+                                            }}
+                                            onCopy={copyToClipboard}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
+
+                        {!loading && totalCount > 0 && (
+                            <Box sx={{ mt: 6, display: 'flex', justifyContent: 'center' }}>
+                                <Paper elevation={0} sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
+                                    <TablePagination
+                                        component="div"
+                                        count={totalCount}
+                                        page={page}
+                                        onPageChange={handlePageChange}
+                                        rowsPerPage={rowsPerPage}
+                                        onRowsPerPageChange={handleRowsPerPageChange}
+                                        rowsPerPageOptions={[12, 24, 48, 96]}
+                                        sx={{
+                                            '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                                                fontWeight: 600,
+                                                color: 'text.secondary'
+                                            }
+                                        }}
+                                    />
+                                </Paper>
+                            </Box>
+                        )}
+                    </>
                 )}
             </Box>
 
