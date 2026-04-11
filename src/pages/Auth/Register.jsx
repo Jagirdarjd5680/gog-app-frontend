@@ -88,6 +88,26 @@ const Register = () => {
         setLoading(true);
         setError('');
 
+        // Basic Validation
+        if (!formData.name.trim()) {
+            setError('Please enter your full name');
+            setLoading(false);
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setError('Please enter a valid email address');
+            setLoading(false);
+            return;
+        }
+
+        if (formData.phone && formData.phone.length < 10) {
+            setError('Please enter a valid 10-digit phone number');
+            setLoading(false);
+            return;
+        }
+
         if (formData.password.length < 6) {
             setError('Password must be at least 6 characters');
             setLoading(false);

@@ -13,7 +13,7 @@ import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import CollectionsIcon from '@mui/icons-material/Collections';
 import VideoPreview from '../../Common/VideoPreview';
 import { uploadFile } from '../../../utils/upload';
-import api from '../../../utils/api';
+import api, { fixUrl } from '../../../utils/api';
 import { toast } from 'react-toastify';
 import MediaPickerModal from '../../Media/MediaPickerModal';
 import ReactQuill from 'react-quill-new';
@@ -85,7 +85,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
                 const result = await uploadFile(file);
                 if (result.success) {
                     setFieldValue('thumbnail', result.url);
-                    setFieldValue('thumbnailPreview', result.url);
+                    setFieldValue('thumbnailPreview', fixUrl(result.url));
                     toast.success('Image uploaded successfully');
                 }
             } catch (error) {
@@ -450,7 +450,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
                                     )}
                                     {values.thumbnailPreview ? (
                                         <img
-                                            src={values.thumbnailPreview}
+                                            src={fixUrl(values.thumbnailPreview)}
                                             alt="Thumbnail"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />

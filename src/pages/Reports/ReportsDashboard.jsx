@@ -190,7 +190,22 @@ const ReportsDashboard = () => {
                         variant="contained"
                         startIcon={<DownloadIcon />}
                         sx={{ borderRadius: 2, px: 3, fontWeight: 700 }}
-                        onClick={() => toast.info('Generating PDF Report...')}
+                        onClick={async () => {
+                            try {
+                                toast.info('Preparing report...');
+                                const response = await api.get('/reports/export', { responseType: 'blob' });
+                                const url = window.URL.createObjectURL(new Blob([response.data]));
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.setAttribute('download', 'gog_report.csv');
+                                document.body.appendChild(link);
+                                link.click();
+                                toast.success('Report downloaded successfully');
+                            } catch (error) {
+                                toast.error('Failed to export report');
+                                console.error('Export error:', error);
+                            }
+                        }}
                     >
                         Export Report
                     </Button>

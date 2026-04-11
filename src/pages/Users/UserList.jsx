@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Box,
     Typography,
@@ -48,6 +49,7 @@ import UserTableHeader from './UserTableHeader';
 
 const UserList = () => {
     const { isDark } = useTheme();
+    const [searchParams] = useSearchParams();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -59,6 +61,7 @@ const UserList = () => {
     const [sourceFilter, setSourceFilter] = useState('all');
     const [authFilter, setAuthFilter] = useState('all');
     const [roleFilter, setRoleFilter] = useState('all');
+    const [batchFilter, setBatchFilter] = useState('all');
     const [recycleBinOpen, setRecycleBinOpen] = useState(false);
     const [binCount, setBinCount] = useState(0);
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -67,7 +70,7 @@ const UserList = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/users');
+            const response = await api.get('/users?limit=1000');
             if (response.data.success) {
                 setUsers(response.data.data);
             }
@@ -92,7 +95,13 @@ const UserList = () => {
     useEffect(() => {
         fetchUsers();
         fetchBinCount();
-    }, []);
+
+        const openProfileId = searchParams.get('openProfile');
+        if (openProfileId) {
+            setViewUserId(openProfileId);
+            setViewModalOpen(true);
+        }
+    }, [searchParams]);
 
     const handleAdd = () => {
         setSelectedUser(null);
@@ -255,7 +264,38 @@ const UserList = () => {
         </Stack>
     );
 
+    const [selectedRows, setSelectedRows] = useState([]);
+
+    const onSelectionChanged = (event) => {
+        const selectedNodes = event.api.getSelectedNodes();
+        setSelectedRows(selectedNodes.map(node => node.data));
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to move ${selectedRows.length} users to the recycle bin?`)) return;
+        try {
+            await Promise.all(selectedRows.map(u => api.delete(`/users/${u._id}`)));
+            toast.success('Users moved to recycle bin');
+            fetchUsers();
+            fetchBinCount();
+            setSelectedRows([]);
+        } catch {
+            toast.error('Failed to delete some users');
+        }
+    };
+
     const columnDefs = [
+        {
+            headerName: '',
+            width: 50,
+            minWidth: 50,
+            flex: 0,
+            checkboxSelection: true,
+            headerCheckboxSelection: true,
+            suppressHeaderMenuButton: true,
+            sortable: false,
+            pinned: 'left'
+        },
         {
             headerName: 'ID',
             width: 50,
@@ -314,6 +354,20 @@ const UserList = () => {
             )
         },
         {
+            headerName: 'BATCH',
+            field: 'batch',
+            flex: 0.6,
+            minWidth: 100,
+            cellRenderer: (params) => (
+                <Chip
+                    label={params.value || 'N/A'}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                />
+            )
+        },
+        {
             headerName: 'ACTION',
             cellRenderer: ActionsRenderer,
             width: 180,
@@ -344,8 +398,15 @@ const UserList = () => {
         if (roleFilter !== 'all') {
             if (user.role !== roleFilter) return false;
         }
+
+        // Batch Filter
+        if (batchFilter !== 'all') {
+            if (user.batch !== batchFilter) return false;
+        }
         return true;
     });
+
+    const batches = [...new Set(users.filter(u => u.batch).map(u => u.batch))].sort();
 
     const activeUsers = users.filter(u => u.isActive).length;
     const googleUsers = users.filter(u => u.authMethod === 'google').length;
@@ -400,13 +461,40 @@ const UserList = () => {
                     authFilter={authFilter}
                     setAuthFilter={setAuthFilter}
                     roleFilter={roleFilter}
-                    setRoleFilter={setRoleFilter}
-                    handleAdd={handleAdd}
                     setRecycleBinOpen={setRecycleBinOpen}
+                    batchFilter={batchFilter}
+                    setBatchFilter={setBatchFilter}
+                    batches={batches}
                     binCount={binCount}
                     totalCount={filteredUsers.length}
                     isDark={isDark}
                 />
+
+                {selectedRows.length > 0 && (
+                    <Box sx={{ 
+                        p: 1.5, 
+                        bgcolor: 'rgba(255, 0, 0, 0.05)', 
+                        borderBottom: '1px solid', 
+                        borderColor: 'error.light',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between' 
+                    }}>
+                        <Typography variant="subtitle2" color="error.main" fontWeight={700}>
+                            {selectedRows.length} users selected
+                        </Typography>
+                        <Button 
+                            variant="contained" 
+                            color="error" 
+                            size="small" 
+                            startIcon={<DeleteIcon />}
+                            onClick={handleBulkDelete}
+                            sx={{ borderRadius: 1.5, fontWeight: 700 }}
+                        >
+                            Bulk Delete
+                        </Button>
+                    </Box>
+                )}
 
                 <DataTable
                     rowData={filteredUsers}
@@ -417,6 +505,7 @@ const UserList = () => {
                     pagination={true}
                     paginationPageSize={10}
                     height="auto"
+                    onSelectionChanged={onSelectionChanged}
                 />
             </Box>
 

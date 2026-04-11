@@ -112,7 +112,35 @@ const ExamList = () => {
         }
     };
 
+    const [selectedRows, setSelectedRows] = useState([]);
+
+    const onSelectionChanged = (event) => {
+        const selectedNodes = event.api.getSelectedNodes();
+        setSelectedRows(selectedNodes.map(node => node.data));
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} exams?`)) return;
+        try {
+            await Promise.all(selectedRows.map(e => api.delete(`/exams/${e._id}`)));
+            toast.success('Exams deleted successfully');
+            fetchExams();
+            setSelectedRows([]);
+        } catch {
+            toast.error('Failed to delete some exams');
+        }
+    };
+
     const columns = [
+        {
+            headerName: '',
+            width: 50,
+            checkboxSelection: true,
+            headerCheckboxSelection: true,
+            sortable: false,
+            filter: false,
+            pinned: 'left'
+        },
         { field: 'title', headerName: 'EXAM TITLE', flex: 1.5, minWidth: 200 },
         {
             headerName: 'DURATION',
@@ -191,10 +219,39 @@ const ExamList = () => {
                 </Button>
             </Box>
 
+            {selectedRows.length > 0 && (
+                <Box sx={{ 
+                    p: 1.5, 
+                    mb: 2,
+                    bgcolor: 'rgba(255, 0, 0, 0.05)', 
+                    borderRadius: 2,
+                    border: '1px solid', 
+                    borderColor: 'error.light',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between' 
+                }}>
+                    <Typography variant="subtitle2" color="error.main" fontWeight={700}>
+                        {selectedRows.length} exams selected
+                    </Typography>
+                    <Button 
+                        variant="contained" 
+                        color="error" 
+                        size="small" 
+                        startIcon={<DeleteIcon />}
+                        onClick={handleBulkDelete}
+                        sx={{ borderRadius: 1.5, fontWeight: 700 }}
+                    >
+                        Bulk Delete
+                    </Button>
+                </Box>
+            )}
+
             <DataTable
                 rowData={exams}
                 columnDefs={columns}
                 loading={loading}
+                onSelectionChanged={onSelectionChanged}
             />
 
             <ExamForm

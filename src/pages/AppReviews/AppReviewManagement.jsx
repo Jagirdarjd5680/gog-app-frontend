@@ -13,7 +13,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ImageIcon from '@mui/icons-material/Image';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import StarIcon from '@mui/icons-material/Star';
-import api from '../../utils/api';
+import api, { fixUrl } from '../../utils/api';
 import { toast } from 'react-toastify';
 
 /* ─────────────────── helpers ──────────────────── */
@@ -55,7 +55,9 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
         try {
             const fd = new FormData();
             fd.append('file', file);
-            const { data } = await api.post('/upload', fd);
+            const { data } = await api.post('/upload', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             setProfileImage(data.url);
             toast.success('Image uploaded!');
         } catch { toast.error('Upload failed'); } finally { setUploading(false); }
@@ -136,7 +138,7 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
                             Profile Image (Optional)
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <Avatar src={profileImage} sx={{ width: 56, height: 56 }} />
+                            <Avatar src={fixUrl(profileImage)} sx={{ width: 56, height: 56 }} />
                             <Box sx={{ flex: 1 }}>
                                 <TextField
                                     label="Image URL"
@@ -294,7 +296,7 @@ const AppReviewManagement = () => {
                             <TableRow key={r._id} hover>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <Avatar src={r.profileImage}>{r.name.charAt(0)}</Avatar>
+                                        <Avatar src={fixUrl(r.profileImage)}>{r.name.charAt(0)}</Avatar>
                                         <Typography variant="body2" fontWeight={700}>
                                             {r.name}
                                         </Typography>

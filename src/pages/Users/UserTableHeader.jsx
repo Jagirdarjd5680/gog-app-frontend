@@ -27,6 +27,9 @@ const UserTableHeader = ({
     setAuthFilter,
     roleFilter,
     setRoleFilter,
+    batchFilter,
+    setBatchFilter,
+    batches,
     handleAdd,
     setRecycleBinOpen,
     binCount,
@@ -166,6 +169,21 @@ const UserTableHeader = ({
                             <MenuItem value="admin">Admin</MenuItem>
                             <MenuItem value="teacher">Teacher</MenuItem>
                             <MenuItem value="student">Student</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <Select
+                            value={batchFilter}
+                            onChange={(e) => setBatchFilter(e.target.value)}
+                            displayEmpty
+                            sx={selectStyles}
+                            MenuProps={menuStyles}
+                        >
+                            <MenuItem value="all">All Batches</MenuItem>
+                            {batches.map(b => (
+                                <MenuItem key={b} value={b}>{b}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
                 </Stack>

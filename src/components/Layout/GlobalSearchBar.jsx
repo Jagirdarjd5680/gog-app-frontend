@@ -64,9 +64,10 @@ const GlobalSearchBar = () => {
     };
 
     const handleResultClick = (item) => {
+        const [path, search] = item.url.split('?');
         navigate({
-            pathname: item.url,
-            search: createSearchParams({ q: query }).toString()
+            pathname: path,
+            search: search ? `?${search}` : ''
         });
         handleClose();
     };

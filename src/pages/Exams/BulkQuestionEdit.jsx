@@ -214,6 +214,18 @@ const BulkQuestionEdit = () => {
                             <TableRow key={q._id} sx={{ '&:hover': { bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' } }}>
                                 <TableCell sx={{ ...cellStyle, textAlign: 'center', color: 'text.secondary', fontWeight: 800 }}>
                                     {qIdx + 1}
+                                    <IconButton 
+                                        size="small" 
+                                        color="error" 
+                                        onClick={() => {
+                                            const updated = [...questions];
+                                            updated.splice(qIdx, 1);
+                                            setQuestions(updated);
+                                        }}
+                                        sx={{ mt: 1, p: 0.5, opacity: 0.3, '&:hover': { opacity: 1 } }}
+                                    >
+                                        <DeleteIcon fontSize="inherit" />
+                                    </IconButton>
                                 </TableCell>
                                 <TableCell sx={cellStyle}>
                                     <TextField

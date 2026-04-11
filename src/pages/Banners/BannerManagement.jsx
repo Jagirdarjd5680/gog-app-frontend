@@ -18,7 +18,7 @@ import CollectionsIcon from '@mui/icons-material/Collections';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import PublishedWithChangesIcon from '@mui/icons-material/PublishedWithChanges';
 import UnpublishedIcon from '@mui/icons-material/Unpublished';
-import api from '../../utils/api';
+import api, { fixUrl } from '../../utils/api';
 import { toast } from 'react-toastify';
 
 /* ─────────────────── helpers ──────────────────── */
@@ -113,7 +113,9 @@ const BannerFormModal = ({ open, onClose, banner, onSuccess }) => {
         try {
             const fd = new FormData();
             fd.append('file', file);
-            const { data } = await api.post('/upload', fd);
+            const { data } = await api.post('/upload', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             setImage(data.url);
             toast.success('Image uploaded!');
         } catch { toast.error('Upload failed'); } finally { setUploading(false); }
@@ -237,7 +239,7 @@ const BannerFormModal = ({ open, onClose, banner, onSuccess }) => {
                                                     '&:hover': { opacity: 0.8 },
                                                 }}
                                             >
-                                                <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <img src={fixUrl(f.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             </Box>
                                         ))}
                                     </Box>
@@ -248,7 +250,7 @@ const BannerFormModal = ({ open, onClose, banner, onSuccess }) => {
                         {/* Preview */}
                         {image && (
                             <Box mt={2} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                                <img src={image} alt="preview"
+                                <img src={fixUrl(image)} alt="preview"
                                     style={{ width: '100%', height: 120, objectFit: 'cover' }}
                                     onError={e => { e.target.style.display = 'none'; }}
                                 />
@@ -492,7 +494,7 @@ const BannerManagement = () => {
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                         <Avatar variant="rounded"
-                                            src={b.image}
+                                            src={fixUrl(b.image)}
                                             sx={{ width: 72, height: 44, borderRadius: 1 }}
                                         >
                                             <ImageIcon />
