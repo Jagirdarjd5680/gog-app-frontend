@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Box,
     Button,
@@ -114,10 +114,10 @@ const ExamList = () => {
 
     const [selectedRows, setSelectedRows] = useState([]);
 
-    const onSelectionChanged = (event) => {
+    const onSelectionChanged = useCallback((event) => {
         const selectedNodes = event.api.getSelectedNodes();
         setSelectedRows(selectedNodes.map(node => node.data));
-    };
+    }, []);
 
     const handleBulkDelete = async () => {
         if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} exams?`)) return;
@@ -131,7 +131,7 @@ const ExamList = () => {
         }
     };
 
-    const columns = [
+    const columns = useMemo(() => [
         {
             headerName: '',
             width: 50,
@@ -208,7 +208,7 @@ const ExamList = () => {
                 </Box>
             )
         }
-    ];
+    ], []);
 
     return (
         <Box>

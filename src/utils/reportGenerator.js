@@ -22,7 +22,7 @@ export const downloadIconSummaryReport = (result) => {
     autoTable(doc, {
         startY: 38,
         head: [['STUDENT NAME', 'ROLL NUMBER', 'EMAIL ADDRESS', 'EXAM TITLE']],
-        body: [[user.name.toUpperCase(), user.rollNumber || 'N/A', user.email, exam.title.toUpperCase()]],
+        body: [[(user?.name || 'Unknown').toUpperCase(), user?.rollNumber || 'N/A', user?.email || 'N/A', (exam?.title || 'Unknown').toUpperCase()]],
         theme: 'grid',
         headStyles: { fillColor: [33, 150, 243], textColor: [255, 255, 255], fontStyle: 'bold' },
         styles: { fontSize: 9, cellPadding: 4 }
@@ -83,7 +83,7 @@ export const downloadIconSummaryReport = (result) => {
     doc.setTextColor(150, 150, 150);
     doc.text(`Generated on: ${timestamp}`, 105, 285, { align: 'center' });
 
-    doc.save(`${user.name}_Summary_Report.pdf`);
+    doc.save(`${user?.name || 'User'}_Summary_Report.pdf`);
 };
 
 /**
@@ -102,8 +102,8 @@ export const downloadDetailedReport = (result) => {
     autoTable(doc, {
         startY: 25,
         body: [
-            ['Student Name', user.name],
-            ['Roll Number', user.rollNumber || 'N/A'],
+            ['Student Name', user?.name || 'Unknown'],
+            ['Roll Number', user?.rollNumber || 'N/A'],
             ['Result Status', result.passed ? 'PASSED' : 'FAILED'],
             ['Total Score', `${result.score} / ${result.maxScore} (${result.percentage.toFixed(2)}%)`]
         ],
@@ -129,12 +129,12 @@ export const downloadDetailedReport = (result) => {
 
         doc.setFontSize(10);
         doc.setTextColor(50, 50, 50);
-        const questionLines = doc.splitTextToSize(ans.question.content || ans.question.text || 'No Content', 180);
+        const questionLines = doc.splitTextToSize(ans.question?.content || ans.question?.text || 'No Content', 180);
         doc.text(questionLines, 14, currentY);
         currentY += (questionLines.length * 5) + 3;
 
         // Options
-        const optionsList = ans.question.options || [];
+        const optionsList = ans.question?.options || [];
         optionsList.forEach((opt, oIdx) => {
             // Defensive extraction of text and correctness
             const optionText = typeof opt === 'string' ? opt : (opt.text || opt.content || opt.label || `Option ${oIdx + 1}`);
@@ -164,7 +164,7 @@ export const downloadDetailedReport = (result) => {
         });
 
         // Explanation
-        const rawExplanation = ans.question.explanation || ans.question.desc;
+        const rawExplanation = ans.question?.explanation || ans.question?.desc;
         if (rawExplanation) {
             doc.setTextColor(150, 150, 150);
             doc.setFontSize(9);
@@ -176,5 +176,5 @@ export const downloadDetailedReport = (result) => {
         currentY += 10;
     });
 
-    doc.save(`${user.name}_Detailed_Report.pdf`);
+    doc.save(`${user?.name || 'User'}_Detailed_Report.pdf`);
 };

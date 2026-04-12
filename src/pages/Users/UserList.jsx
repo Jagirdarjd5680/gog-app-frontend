@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
     Box,
@@ -7,7 +7,8 @@ import {
     Avatar,
     Stack,
     IconButton,
-    Grid
+    Grid,
+    Button
 } from '@mui/material';
 import DataTable from '../../components/Common/DataTable';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -266,10 +267,10 @@ const UserList = () => {
 
     const [selectedRows, setSelectedRows] = useState([]);
 
-    const onSelectionChanged = (event) => {
+    const onSelectionChanged = useCallback((event) => {
         const selectedNodes = event.api.getSelectedNodes();
         setSelectedRows(selectedNodes.map(node => node.data));
-    };
+    }, []);
 
     const handleBulkDelete = async () => {
         if (!window.confirm(`Are you sure you want to move ${selectedRows.length} users to the recycle bin?`)) return;
@@ -284,7 +285,7 @@ const UserList = () => {
         }
     };
 
-    const columnDefs = [
+    const columnDefs = useMemo(() => [
         {
             headerName: '',
             width: 50,
@@ -373,7 +374,7 @@ const UserList = () => {
             width: 180,
             pinned: 'right'
         },
-    ];
+    ], []);
 
     const filteredUsers = users.filter(user => {
         // Status Filter
@@ -471,22 +472,22 @@ const UserList = () => {
                 />
 
                 {selectedRows.length > 0 && (
-                    <Box sx={{ 
-                        p: 1.5, 
-                        bgcolor: 'rgba(255, 0, 0, 0.05)', 
-                        borderBottom: '1px solid', 
+                    <Box sx={{
+                        p: 1.5,
+                        bgcolor: 'rgba(255, 0, 0, 0.05)',
+                        borderBottom: '1px solid',
                         borderColor: 'error.light',
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between' 
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
                     }}>
                         <Typography variant="subtitle2" color="error.main" fontWeight={700}>
                             {selectedRows.length} users selected
                         </Typography>
-                        <Button 
-                            variant="contained" 
-                            color="error" 
-                            size="small" 
+                        <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
                             startIcon={<DeleteIcon />}
                             onClick={handleBulkDelete}
                             sx={{ borderRadius: 1.5, fontWeight: 700 }}

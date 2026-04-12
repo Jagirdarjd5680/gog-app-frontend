@@ -145,14 +145,14 @@ const IndividualResult = () => {
                         <CardContent sx={{ p: 4 }}>
                             <Box sx={{ textAlign: 'center', mb: 3 }}>
                                 <Avatar
-                                    src={user.avatar}
+                                    src={user?.avatar}
                                     sx={{ width: 100, height: 100, mx: 'auto', mb: 2, borderRadius: 1, border: '4px solid', borderColor: 'primary.main' }}
                                 >
-                                    {user.name.charAt(0)}
+                                    {user?.name?.charAt(0) || '?'}
                                 </Avatar>
-                                <Typography variant="h5" fontWeight={900}>{user.name}</Typography>
-                                <Typography color="text.secondary" gutterBottom>{user.email}</Typography>
-                                <Chip label={`Roll No: ${user.rollNumber || 'N/A'}`} size="small" sx={{ borderRadius: 1, mt: 1 }} />
+                                <Typography variant="h5" fontWeight={900}>{user?.name || 'Unknown User'}</Typography>
+                                <Typography color="text.secondary" gutterBottom>{user?.email || 'No Email'}</Typography>
+                                <Chip label={`Roll No: ${user?.rollNumber || 'N/A'}`} size="small" sx={{ borderRadius: 1, mt: 1 }} />
                             </Box>
 
                             <Divider sx={{ my: 3 }} />
@@ -160,7 +160,7 @@ const IndividualResult = () => {
                             <Stack spacing={2.5}>
                                 <Box>
                                     <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase' }}>Exam</Typography>
-                                    <Typography variant="body1" fontWeight={800}>{exam.title}</Typography>
+                                    <Typography variant="body1" fontWeight={800}>{exam?.title || 'Unknown Exam'}</Typography>
                                 </Box>
                                 <Box>
                                     <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase' }}>Score Dashboard</Typography>
