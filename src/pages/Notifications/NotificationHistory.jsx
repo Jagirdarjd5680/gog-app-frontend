@@ -105,6 +105,8 @@ const NotificationHistory = () => {
     const [selected, setSelected] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [sentOnly, setSentOnly] = useState(true); // Default to true as per user request
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
 
     const fetchNotifications = async (pg = 1, onlyMe = sentOnly) => {
         setLoading(true);
@@ -112,6 +114,7 @@ const NotificationHistory = () => {
             const { data } = await api.get(`/notifications?page=${pg}&limit=10&sentByMe=${onlyMe}`);
             setNotifications(data.data || []);
             setTotalPages(data.totalPages || 1);
+            setSelectedIds([]); // Clear selection on page change
         } catch {
             toast.error('Failed to load notifications');
         } finally {
@@ -132,6 +135,21 @@ const NotificationHistory = () => {
         setDeleteConfirm(null);
     };
 
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+        setBulkDeleting(true);
+        try {
+            await api.post('/notifications/bulk-delete', { ids: selectedIds });
+            toast.success(`${selectedIds.length} notifications deleted`);
+            fetchNotifications(page, sentOnly);
+        } catch {
+            toast.error('Failed to perform bulk delete');
+        } finally {
+            setBulkDeleting(false);
+            setDeleteConfirm('bulk');
+        }
+    };
+
     const markRead = async (id) => {
         try { await api.put(`/notifications/${id}/read`); } catch { }
     };
@@ -141,33 +159,72 @@ const NotificationHistory = () => {
         markRead(notif._id);
     };
 
+    const toggleSelect = (id, e) => {
+        e.stopPropagation();
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const selectAll = () => {
+        if (selectedIds.length === notifications.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(notifications.map(n => n._id));
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                <Box>
-                    <Typography variant="h5" fontWeight={800}>Notification History</Typography>
-                    <Typography variant="body2" color="text.secondary">All sent notifications log</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box>
+                        <Typography variant="h5" fontWeight={800}>Notification History</Typography>
+                        <Typography variant="body2" color="text.secondary">All sent notifications log</Typography>
+                    </Box>
+                    {selectedIds.length > 0 && (
+                        <Button 
+                            variant="contained" 
+                            color="error" 
+                            startIcon={<DeleteIcon />}
+                            onClick={() => setDeleteConfirm('bulk')}
+                            sx={{ borderRadius: 2, ml: 2, height: 40 }}
+                        >
+                            Delete Selected ({selectedIds.length})
+                        </Button>
+                    )}
                 </Box>
                 
-                {/* Filter Toggle */}
-                <Box sx={{ display: 'flex', bgcolor: 'action.hover', p: 0.5, borderRadius: 2 }}>
+                <Stack direction="row" spacing={2} alignItems="center">
                     <Button 
-                        size="small"
-                        variant={sentOnly ? 'contained' : 'text'}
-                        onClick={() => setSentOnly(true)}
-                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
+                        size="small" 
+                        variant="outlined" 
+                        onClick={selectAll}
+                        sx={{ borderRadius: 1.5, textTransform: 'none' }}
                     >
-                        Sent by Me
+                        {selectedIds.length === notifications.length ? 'Deselect All' : 'Select All Page'}
                     </Button>
-                    <Button 
-                        size="small"
-                        variant={!sentOnly ? 'contained' : 'text'}
-                        onClick={() => setSentOnly(false)}
-                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
-                    >
-                        All History
-                    </Button>
-                </Box>
+
+                    {/* Filter Toggle */}
+                    <Box sx={{ display: 'flex', bgcolor: 'action.hover', p: 0.5, borderRadius: 2 }}>
+                        <Button 
+                            size="small"
+                            variant={sentOnly ? 'contained' : 'text'}
+                            onClick={() => setSentOnly(true)}
+                            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
+                        >
+                            Sent by Me
+                        </Button>
+                        <Button 
+                            size="small"
+                            variant={!sentOnly ? 'contained' : 'text'}
+                            onClick={() => setSentOnly(false)}
+                            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
+                        >
+                            All History
+                        </Button>
+                    </Box>
+                </Stack>
             </Box>
 
             {loading ? (
@@ -190,65 +247,81 @@ const NotificationHistory = () => {
                                     borderRadius: 2,
                                     cursor: 'pointer',
                                     border: '1px solid',
-                                    borderColor: 'divider',
+                                    borderColor: selectedIds.includes(notif._id) ? 'primary.main' : 'divider',
+                                    bgcolor: selectedIds.includes(notif._id) ? 'primary.50' : 'background.paper',
                                     transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.5,
                                     '&:hover': {
                                         boxShadow: 3,
-                                        borderColor: 'primary.main',
                                         transform: 'translateY(-1px)'
                                     }
                                 }}
                                 onClick={() => handleView(notif)}
                             >
-                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }} onClick={(e) => toggleSelect(notif._id, e)}>
                                     <Avatar
                                         sx={{
                                             width: 40,
                                             height: 40,
-                                            bgcolor: 'primary.main',
-                                            fontSize: 18
+                                            bgcolor: selectedIds.includes(notif._id) ? 'primary.main' : 'action.disabledBackground',
+                                            color: selectedIds.includes(notif._id) ? '#fff' : 'action.disabled',
+                                            fontSize: 18,
+                                            cursor: 'pointer'
                                         }}
                                     >
-                                        <NotificationsIcon fontSize="small" />
+                                        {selectedIds.includes(notif._id) ? <CheckCircleIcon /> : <NotificationsIcon fontSize="small" />}
                                     </Avatar>
+                                </Box>
 
-                                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                            <Typography variant="body1" fontWeight={700} noWrap>
-                                                {notif.title}
-                                            </Typography>
-                                            <Chip
-                                                label={notif.type || 'info'}
-                                                color={TYPE_COLOR[notif.type] || 'default'}
-                                                size="small"
-                                                sx={{ fontSize: 10 }}
-                                            />
-                                            <Chip
-                                                label={notif.recipientRole || 'all'}
-                                                variant="outlined"
-                                                size="small"
-                                                sx={{ fontSize: 10 }}
-                                            />
-                                        </Box>
-
-                                        <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                            sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-                                        >
-                                            {notif.message}
+                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                        <Typography variant="body1" fontWeight={700} noWrap>
+                                            {notif.title}
                                         </Typography>
-
-                                        <Box sx={{ mt: 1, display: 'flex', gap: 2, alignItems: 'center' }}>
-                                            <Typography variant="caption" color="text.secondary">
-                                                By: <strong>{notif.sentBy?.name || 'System'}</strong>
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {format(new Date(notif.createdAt), 'dd MMM yyyy, hh:mm a')}
-                                            </Typography>
-                                        </Box>
+                                        <Chip
+                                            label={notif.type || 'info'}
+                                            color={TYPE_COLOR[notif.type] || 'default'}
+                                            size="small"
+                                            sx={{ fontSize: 10 }}
+                                        />
+                                        <Chip
+                                            label={notif.recipientRole || 'all'}
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{ fontSize: 10 }}
+                                        />
                                     </Box>
 
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}
+                                    >
+                                        {notif.message}
+                                    </Typography>
+
+                                    <Box sx={{ mt: 1, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            By: <strong>{notif.sentBy?.name || 'System'}</strong>
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {format(new Date(notif.createdAt), 'dd MMM yyyy, hh:mm a')}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                    <Tooltip title={selectedIds.includes(notif._id) ? "Deselect" : "Select"}>
+                                        <IconButton
+                                            color="primary"
+                                            size="small"
+                                            onClick={(e) => toggleSelect(notif._id, e)}
+                                        >
+                                            <CheckCircleIcon fontSize="small" color={selectedIds.includes(notif._id) ? "primary" : "disabled"} />
+                                        </IconButton>
+                                    </Tooltip>
                                     <Tooltip title="Delete">
                                         <IconButton
                                             color="error"
@@ -285,11 +358,23 @@ const NotificationHistory = () => {
             <Dialog open={Boolean(deleteConfirm)} onClose={() => setDeleteConfirm(null)} maxWidth="xs">
                 <DialogTitle>Confirm Delete</DialogTitle>
                 <DialogContent>
-                    <Alert severity="warning">Are you sure you want to delete this notification? This action cannot be undone.</Alert>
+                    <Alert severity="warning">
+                        {deleteConfirm === 'bulk' 
+                            ? `Are you sure you want to delete ${selectedIds.length} notifications? This action cannot be undone.`
+                            : "Are you sure you want to delete this notification? This action cannot be undone."
+                        }
+                    </Alert>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-                    <Button color="error" variant="contained" onClick={() => handleDelete(deleteConfirm)}>Delete</Button>
+                    <Button 
+                        color="error" 
+                        variant="contained" 
+                        onClick={() => deleteConfirm === 'bulk' ? handleBulkDelete() : handleDelete(deleteConfirm)}
+                        disabled={bulkDeleting}
+                    >
+                        {bulkDeleting ? 'Deleting...' : 'Delete'}
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>

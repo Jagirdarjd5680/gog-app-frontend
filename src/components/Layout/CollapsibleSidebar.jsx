@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
     Drawer,
     List,
@@ -5,6 +6,8 @@ import {
     ListItemButton,
     ListItemIcon,
     ListItemText,
+    Button,
+    TextField,
     Box,
     Typography,
     Divider,
@@ -19,10 +22,12 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import SchoolIcon from '@mui/icons-material/School';
+import GroupsIcon from '@mui/icons-material/Groups';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PaymentIcon from '@mui/icons-material/Payment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import SearchIcon from '@mui/icons-material/Search';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -58,11 +63,13 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
     const { settings } = useSettings();
     const muiTheme = useMuiTheme();
     const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+    const [searchQuery, setSearchQuery] = useState('');
 
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/', roles: ['admin', 'teacher', 'student'] },
         { text: user?.role === 'admin' ? 'Message Management' : 'Admin Support', icon: <ChatIcon />, path: '/chat', roles: ['admin', 'teacher', 'student'] },
         { text: 'Users', icon: <PeopleIcon />, path: '/users', roles: ['admin'] },
+        { text: 'Batches', icon: <GroupsIcon />, path: '/batches', roles: ['admin', 'teacher'] },
         { text: 'Courses', icon: <SchoolIcon />, path: '/courses', roles: ['admin', 'teacher'] },
         { text: 'Media Library', icon: <PermMediaIcon />, path: '/media-library', roles: ['admin', 'teacher'] },
         { text: 'Live Classes', icon: <VideoCallIcon />, path: '/live-classes', roles: ['admin', 'teacher'] },
@@ -82,9 +89,11 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
         { text: 'Free Materials', icon: <AutoAwesomeIcon />, path: '/free-materials', roles: ['admin', 'teacher'] },
     ];
 
-    const filteredMenuItems = menuItems.filter(item =>
-        item.roles.includes(user?.role)
-    );
+    const filteredMenuItems = menuItems.filter(item => {
+        const matchesRole = item.roles.includes(user?.role);
+        const matchesSearch = item.text.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesRole && matchesSearch;
+    });
 
     const handleNavigation = (path) => {
         navigate(path);
@@ -145,7 +154,7 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                             borderRadius: '50%',
                             objectFit: 'contain',
                             border: '1px solid',
-                            borderColor: 'divider'
+                            borderColor: darkMode ? 'rgba(255,255,255,0.12)' : 'divider'
                         }}
                     >
                         {!settings?.general?.siteIcon && <SchoolIcon sx={{ color: 'primary.main' }} />}
@@ -172,6 +181,29 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
 
 
                 <Divider />
+
+                {/* Search Bar */}
+                {!collapsed && (
+                    <Box sx={{ p: 2, pb: 0 }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Search menu..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <SearchIcon sx={{ color: 'text.secondary', mr: 1, fontSize: 20 }} />
+                                ),
+                                sx: {
+                                    borderRadius: 2,
+                                    bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                                    '& fieldset': { border: 'none' },
+                                }
+                            }}
+                        />
+                    </Box>
+                )}
 
                 {/* Menu Items + Bottom Actions - Scrollable */}
                 <Box sx={{

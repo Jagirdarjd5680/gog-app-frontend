@@ -54,6 +54,7 @@ const validationSchema = [
 
 const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
     const [activeStep, setActiveStep] = useState(0);
+    const [categories, setCategories] = useState([]);
     const [initialValues, setInitialValues] = useState({
         title: '',
         description: '',
@@ -80,6 +81,16 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
     const isEditMode = Boolean(courseId);
 
     useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const { data } = await api.get('/categories');
+                setCategories(data.data || []);
+            } catch (error) {
+                console.error("Failed to fetch categories", error);
+            }
+        };
+        fetchCategories();
+
         if (open) {
             setActiveStep(0);
             if (isEditMode) {
@@ -178,6 +189,12 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
 
             const payload = {
                 ...values,
+                price: Number(values.price) || 0,
+                originalPrice: Number(values.originalPrice) || 0,
+                durationValue: Number(values.durationValue) || 0,
+                readingDurationValue: Number(values.readingDurationValue) || 0,
+                gstPercent: Number(values.gstPercent) || 0,
+                fakeLikes: Number(values.fakeLikes) || 0,
                 modules: cleanModules
             };
             delete payload.thumbnailPreview;
@@ -336,6 +353,7 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                             touched={touched}
                                             handleChange={handleChange}
                                             setFieldValue={setFieldValue}
+                                            categories={categories}
                                         />
                                     )}
                                     {activeStep === 1 && (
@@ -345,7 +363,7 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                         />
                                     )}
                                     {activeStep === 2 && (
-                                        <ReviewStep values={values} />
+                                        <ReviewStep values={values} categories={categories} />
                                     )}
                                 </Box>
                             </Box>

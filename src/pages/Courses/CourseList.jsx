@@ -13,7 +13,9 @@ import CourseWizard from '../../components/Courses/CourseWizard/CourseWizard';
 import CourseViewModal from '../../components/Courses/CourseViewModal';
 import QuizIcon from '@mui/icons-material/Quiz';
 import StarIcon from '@mui/icons-material/Star';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import AssignExamModal from '../../components/Courses/AssignExamModal';
+import AssignAssignmentModal from '../../components/Courses/AssignAssignmentModal';
 import ReviewModal from '../../components/Courses/ReviewModal';
 import { useAuth } from '../../context/AuthContext';
 
@@ -36,6 +38,7 @@ const CourseList = () => {
     const [selectedCourseData, setSelectedCourseData] = useState(null);
     // New Action Modals
     const [assignExamModalOpen, setAssignExamModalOpen] = useState(false);
+    const [assignAssignmentModalOpen, setAssignAssignmentModalOpen] = useState(false);
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedCourseForAction, setSelectedCourseForAction] = useState(null);
 
@@ -84,13 +87,22 @@ const CourseList = () => {
         setAssignExamModalOpen(true);
     };
 
+    const handleAssignAssignment = (course) => {
+        setSelectedCourseForAction(course);
+        setAssignAssignmentModalOpen(true);
+    };
+
     const handleReviewCourse = (course) => {
         setSelectedCourseForAction(course);
         setReviewModalOpen(true);
     };
 
-    const handleModalSuccess = () => {
+    const handleActionSuccess = () => {
         fetchCourses();
+    };
+
+    const handleModalSuccess = () => {
+        handleActionSuccess();
         handleModalClose();
     };
 
@@ -184,6 +196,32 @@ const CourseList = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{params.value}</Typography>
                     <Typography variant="caption" color="text.secondary">Students</Typography>
                 </Box>
+            )
+        },
+        {
+            headerName: 'EXAMS',
+            field: 'examCount',
+            width: 100,
+            cellRenderer: (params) => (
+                <Chip
+                    label={params.value || 0}
+                    size="small"
+                    color={params.value > 0 ? "info" : "default"}
+                    sx={{ fontWeight: 'bold' }}
+                />
+            )
+        },
+        {
+            headerName: 'ASSIGNMENTS',
+            field: 'assignmentCount',
+            width: 120,
+            cellRenderer: (params) => (
+                <Chip
+                    label={params.value || 0}
+                    size="small"
+                    color={params.value > 0 ? "primary" : "default"}
+                    sx={{ fontWeight: 'bold' }}
+                />
             )
         },
         {
@@ -299,6 +337,9 @@ const CourseList = () => {
                             <IconButton size="small" sx={{ color: '#9c27b0' }} title="Assign Exam" onClick={() => handleAssignExam(params.data)} disabled={user?.role === 'teacher' && user?.permissions === 'read'}>
                                 <QuizIcon fontSize="inherit" />
                             </IconButton>
+                            <IconButton size="small" sx={{ color: '#ff5722' }} title="Assign Assignment" onClick={() => handleAssignAssignment(params.data)} disabled={user?.role === 'teacher' && user?.permissions === 'read'}>
+                                <AssignmentIcon fontSize="inherit" />
+                            </IconButton>
                             <IconButton size="small" sx={{ color: '#ffb300' }} title="Ratings" onClick={() => handleReviewCourse(params.data)}>
                                 <StarIcon fontSize="inherit" />
                             </IconButton>
@@ -325,7 +366,7 @@ const CourseList = () => {
                 );
             }
         }
-    ], [user, handleViewCourse, handleAssignExam, handleReviewCourse, handleEditCourse, handleTogglePublish]);
+    ], [user, handleViewCourse, handleAssignExam, handleAssignAssignment, handleReviewCourse, handleEditCourse, handleTogglePublish]);
 
     return (
         <Box sx={{ p: 1 }}>
@@ -382,6 +423,17 @@ const CourseList = () => {
                     onClose={() => setAssignExamModalOpen(false)}
                     courseId={selectedCourseForAction?._id}
                     courseTitle={selectedCourseForAction?.title}
+                    onSuccess={handleActionSuccess}
+                />
+            )}
+
+            {assignAssignmentModalOpen && (
+                <AssignAssignmentModal
+                    open={assignAssignmentModalOpen}
+                    onClose={() => setAssignAssignmentModalOpen(false)}
+                    courseId={selectedCourseForAction?._id}
+                    courseTitle={selectedCourseForAction?.title}
+                    onSuccess={handleActionSuccess}
                 />
             )}
 
@@ -391,6 +443,7 @@ const CourseList = () => {
                     onClose={() => setReviewModalOpen(false)}
                     courseId={selectedCourseForAction?._id}
                     courseTitle={selectedCourseForAction?.title}
+                    onSuccess={handleActionSuccess}
                 />
             )}
         </Box>

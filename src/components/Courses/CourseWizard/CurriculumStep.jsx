@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
     DndContext,
     closestCenter,
@@ -132,6 +132,12 @@ const SortableModule = ({
     onEditLecture, onDeleteLecture, getLectureIcon, editingModuleId, 
     moduleTitle, setModuleTitle, saveModuleTitle, startEditingModule
 }) => {
+    // Memoize lecture IDs to prevent infinite loops in dnd-kit
+    const lectureIds = useMemo(() => 
+        (module.videos || []).filter(v => v && v.id).map(v => v.id),
+        [module.videos]
+    );
+
     const {
         attributes,
         listeners,
@@ -226,9 +232,12 @@ const SortableModule = ({
 
                 <AccordionDetails sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.01)' }}>
                     <Box ref={setDroppableRef} sx={{ minHeight: 40 }}>
-                        <SortableContext items={module.videos.map(v => v.id)} strategy={verticalListSortingStrategy}>
+                        <SortableContext 
+                            items={lectureIds} 
+                            strategy={verticalListSortingStrategy}
+                        >
                             <Stack spacing={1.5}>
-                                {module.videos.map((video, vIndex) => (
+                                {(module.videos || []).map((video, vIndex) => video && video.id && (
                                     <SortableLecture 
                                         key={video.id} 
                                         video={video} 
@@ -239,7 +248,7 @@ const SortableModule = ({
                                         getLectureIcon={getLectureIcon}
                                     />
                                 ))}
-                                {module.videos.length === 0 && (
+                                {(module.videos || []).length === 0 && (
                                     <Box sx={{ py: 3, textAlign: 'center', border: '1px dashed rgba(0,0,0,0.1)', borderRadius: '12px' }}>
                                         <Typography variant="caption" color="text.disabled">Empty Module. Drag lectures here or add new ones.</Typography>
                                     </Box>
@@ -280,9 +289,15 @@ const CurriculumStep = ({ values, setFieldValue }) => {
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // Memoize module IDs to prevent infinite loops
+    const moduleIds = useMemo(() => 
+        (values.modules || []).filter(m => m && m.id).map(m => m.id), 
+        [values.modules]
+    );
+
     const findContainer = useCallback((id) => {
         if (values.modules.some(m => m.id === id)) return id;
-        const module = values.modules.find(m => m.videos.some(v => v.id === id));
+        const module = values.modules.find(m => (m.videos || []).some(v => v && v.id === id));
         return module ? module.id : null;
     }, [values.modules]);
 
@@ -298,10 +313,10 @@ const CurriculumStep = ({ values, setFieldValue }) => {
         // Moving between containers
         const activeModuleIdx = values.modules.findIndex(m => m.id === activeContainer);
         const overModuleIdx = values.modules.findIndex(m => m.id === overContainer);
-        const activeLectureIdx = values.modules[activeModuleIdx].videos.findIndex(v => v.id === active.id);
+        const activeLectureIdx = values.modules[activeModuleIdx].videos.findIndex(v => v && v.id === active.id);
         
         // If we are over another lecture, find its index. If over a module, put at the end.
-        let overLectureIdx = values.modules[overModuleIdx].videos.findIndex(v => v.id === overId);
+        let overLectureIdx = values.modules[overModuleIdx].videos.findIndex(v => v && v.id === overId);
         if (overLectureIdx === -1) overLectureIdx = values.modules[overModuleIdx].videos.length;
 
         const newModules = [...values.modules];
@@ -334,8 +349,8 @@ const CurriculumStep = ({ values, setFieldValue }) => {
                 setFieldValue('modules', newModules);
             } else if (activeContainer === overContainer) {
                 // Sorting within same module (handleDragEnd handles if overId is a lecture)
-                const activeLectureIdx = values.modules[activeModuleIdx].videos.findIndex(v => v.id === activeId);
-                const overLectureIdx = values.modules[overModuleIdx].videos.findIndex(v => v.id === overId);
+                const activeLectureIdx = values.modules[activeModuleIdx].videos.findIndex(v => v && v.id === activeId);
+                const overLectureIdx = values.modules[overModuleIdx].videos.findIndex(v => v && v.id === overId);
                 
                 if (activeLectureIdx !== -1 && overLectureIdx !== -1) {
                     const newModules = [...values.modules];
@@ -456,7 +471,7 @@ const CurriculumStep = ({ values, setFieldValue }) => {
                 onDragEnd={handleDragEnd}
                 modifiers={[restrictToVerticalAxis]}
             >
-                <SortableContext items={values.modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext items={moduleIds} strategy={verticalListSortingStrategy}>
                     <Stack spacing={3}>
                         {values.modules.map((module, index) => (
                             <SortableModule 

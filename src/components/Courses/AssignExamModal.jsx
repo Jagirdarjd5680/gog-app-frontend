@@ -10,7 +10,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
-const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTitle }) => {
+const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTitle, onSuccess }) => {
     const [tabIdx, setTabIdx] = useState(0); // 0=Select existing exam, 1=Create new exam
     const [exams, setExams] = useState([]);
     const [courses, setCourses] = useState([]);
@@ -40,14 +40,16 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
     const fetchExams = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/exams');
-            setExams(Array.isArray(data) ? data : data.data || []);
+            // Use large limit and timestamp to avoid stale cache or missing items
+            const { data } = await api.get(`/exams?limit=1000&t=${Date.now()}`);
+            const allExams = Array.isArray(data) ? data : data.data || [];
+            setExams(allExams);
             // Pre-select exams that are already assigned to this course
-            const assigned = (Array.isArray(data) ? data : data.data || [])
+            const assigned = allExams
                 .filter(e => {
                     const eCoursesIds = (e.courses || []).map(c => typeof c === 'object' ? c._id : c);
                     const eSingleId = typeof e.course === 'object' ? e.course?._id : e.course;
-                    return eCoursesIds.includes(courseId) || eSingleId === courseId;
+                    return eCoursesIds.some(cid => cid?.toString() === courseId?.toString()) || eSingleId?.toString() === courseId?.toString();
                 })
                 .map(e => e._id);
             setSelectedExamIds(assigned);
@@ -60,14 +62,15 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
 
     const fetchCourses = async () => {
         setLoading(true);
+        setLoading(true);
         try {
             const [coursesRes, examRes] = await Promise.all([
-                api.get('/courses?limit=100'),
-                api.get(`/exams/${examId}`)
+                api.get(`/courses?limit=1000&t=${Date.now()}`),
+                api.get(`/exams/${examId}?t=${Date.now()}`)
             ]);
             const all = coursesRes.data?.data || [];
             const exam = Array.isArray(examRes.data) ? examRes.data[0] : examRes.data;
-            const assignedIds = (exam?.courses || []).map(c => typeof c === 'object' ? c._id : c);
+            const assignedIds = (exam?.courses || []).map(c => typeof c === 'object' ? c._id : c?.toString());
             setCourses(all);
             setSelectedCourseIds(assignedIds);
             setInitialSelectedCourseIds(assignedIds);
@@ -78,55 +81,75 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
         }
     };
 
-    const handleToggleCourse = (id) => {
-        setSelectedCourseIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
+    const handleToggleCourse = async (id) => {
+        const isAdding = !selectedCourseIds.includes(id);
+        const original = [...selectedCourseIds];
+        
+        // Update local UI immediately
+        const nextIds = isAdding ? [...selectedCourseIds, id] : selectedCourseIds.filter(cid => cid !== id);
+        setSelectedCourseIds(nextIds);
+
+        try {
+            // Update the Exam's courses list
+            await api.put(`/exams/${examId}/assign-courses`, { courseIds: nextIds });
+            toast.success('Updated');
+            if (onSuccess) onSuccess(); // Refresh background
+        } catch {
+            setSelectedCourseIds(original);
+            toast.error('Failed to update');
+        }
     };
 
-    const handleToggleExam = (id) => {
-        setSelectedExamIds(prev =>
-            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-        );
+    const handleToggleExam = async (id) => {
+        const isAdding = !selectedExamIds.includes(id);
+        const original = [...selectedExamIds];
+        
+        // Update local UI immediately
+        const nextIds = isAdding ? [...selectedExamIds, id] : selectedExamIds.filter(eid => eid !== id);
+        setSelectedExamIds(nextIds);
+
+        try {
+            // We need to update this specific exam's courses array
+            const exam = exams.find(e => e._id === id);
+            const currentCourses = (exam?.courses || []).map(c => typeof c === 'object' ? c._id : c);
+            const nextCourses = isAdding 
+                ? Array.from(new Set([...currentCourses, courseId])) 
+                : currentCourses.filter(cid => cid !== courseId);
+            
+            await api.put(`/exams/${id}/assign-courses`, { courseIds: nextCourses });
+            
+            // Update local exams list to keep "course count" chip accurate
+            setExams(prev => prev.map(e => {
+                if (e._id === id) {
+                    return { ...e, courses: nextCourses };
+                }
+                return e;
+            }));
+
+            toast.success('Updated');
+            if (onSuccess) onSuccess(); // Refresh background
+        } catch {
+            setSelectedExamIds(original);
+            toast.error('Failed to update');
+        }
     };
 
     const handleSubmit = async () => {
-        try {
-            if (isExamMode) {
-                // Assign multiple courses to the given exam
-                await api.put(`/exams/${examId}/assign-courses`, { courseIds: selectedCourseIds });
-                toast.success('Courses assigned to exam successfully!');
-            } else if (tabIdx === 1) {
-                // Create new exam & assign to course
+        if (tabIdx === 1) {
+            // Only handle "Create New" case here
+            try {
                 if (!examData.title || !examData.startDate || !examData.endDate) {
                     return toast.warning('Please fill required fields');
                 }
                 await api.post('/exams', { ...examData, course: courseId, courses: [courseId] });
                 toast.success('Exam created and assigned!');
-            } else {
-                // Assign multiple exams to the given course — update each exam's courses array
-                const toAdd = selectedExamIds.filter(id => !selectedExamIds.includes(id));
-                // Just push full update for all currently selected exams
-                await Promise.all(selectedExamIds.map(id =>
-                    api.put(`/exams/${id}/assign-courses`, {
-                        courseIds: [...(courses.find(e => e._id === id)?.courses?.map(c => typeof c === 'object' ? c._id : c) || []).filter(cid => cid !== courseId), courseId]
-                    })
-                ));
-                // Also remove this course from deselected exams
-                const allExamIds = exams.map(e => e._id);
-                const deselected = allExamIds.filter(id => !selectedExamIds.includes(id));
-                await Promise.all(deselected.map(id => {
-                    const exam = exams.find(e => e._id === id);
-                    const prevCourses = (exam?.courses || []).map(c => typeof c === 'object' ? c._id : c);
-                    if (prevCourses.includes(courseId)) {
-                        return api.put(`/exams/${id}/assign-courses`, { courseIds: prevCourses.filter(c => c !== courseId) });
-                    }
-                }));
-                toast.success('Exam assignments updated!');
+                if (onSuccess) onSuccess();
+                onClose();
+            } catch (err) {
+                toast.error('Failed to create exam');
             }
-            onClose();
-        } catch (err) {
-            toast.error('Failed to update assignments');
+        } else {
+            onClose(); // In other modes, it's already auto-saved
         }
     };
 
@@ -259,9 +282,14 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
             </DialogContent>
 
             <DialogActions>
+                {(isExamMode || tabIdx === 0) && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mr: 'auto', ml: 2 }}>
+                        Changes are saved automatically
+                    </Typography>
+                )}
                 <Button onClick={onClose}>Cancel</Button>
                 <Button onClick={handleSubmit} variant="contained" color="primary">
-                    {isExamMode ? 'Save Course Assignments' : tabIdx === 1 ? 'Create & Assign' : 'Save Assignments'}
+                    {(isExamMode || tabIdx === 0) ? 'Done' : 'Create & Assign'}
                 </Button>
             </DialogActions>
         </Dialog>

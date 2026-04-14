@@ -109,6 +109,7 @@ export const ThemeProvider = ({ children }) => {
         mode,
         toggleTheme,
         isDark: mode === 'dark',
+        darkMode: mode === 'dark'
     };
 
     return (

@@ -38,10 +38,9 @@ const SectionHeader = ({ icon, title, subtitle }) => (
     </Box>
 );
 
-const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue }) => {
+const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [] }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
-    const [categories, setCategories] = useState([]);
 
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState('image');
@@ -63,17 +62,6 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
         toast.success('Media selected from library');
     };
 
-    useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const { data } = await api.get('/categories');
-                setCategories(data.data || []);
-            } catch (error) {
-                console.error("Failed to fetch categories", error);
-            }
-        };
-        fetchCategories();
-    }, []);
 
     const handleImageUpload = async (event) => {
         const file = event.target.files[0];
@@ -472,27 +460,52 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue })
                                     />
                                 </Box>
 
-                                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                                    <Button
+                                <Stack spacing={1.5} sx={{ mt: 2 }}>
+                                    <TextField
                                         fullWidth
-                                        variant="contained"
                                         size="small"
-                                        startIcon={<CategoryIcon />}
-                                        sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: '#1e293b', '&:hover': { bgcolor: '#0f172a' } }}
-                                        onClick={() => handleOpenPicker('image', 'thumbnail')}
-                                    >
-                                        Library
-                                    </Button>
-                                    <Button
-                                        fullWidth
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<CollectionsIcon />}
-                                        sx={{ borderRadius: '8px', textTransform: 'none' }}
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        Change
-                                    </Button>
+                                        id="thumbnail"
+                                        name="thumbnail"
+                                        label="Thumbnail Image URL"
+                                        placeholder="Paste image URL here..."
+                                        value={values.thumbnail || ''}
+                                        onChange={(e) => {
+                                            handleChange(e);
+                                            setFieldValue('thumbnailPreview', e.target.value);
+                                        }}
+                                        InputProps={{ 
+                                            sx: { borderRadius: '8px' },
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <CollectionsIcon fontSize="small" color="action" />
+                                                </InputAdornment>
+                                            )
+                                        }}
+                                        helperText="Paste a URL or use the buttons below"
+                                    />
+
+                                    <Stack direction="row" spacing={1}>
+                                        <Button
+                                            fullWidth
+                                            variant="contained"
+                                            size="small"
+                                            startIcon={<CategoryIcon />}
+                                            sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: '#1e293b', '&:hover': { bgcolor: '#0f172a' } }}
+                                            onClick={() => handleOpenPicker('image', 'thumbnail')}
+                                        >
+                                            Library
+                                        </Button>
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            size="small"
+                                            startIcon={<CloudUploadIcon />}
+                                            sx={{ borderRadius: '8px', textTransform: 'none' }}
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            Upload
+                                        </Button>
+                                    </Stack>
                                 </Stack>
                             </CardContent>
                         </Card>

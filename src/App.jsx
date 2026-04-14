@@ -18,6 +18,7 @@ const ForgotPassword = lazy(() => import('./pages/Auth/ForgotPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
 const UserList = lazy(() => import('./pages/Users/UserList'));
 const CourseList = lazy(() => import('./pages/Courses/CourseList'));
+const BatchList = lazy(() => import('./pages/Batches/BatchList'));
 const CategoryList = lazy(() => import('./pages/Courses/CategoryList'));
 const LiveClassList = lazy(() => import('./pages/LiveClasses/LiveClassList'));
 const AssignmentList = lazy(() => import('./pages/Assignments/AssignmentList'));
@@ -103,6 +104,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <UserList />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="batches"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                  <BatchList />
                 </ProtectedRoute>
               }
             />

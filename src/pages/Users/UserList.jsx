@@ -376,38 +376,48 @@ const UserList = () => {
         },
     ], []);
 
-    const filteredUsers = users.filter(user => {
-        // Status Filter
-        if (statusFilter !== 'all') {
-            const isActive = statusFilter === 'active';
-            if (user.isActive !== isActive) return false;
-        }
+    const filteredUsers = useMemo(() => {
+        return users.filter(user => {
+            // Search Filter handled by AG-Grid's setQuickFilter, but we can also filter here if needed
+            // However, it's better to let AG-Grid handle the search for performance
+            
+            // Status Filter
+            if (statusFilter !== 'all') {
+                const isActive = statusFilter === 'active';
+                if (user.isActive !== isActive) return false;
+            }
 
-        // Source Filter
-        if (sourceFilter !== 'all') {
-            const userSource = user.source || 'web'; // Default to web for legacy data
-            if (userSource !== sourceFilter) return false;
-        }
+            // Source Filter
+            if (sourceFilter !== 'all') {
+                const userSource = user.source || 'web'; // Default to web for legacy data
+                if (userSource !== sourceFilter) return false;
+            }
 
-        // Auth Method Filter
-        if (authFilter !== 'all') {
-            const userAuth = user.authMethod || 'email'; // Default to email for legacy data
-            if (userAuth !== authFilter) return false;
-        }
+            // Auth Method Filter
+            if (authFilter !== 'all') {
+                const userAuth = user.authMethod || 'email'; // Default to email for legacy data
+                if (userAuth !== authFilter) return false;
+            }
 
-        // Role Filter
-        if (roleFilter !== 'all') {
-            if (user.role !== roleFilter) return false;
-        }
+            // Role Filter
+            if (roleFilter !== 'all') {
+                if (user.role !== roleFilter) return false;
+            }
 
-        // Batch Filter
-        if (batchFilter !== 'all') {
-            if (user.batch !== batchFilter) return false;
-        }
-        return true;
-    });
+            // Batch Filter
+            if (batchFilter !== 'all') {
+                if (user.batch !== batchFilter) return false;
+            }
+            return true;
+        });
+    }, [users, statusFilter, sourceFilter, authFilter, roleFilter, batchFilter]);
 
-    const batches = [...new Set(users.filter(u => u.batch).map(u => u.batch))].sort();
+    const getRowId = useCallback(params => params.data._id, []);
+
+    const batches = useMemo(() => 
+        [...new Set(users.filter(u => u.batch).map(u => u.batch))].sort(),
+        [users]
+    );
 
     const activeUsers = users.filter(u => u.isActive).length;
     const googleUsers = users.filter(u => u.authMethod === 'google').length;
@@ -466,6 +476,7 @@ const UserList = () => {
                     batchFilter={batchFilter}
                     setBatchFilter={setBatchFilter}
                     batches={batches}
+                    handleAdd={handleAdd}
                     binCount={binCount}
                     totalCount={filteredUsers.length}
                     isDark={isDark}
@@ -507,6 +518,7 @@ const UserList = () => {
                     paginationPageSize={10}
                     height="auto"
                     onSelectionChanged={onSelectionChanged}
+                    getRowId={getRowId}
                 />
             </Box>
 

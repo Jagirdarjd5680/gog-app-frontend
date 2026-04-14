@@ -23,7 +23,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
-const ReviewModal = ({ open, onClose, courseId, courseTitle }) => {
+const ReviewModal = ({ open, onClose, courseId, courseTitle, onSuccess }) => {
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(false);
     const [newReview, setNewReview] = useState({
@@ -71,6 +71,7 @@ const ReviewModal = ({ open, onClose, courseId, courseTitle }) => {
             setReviews([data, ...reviews]);
             setNewReview({ rating: 5, comment: '', studentName: '' });
             toast.success('Review submitted successfully');
+            if (onSuccess) onSuccess();
         } catch (error) {
             console.error('Error submitting review:', error);
             toast.error(error.response?.data?.msg || 'Failed to submit review');

@@ -2,7 +2,9 @@ import { Box, Typography, Card, CardContent, Divider, Grid } from '@mui/material
 import AssignmentIcon from '@mui/icons-material/Assignment'; // Added this import
 import VideoPreview from '../../Common/VideoPreview';
 
-const ReviewStep = ({ values }) => {
+const ReviewStep = ({ values, categories = [] }) => {
+    const categoryName = categories.find(c => c._id === values.category)?.name || values.category || 'N/A';
+
     return (
         <Box sx={{ p: 1 }}>
             <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
@@ -33,7 +35,7 @@ const ReviewStep = ({ values }) => {
                             <Grid container spacing={1}>
                                 <Grid item xs={4}>
                                     <Typography variant="caption" color="text.secondary">Category</Typography>
-                                    <Typography variant="body2">{values.category || 'N/A'}</Typography>
+                                    <Typography variant="body2">{categoryName}</Typography>
                                 </Grid>
                                 <Grid item xs={4}>
                                     <Typography variant="caption" color="text.secondary">Level</Typography>
