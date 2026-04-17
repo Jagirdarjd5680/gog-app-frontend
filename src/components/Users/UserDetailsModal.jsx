@@ -31,6 +31,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SyncIcon from '@mui/icons-material/Sync';
 import PaymentIcon from '@mui/icons-material/Payment';
+import GroupsIcon from '@mui/icons-material/Groups';
 
 const TabPanel = (props) => {
     const { children, value, index, ...other } = props;
@@ -184,6 +185,15 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
 
                             <Typography variant="subtitle2" color="text.secondary" gutterBottom>Phone Number</Typography>
                             <Typography variant="body1" fontWeight={500}>{user?.phone || 'Not Provided'}</Typography>
+                            <Divider sx={{ my: 1.5 }} />
+
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Assigned Batch</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <GroupsIcon fontSize="small" color="primary" />
+                                <Typography variant="body1" fontWeight={700} color="primary.main">
+                                    {user?.batch || 'No Batch Assigned'}
+                                </Typography>
+                            </Stack>
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
@@ -264,6 +274,18 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                                                             : 'Lifetime'}
                                                     </Typography>
                                                 </Box>
+                                            </Stack>
+                                            <Stack direction="row" spacing={2} sx={{ mt: 1.5 }}>
+                                                <Chip 
+                                                    label={`${course.assignmentCount || 0} Assignments`} 
+                                                    size="small" 
+                                                    sx={{ height: 24, fontSize: '0.7rem', bgcolor: 'rgba(99, 102, 241, 0.08)', color: 'primary.main', border: 'none', fontWeight: 600 }}
+                                                />
+                                                <Chip 
+                                                    label={`${course.examCount || 0} Exams`} 
+                                                    size="small" 
+                                                    sx={{ height: 24, fontSize: '0.7rem', bgcolor: 'rgba(233, 30, 99, 0.08)', color: 'error.main', border: 'none', fontWeight: 600 }}
+                                                />
                                             </Stack>
                                         </Box>
                                     </Stack>

@@ -29,6 +29,9 @@ import FolderZipIcon from '@mui/icons-material/FolderZip';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import api from '../../../utils/api';
 
 const LectureModal = ({ open, onClose, onSave, initialData }) => {
     const [uploading, setUploading] = useState(false);
@@ -39,8 +42,12 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
         type: 'video',
         videoUrl: '',
         duration: '',
-        isFree: false
+        isFree: false,
+        resourceId: '',
+        resourceModel: ''
     });
+    const [assignments, setAssignments] = useState([]);
+    const [exams, setExams] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
 
     useEffect(() => {
@@ -51,16 +58,52 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                     type: initialData.type || 'video',
                     videoUrl: initialData.url || initialData.videoUrl || '',
                     duration: initialData.duration || '',
-                    isFree: initialData.freePreview || false
+                    isFree: initialData.freePreview || false,
+                    resourceId: initialData.resourceId || '',
+                    resourceModel: initialData.resourceModel || ''
                 });
             } else {
-                setVideoForm({ title: '', type: 'video', videoUrl: '', duration: '', isFree: false });
+                setVideoForm({ title: '', type: 'video', videoUrl: '', duration: '', isFree: false, resourceId: '', resourceModel: '' });
             }
             setSelectedFile(null);
             setUploadProgress(0);
             setUploading(false);
+            
+            // Pre-fetch if needed
+            if (initialData?.type === 'assignment') fetchAssignments();
+            if (initialData?.type === 'exam') fetchExams();
         }
     }, [open, initialData]);
+
+    const fetchAssignments = async () => {
+        try {
+            const { data } = await api.get('/assignments?limit=100');
+            setAssignments(data.data || []);
+        } catch (error) {
+            console.error('Error fetching assignments:', error);
+        }
+    };
+
+    const fetchExams = async () => {
+        try {
+            const { data } = await api.get('/exams?limit=100');
+            setExams(data.data || []);
+        } catch (error) {
+            console.error('Error fetching exams:', error);
+        }
+    };
+
+    const handleTypeChange = (type) => {
+        setVideoForm({ 
+            ...videoForm, 
+            type, 
+            videoUrl: '', 
+            resourceId: '', 
+            resourceModel: type === 'assignment' ? 'Assignment' : type === 'exam' ? 'Exam' : '' 
+        });
+        if (type === 'assignment') fetchAssignments();
+        if (type === 'exam') fetchExams();
+    };
 
     const handleSave = async () => {
         if (!videoForm.title.trim()) {
@@ -93,7 +136,11 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
             }
         }
 
-        onSave({ ...videoForm, videoUrl: finalUrl });
+        const saveData = { ...videoForm, videoUrl: finalUrl };
+        if (!saveData.resourceId) delete saveData.resourceId;
+        if (!saveData.resourceModel) delete saveData.resourceModel;
+
+        onSave(saveData);
         setUploading(false);
     };
 
@@ -102,6 +149,8 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
             case 'pdf': return <PictureAsPdfIcon color="error" />;
             case 'audio': return <AudiotrackIcon color="warning" />;
             case 'zip': return <FolderZipIcon color="primary" />;
+            case 'assignment': return <AssignmentIcon color="secondary" />;
+            case 'exam': return <ReceiptLongIcon color="error" />;
             default: return <OndemandVideoIcon color="success" />;
         }
     };
@@ -146,15 +195,47 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                             label="Content Type"
                             select
                             value={videoForm.type || 'video'}
-                            onChange={(e) => setVideoForm({ ...videoForm, type: e.target.value, videoUrl: '' })}
+                            onChange={(e) => handleTypeChange(e.target.value)}
                             InputProps={{ sx: { borderRadius: '12px' } }}
                         >
                             <MenuItem value="video">🎥 High Quality Video</MenuItem>
                             <MenuItem value="pdf">📄 PDF Document</MenuItem>
                             <MenuItem value="audio">🎧 Audio Lesson</MenuItem>
                             <MenuItem value="zip">📦 Resource Pack (ZIP)</MenuItem>
+                            <MenuItem value="assignment">📝 Student Assignment</MenuItem>
+                            <MenuItem value="exam">🏆 Quiz/Exam</MenuItem>
                         </TextField>
                     </Grid>
+                    {/* Dynamic Selection for Assignment/Exam */}
+                    {(videoForm.type === 'assignment' || videoForm.type === 'exam') && (
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                label={videoForm.type === 'assignment' ? "Select Assignment" : "Select Exam"}
+                                select
+                                value={videoForm.resourceId || ''}
+                                onChange={(e) => {
+                                    const selectedId = e.target.value;
+                                    const items = videoForm.type === 'assignment' ? assignments : exams;
+                                    const selectedItem = items.find(i => i._id === selectedId);
+                                    setVideoForm({ 
+                                        ...videoForm, 
+                                        resourceId: selectedId,
+                                        title: videoForm.title || selectedItem?.title || '',
+                                        videoUrl: `linked_${videoForm.type}_${selectedId}` // Placeholder for UI compatibility
+                                    });
+                                }}
+                                InputProps={{ sx: { borderRadius: '12px' } }}
+                            >
+                                <MenuItem value=""><em>Select {videoForm.type === 'assignment' ? 'an assignment' : 'an exam'}</em></MenuItem>
+                                {videoForm.type === 'assignment' ? (
+                                    assignments.map(ass => <MenuItem key={ass._id} value={ass._id}>{ass.title}</MenuItem>)
+                                ) : (
+                                    exams.map(ex => <MenuItem key={ex._id} value={ex._id}>{ex.title}</MenuItem>)
+                                )}
+                            </TextField>
+                        </Grid>
+                    )}
                     <Grid item xs={12} md={6}>
                         <TextField
                             fullWidth
@@ -168,57 +249,59 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                             }}
                         />
                     </Grid>
-                    <Grid item xs={12}>
-                        <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                            Lecture Source
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1.5 }}>
-                            <TextField
-                                fullWidth
-                                label="Source URL"
-                                placeholder="Paste link or upload..."
-                                value={videoForm.videoUrl || ''}
-                                onChange={(e) => setVideoForm({ ...videoForm, videoUrl: e.target.value })}
-                                InputProps={{ sx: { borderRadius: '12px' } }}
-                            />
-                            <Tooltip title="Upload from Device">
-                                <Button
-                                    variant="outlined"
-                                    component="label"
-                                    sx={{ minWidth: 56, height: 56, borderRadius: '12px', borderStyle: 'dashed' }}
-                                    disabled={uploading}
-                                >
-                                    {uploading ? <CircularProgress size={20} /> : '↑'}
-                                    <input
-                                        type="file"
-                                        hidden
-                                        accept={
-                                            videoForm.type === 'video' ? 'video/*' :
-                                                videoForm.type === 'pdf' ? 'application/pdf' :
-                                                    videoForm.type === 'audio' ? 'audio/*' :
-                                                        '.zip,.rar,.7z'
-                                        }
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                setSelectedFile(file);
-                                                setVideoForm({ ...videoForm, videoUrl: file.name });
+                    {videoForm.type !== 'assignment' && videoForm.type !== 'exam' && (
+                        <Grid item xs={12}>
+                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                Lecture Source
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Source URL"
+                                    placeholder="Paste link or upload..."
+                                    value={videoForm.videoUrl || ''}
+                                    onChange={(e) => setVideoForm({ ...videoForm, videoUrl: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: '12px' } }}
+                                />
+                                <Tooltip title="Upload from Device">
+                                    <Button
+                                        variant="outlined"
+                                        component="label"
+                                        sx={{ minWidth: 56, height: 56, borderRadius: '12px', borderStyle: 'dashed' }}
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? <CircularProgress size={20} /> : '↑'}
+                                        <input
+                                            type="file"
+                                            hidden
+                                            accept={
+                                                videoForm.type === 'video' ? 'video/*' :
+                                                    videoForm.type === 'pdf' ? 'application/pdf' :
+                                                        videoForm.type === 'audio' ? 'audio/*' :
+                                                            '.zip,.rar,.7z'
                                             }
-                                        }}
-                                    />
-                                </Button>
-                            </Tooltip>
-                            <Tooltip title="Open Media Library">
-                                <Button
-                                    variant="contained"
-                                    sx={{ minWidth: 56, height: 56, borderRadius: '12px', bgcolor: '#1e293b' }}
-                                    onClick={() => setMediaPickerOpen(true)}
-                                >
-                                    <LibraryBooksIcon size="small" />
-                                </Button>
-                            </Tooltip>
-                        </Box>
-                    </Grid>
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    setSelectedFile(file);
+                                                    setVideoForm({ ...videoForm, videoUrl: file.name });
+                                                }
+                                            }}
+                                        />
+                                    </Button>
+                                </Tooltip>
+                                <Tooltip title="Open Media Library">
+                                    <Button
+                                        variant="contained"
+                                        sx={{ minWidth: 56, height: 56, borderRadius: '12px', bgcolor: '#1e293b' }}
+                                        onClick={() => setMediaPickerOpen(true)}
+                                    >
+                                        <LibraryBooksIcon size="small" />
+                                    </Button>
+                                </Tooltip>
+                            </Box>
+                        </Grid>
+                    )}
 
                     {uploading && (
                         <Grid item xs={12}>

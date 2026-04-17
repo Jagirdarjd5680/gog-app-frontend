@@ -14,6 +14,7 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import api from '../../utils/api';
 import { uploadFile } from '../../utils/upload';
 import { toast } from 'react-toastify';
@@ -23,6 +24,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
     const [categories, setCategories] = useState([]);
     const [exams, setExams] = useState([]);
     const [liveClasses, setLiveClasses] = useState([]);
+    const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -38,6 +40,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
         thumbnail: '',
         exam: '',
         meeting: '',
+        assignment: '',
         isDownloadableOffline: false,
         isActive: true,
         order: 0
@@ -57,6 +60,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
                     thumbnail: material.thumbnail || '',
                     exam: material.exam?._id || material.exam || '',
                     meeting: material.meeting?._id || material.meeting || '',
+                    assignment: material.assignment?._id || material.assignment || '',
                     isDownloadableOffline: material.isDownloadableOffline || false,
                     isActive: material.isActive ?? true,
                     order: material.order || 0
@@ -72,6 +76,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
                     thumbnail: '',
                     exam: '',
                     meeting: '',
+                    assignment: '',
                     isDownloadableOffline: false,
                     isActive: true,
                     order: 0
@@ -82,14 +87,16 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
 
     const fetchInitialData = async () => {
         try {
-            const [catRes, examRes, liveRes] = await Promise.all([
+            const [catRes, examRes, liveRes, assignRes] = await Promise.all([
                 api.get('/categories'),
                 api.get('/exams'),
-                api.get('/live-classes', { params: { limit: 100 } })
+                api.get('/live-classes', { params: { limit: 100 } }),
+                api.get('/assignments')
             ]);
             setCategories(catRes.data.data || catRes.data || []);
             setExams(Array.isArray(examRes.data) ? examRes.data : (examRes.data.data || []));
             setLiveClasses(liveRes.data.data || liveRes.data || []);
+            setAssignments(assignRes.data.data || assignRes.data || []);
         } catch (error) {
             console.error('Error fetching modal data:', error);
         }
@@ -133,6 +140,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
         if (formData.type === 'video' && !formData.videoUrl) return toast.error('Please provide Video URL or upload');
         if (formData.type === 'test' && !formData.exam) return toast.error('Please select an exam');
         if (formData.type === 'zoom' && !formData.meeting) return toast.error('Please select a meeting');
+        if (formData.type === 'assignment' && !formData.assignment) return toast.error('Please select an assignment');
 
         setLoading(true);
         try {
@@ -152,6 +160,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
             }
             if (formData.type === 'test') dataToSubmit.exam = formData.exam;
             if (formData.type === 'zoom') dataToSubmit.meeting = formData.meeting;
+            if (formData.type === 'assignment') dataToSubmit.assignment = formData.assignment;
             if (['pdf', 'video'].includes(formData.type)) {
                 dataToSubmit.isDownloadableOffline = formData.isDownloadableOffline;
             }
@@ -212,6 +221,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
                                 <ToggleButton value="pdf"><PictureAsPdfIcon sx={{ mr: 1, fontSize: 18 }} /> DOC</ToggleButton>
                                 <ToggleButton value="video"><VideoLibraryIcon sx={{ mr: 1, fontSize: 18 }} /> VIDEO</ToggleButton>
                                 <ToggleButton value="test"><QuizIcon sx={{ mr: 1, fontSize: 18 }} /> TEST</ToggleButton>
+                                <ToggleButton value="assignment"><AssignmentIcon sx={{ mr: 1, fontSize: 18 }} /> ASIGN</ToggleButton>
                                 <ToggleButton value="zoom"><VideoCallIcon sx={{ mr: 1, fontSize: 18 }} /> MEET</ToggleButton>
                             </ToggleButtonGroup>
                         </Box>
@@ -359,6 +369,26 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
                                             <MenuItem value="" disabled>Select Live Meeting</MenuItem>
                                             {liveClasses.map((lc) => (
                                                 <MenuItem key={lc._id} value={lc._id}>{lc.title}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Box>
+                            )}
+                            {formData.type === 'assignment' && (
+                                <Box>
+                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                        SELECT ASSIGNMENT
+                                    </Typography>
+                                    <FormControl fullWidth size="small">
+                                        <Select
+                                            value={formData.assignment}
+                                            onChange={(e) => setFormData({ ...formData, assignment: e.target.value })}
+                                            displayEmpty
+                                            sx={{ borderRadius: 2, bgcolor: 'white' }}
+                                        >
+                                            <MenuItem value="" disabled>Select Free Assignment</MenuItem>
+                                            {assignments.map((as) => (
+                                                <MenuItem key={as._id} value={as._id}>{as.title}</MenuItem>
                                             ))}
                                         </Select>
                                     </FormControl>

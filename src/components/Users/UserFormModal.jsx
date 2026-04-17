@@ -15,6 +15,7 @@ import {
     Box,
     Checkbox,
     FormGroup,
+    Grid,
 } from '@mui/material';
 import { Formik, Form, Field } from 'formik';
 import * as Yup from 'yup';
@@ -33,10 +34,12 @@ const validationSchema = Yup.object({
 const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [courses, setCourses] = useState([]);
+    const [allBatches, setAllBatches] = useState([]);
 
     useEffect(() => {
         if (open) {
             fetchCourses();
+            fetchAllBatches();
         }
     }, [open]);
 
@@ -46,6 +49,17 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             setCourses(response.data.data);
         } catch (error) {
             console.error('Error fetching courses:', error);
+        }
+    };
+
+    const fetchAllBatches = async () => {
+        try {
+            const response = await api.get('/batches');
+            if (response.data.success) {
+                setAllBatches(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching batches:', error);
         }
     };
 
@@ -61,6 +75,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
         enrolledCourses: user?.enrolledCourses?.map(c => typeof c === 'object' ? c._id : c) || [],
         permissions: user?.permissions || 'fullControl',
         moduleAccess: user?.moduleAccess || [],
+        batch: user?.batch || '',
     };
 
     const handleSubmit = async (values) => {
@@ -85,123 +100,168 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
             <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
             <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit} enableReinitialize>
                 {({ values, errors, touched, handleChange, handleBlur, setFieldValue }) => (
                     <Form>
-                        <DialogContent>
-                            <TextField
-                                fullWidth
-                                label="Name"
-                                name="name"
-                                value={values.name}
-                                onChange={handleChange}
-                                onBlur={handleBlur}
-                                error={touched.name && Boolean(errors.name)}
-                                helperText={touched.name && errors.name}
-                                margin="normal"
-                            />
+                        <DialogContent dividers>
+                            <Grid container spacing={2}>
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Full Name"
+                                        name="name"
+                                        value={values.name}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        error={touched.name && Boolean(errors.name)}
+                                        helperText={touched.name && errors.name}
+                                        margin="normal"
+                                    />
+                                </Grid>
 
-                            {user?.rollNumber && (
-                                <TextField
-                                    fullWidth
-                                    label="Roll Number"
-                                    value={user.rollNumber}
-                                    margin="normal"
-                                    InputProps={{ readOnly: true }}
-                                    variant="filled"
-                                    helperText="Auto-generated sequential roll number"
+                                <Grid item xs={12} md={6}>
+                                    {user?.rollNumber ? (
+                                        <TextField
+                                            fullWidth
+                                            label="Roll Number"
+                                            value={user.rollNumber}
+                                            margin="normal"
+                                            InputProps={{ readOnly: true }}
+                                            variant="filled"
+                                            helperText="Auto-generated ID"
+                                        />
+                                    ) : (
+                                        <TextField
+                                            fullWidth
+                                            label="Phone Number"
+                                            name="phone"
+                                            value={values.phone}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            margin="normal"
+                                        />
+                                    )}
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Email Address"
+                                        name="email"
+                                        type="email"
+                                        value={values.email}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        error={touched.email && Boolean(errors.email)}
+                                        helperText={touched.email && errors.email}
+                                        margin="normal"
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
+                                    {!user && (
+                                        <TextField
+                                            fullWidth
+                                            label="Account Password"
+                                            name="password"
+                                            type="password"
+                                            value={values.password}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            margin="normal"
+                                            required={!user}
+                                        />
+                                    )}
+                                    {user && user.rollNumber && (
+                                        <TextField
+                                            fullWidth
+                                            label="Phone Number"
+                                            name="phone"
+                                            value={values.phone}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            margin="normal"
+                                        />
+                                    )}
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="User Role"
+                                        name="role"
+                                        value={values.role}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        error={touched.role && Boolean(errors.role)}
+                                        helperText={touched.role && errors.role}
+                                        margin="normal"
+                                    >
+                                        <MenuItem value="student">Student</MenuItem>
+                                        <MenuItem value="teacher">Teacher</MenuItem>
+                                        <MenuItem value="admin">Admin</MenuItem>
+                                    </TextField>
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="Assign Batch"
+                                        name="batch"
+                                        value={values.batch}
+                                        onChange={handleChange}
+                                        margin="normal"
+                                    >
+                                        <MenuItem value=""><em>None</em></MenuItem>
+                                        {allBatches.map(b => (
+                                            <MenuItem key={b._id} value={b.name}>{b.name}</MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="Signup Source"
+                                        name="source"
+                                        value={values.source}
+                                        onChange={handleChange}
+                                        margin="normal"
+                                    >
+                                        <MenuItem value="web">Web Portal</MenuItem>
+                                        <MenuItem value="android">Android App</MenuItem>
+                                        <MenuItem value="ios">iOS App</MenuItem>
+                                    </TextField>
+                                </Grid>
+
+                                <Grid item xs={12} md={6}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="Auth Method"
+                                        name="authMethod"
+                                        value={values.authMethod}
+                                        onChange={handleChange}
+                                        margin="normal"
+                                    >
+                                        <MenuItem value="email">Email/Password</MenuItem>
+                                        <MenuItem value="google">Google Login</MenuItem>
+                                        <MenuItem value="phone">Phone/OTP</MenuItem>
+                                    </TextField>
+                                </Grid>
+                            </Grid>
+
+                            <Box sx={{ mt: 1, mb: 1 }}>
+                                <FormControlLabel
+                                    control={<Switch checked={values.isActive} onChange={handleChange} name="isActive" />}
+                                    label="Account Active"
                                 />
-                            )}
-
-                            <TextField
-                                fullWidth
-                                label="Email"
-                                name="email"
-                                type="email"
-                                value={values.email}
-                                onChange={handleChange}
-                                onBlur={handleBlur}
-                                error={touched.email && Boolean(errors.email)}
-                                helperText={touched.email && errors.email}
-                                margin="normal"
-                            />
-
-                            <TextField
-                                fullWidth
-                                label="Phone"
-                                name="phone"
-                                value={values.phone}
-                                onChange={handleChange}
-                                onBlur={handleBlur}
-                                margin="normal"
-                            />
-
-                            <TextField
-                                fullWidth
-                                select
-                                label="Role"
-                                name="role"
-                                value={values.role}
-                                onChange={handleChange}
-                                onBlur={handleBlur}
-                                error={touched.role && Boolean(errors.role)}
-                                helperText={touched.role && errors.role}
-                                margin="normal"
-                            >
-                                <MenuItem value="student">Student</MenuItem>
-                                <MenuItem value="teacher">Teacher</MenuItem>
-                                <MenuItem value="admin">Admin</MenuItem>
-                            </TextField>
-
-                            {!user && (
-                                <TextField
-                                    fullWidth
-                                    label="Password"
-                                    name="password"
-                                    type="password"
-                                    value={values.password}
-                                    onChange={handleChange}
-                                    onBlur={handleBlur}
-                                    margin="normal"
-                                    required={!user}
-                                />
-                            )}
-
-                            <TextField
-                                fullWidth
-                                select
-                                label="Source"
-                                name="source"
-                                value={values.source}
-                                onChange={handleChange}
-                                margin="normal"
-                            >
-                                <MenuItem value="web">Web</MenuItem>
-                                <MenuItem value="android">Android</MenuItem>
-                                <MenuItem value="ios">iOS</MenuItem>
-                            </TextField>
-
-                            <TextField
-                                fullWidth
-                                select
-                                label="Auth Method"
-                                name="authMethod"
-                                value={values.authMethod}
-                                onChange={handleChange}
-                                margin="normal"
-                            >
-                                <MenuItem value="email">Email/Password</MenuItem>
-                                <MenuItem value="google">Google</MenuItem>
-                                <MenuItem value="phone">Phone</MenuItem>
-                            </TextField>
-
-                            <FormControlLabel
-                                control={<Switch checked={values.isActive} onChange={handleChange} name="isActive" />}
-                                label="Active"
-                                sx={{ mt: 2 }}
-                            />
+                            </Box>
 
                             {values.role === 'student' && (
                                 <Box sx={{ mt: 2 }}>

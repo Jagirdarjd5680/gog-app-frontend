@@ -27,6 +27,7 @@
     "@paypal/react-paypal-js": "^8.9.2",
     "@react-oauth/google": "^0.13.4",
     "@stripe/stripe-js": "^8.7.0",
+    "@tanstack/react-table": "^8.21.3",
     "ag-grid-community": "^31.0.1",
     "ag-grid-react": "^31.0.1",
     "axios": "^1.6.2",

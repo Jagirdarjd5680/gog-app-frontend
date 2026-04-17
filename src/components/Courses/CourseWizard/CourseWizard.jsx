@@ -182,6 +182,9 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                     ...moduleData,
                     videos: (moduleData.videos || []).map(vid => {
                         const { id: vId, ...videoData } = vid;
+                        // Strip empty resource fields to prevent MongoDB cast errors
+                        if (!videoData.resourceId) delete videoData.resourceId;
+                        if (!videoData.resourceModel) delete videoData.resourceModel;
                         return videoData;
                     })
                 };

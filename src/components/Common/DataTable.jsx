@@ -1,267 +1,376 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-material.css';
+import { useState, useMemo, useEffect } from 'react';
+import {
+    useReactTable,
+    getCoreRowModel,
+    getSortedRowModel,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    flexRender,
+} from '@tanstack/react-table';
 import {
     Box,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
     TextField,
     InputAdornment,
     IconButton,
-    MenuItem,
-    Select,
-    FormControl,
-    InputLabel,
     Typography,
     Pagination,
-    Stack
+    Select,
+    MenuItem,
+    FormControl,
+    Checkbox,
+    CircularProgress,
+    Stack,
+    Tooltip,
+    Input,
+    Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useTheme } from '../../context/ThemeContext';
-import { useTheme as useMuiTheme } from '@mui/material/styles';
 import { TableSkeleton } from './SkeletonLoaders';
 
 const DataTable = ({
-    rowData,
-    columnDefs,
+    rowData = [],
+    columnDefs = [],
     loading,
     pagination = true,
     paginationPageSize = 10,
-    height = 600,
+    height = 'auto',
     enableGlobalSearch = true,
     searchPlaceholder = "Search...",
     title,
     actions,
-    externalSearchTerm,
-    borderRadius = 2,
-    ...props
+    externalSearchTerm = '',
+    onSelectionChanged,
+    getRowId,
 }) => {
-    const gridRef = useRef();
     const { isDark } = useTheme();
-    const muiTheme = useMuiTheme();
-    const [quickFilterText, setQuickFilterText] = useState('');
-    const [pageSize, setPageSize] = useState(paginationPageSize);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(0);
+    const [sorting, setSorting] = useState([]);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [columnFilters, setColumnFilters] = useState([]);
+    const [rowSelection, setRowSelection] = useState({});
 
-    const onPaginationChanged = useCallback(() => {
-        if (gridRef.current.api) {
-            setTotalPages(gridRef.current.api.paginationGetTotalPages());
-            setCurrentPage(gridRef.current.api.paginationGetCurrentPage() + 1);
-        }
-    }, []);
-
-    const handlePageChange = (event, value) => {
-        gridRef.current.api.paginationGoToPage(value - 1);
-    };
-
-    // Sync external search term
+    // Sync external search
     useEffect(() => {
-        if (externalSearchTerm !== undefined && gridRef.current && gridRef.current.api) {
-            gridRef.current.api.setQuickFilter(externalSearchTerm);
-        }
+        setGlobalFilter(externalSearchTerm || '');
     }, [externalSearchTerm]);
 
-    // Dark mode specific styles for Ag-Grid
-    const gridStyle = useMemo(() => ({
-        height: '100%',
-        width: '100%',
-        '--ag-header-background-color': isDark ? '#1e1e1e' : '#f8f9fa',
-        '--ag-odd-row-background-color': isDark ? '#121212' : '#ffffff',
-        '--ag-background-color': isDark ? '#121212' : '#ffffff',
-        '--ag-foreground-color': isDark ? '#e0e0e0' : '#2c3e50',
-        '--ag-border-color': isDark ? '#333' : '#eaecf0',
-        '--ag-header-foreground-color': isDark ? '#fff' : '#5f6368',
-        '--ag-data-color': isDark ? '#e0e0e0' : '#2c3e50',
-        '--ag-row-hover-color': isDark ? '#2c2c2c' : '#f1f3f4',
-        '--ag-selected-row-background-color': isDark ? 'rgba(63, 81, 181, 0.2)' : 'rgba(26, 35, 126, 0.08)',
-        fontFamily: muiTheme.typography.fontFamily,
-    }), [isDark, muiTheme]);
+    // Handle selection changes
+    useEffect(() => {
+        if (onSelectionChanged) {
+            const selectedRows = Object.keys(rowSelection).map(idx => rowData[idx]).filter(Boolean);
+            // Simulate Ag-Grid's event structure if needed, or just pass the data
+            onSelectionChanged({ 
+                api: { getSelectedNodes: () => Object.keys(rowSelection).map(idx => ({ data: rowData[idx] })) } 
+            });
+        }
+    }, [rowSelection, rowData, onSelectionChanged]);
 
-    const onFilterTextBoxChanged = useCallback((e) => {
-        setQuickFilterText(e.target.value);
-        gridRef.current.api.setQuickFilter(e.target.value);
-    }, []);
+    // Map Ag-Grid column definitions to TanStack Column format
+    const columns = useMemo(() => {
+        const mapped = columnDefs.map((col) => {
+            if (col.checkboxSelection) {
+                return {
+                    id: 'select',
+                    header: ({ table }) => (
+                        <Checkbox
+                            checked={table.getIsAllPageRowsSelected()}
+                            indeterminate={table.getIsSomePageRowsSelected()}
+                            onChange={table.getToggleAllPageRowsSelectedHandler()}
+                            size="small"
+                        />
+                    ),
+                    cell: ({ row }) => (
+                        <Checkbox
+                            checked={row.getIsSelected()}
+                            disabled={!row.getCanSelect()}
+                            indeterminate={row.getIsSomeSelected()}
+                            onChange={row.getToggleSelectedHandler()}
+                            size="small"
+                        />
+                    ),
+                    size: 50,
+                };
+            }
 
-    const onPageSizeChanged = useCallback((e) => {
-        const newSize = Number(e.target.value);
-        setPageSize(newSize);
-        gridRef.current.api.paginationSetPageSize(newSize);
-    }, []);
+            return {
+                id: col.field || col.headerName || Math.random().toString(),
+                accessorKey: col.field,
+                header: col.headerName || '',
+                enableSorting: col.sortable !== false,
+                cell: (info) => {
+                    const data = info.row.original;
+                    const index = info.row.index;
+                    let value = info.getValue();
 
-    const onExportClick = useCallback(() => {
-        gridRef.current.api.exportDataAsCsv();
-    }, []);
+                    // Handle valueGetter with Ag-Grid compatibility (node.rowIndex)
+                    if (col.valueGetter) {
+                        try {
+                            value = col.valueGetter({ 
+                                data, 
+                                value, 
+                                node: { rowIndex: index },
+                                context: {} 
+                            });
+                        } catch (e) {
+                            console.error('ValueGetter error', e);
+                        }
+                    }
+
+                    // Handle valueFormatter
+                    if (col.valueFormatter) {
+                        try {
+                            value = col.valueFormatter({ data, value });
+                        } catch (e) {
+                            console.error('ValueFormatter error', e);
+                        }
+                    }
+
+                    if (col.cellRenderer) {
+                        const Renderer = col.cellRenderer;
+                        if (typeof Renderer === 'function') {
+                            try {
+                                return <Renderer data={data} value={value} />;
+                            } catch (e) {
+                                // If it's a legacy Ag-Grid functional renderer, call it
+                                return Renderer({ data, value });
+                            }
+                        }
+                        return Renderer;
+                    }
+
+                    // Final Safety Check: Do not render objects
+                    if (value && typeof value === 'object' && !Array.isArray(value)) {
+                        return value.name || value.title || value.label || JSON.stringify(value);
+                    }
+
+                    return value;
+                },
+                size: col.width || undefined,
+                minSize: col.minWidth || undefined,
+            };
+        });
+
+        return mapped;
+    }, [columnDefs]);
+
+    const table = useReactTable({
+        data: rowData || [],
+        columns,
+        state: {
+            sorting,
+            globalFilter,
+            columnFilters,
+            rowSelection,
+        },
+        onSortingChange: setSorting,
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnFiltersChange: setColumnFilters,
+        onRowSelectionChange: setRowSelection,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: {
+            pagination: {
+                pageSize: paginationPageSize,
+            },
+        },
+    });
 
     if (loading) {
         return <TableSkeleton rows={10} columns={columnDefs?.length || 5} />;
     }
 
     return (
-        <Box sx={{
-            width: '100%',
-            height: height === 'auto' ? 'auto' : height,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2
-        }}>
-            {/* Header Toolbar */}
-            <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 2,
-                mb: 1
-            }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexGrow: 1 }}>
-                    {title && (
-                        <Typography variant="h6" fontWeight={600} sx={{ mr: 2 }}>
-                            {title}
-                        </Typography>
-                    )}
+        <Box sx={{ width: '100%', mt: 1 }}>
+            {/* Toolbar & Pagination Top */}
+            <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        {title && <Typography variant="h6" fontWeight={800}>{title}</Typography>}
+                        {enableGlobalSearch && (
+                            <TextField
+                                placeholder={searchPlaceholder}
+                                size="small"
+                                value={globalFilter ?? ''}
+                                onChange={(e) => setGlobalFilter(e.target.value)}
+                                sx={{ width: { xs: '100%', sm: 300 }, bgcolor: 'background.paper' }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                                        </InputAdornment>
+                                    ),
+                                    sx: { borderRadius: 2 }
+                                }}
+                            />
+                        )}
+                    </Box>
 
-                    {/* Global Search */}
-                    {enableGlobalSearch && (
-                        <TextField
-                            variant="outlined"
-                            size="small"
-                            placeholder={searchPlaceholder}
-                            value={quickFilterText}
-                            onChange={onFilterTextBoxChanged}
-                            sx={{ width: 350, bgcolor: 'background.paper' }}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon fontSize="small" color="action" />
-                                    </InputAdornment>
-                                ),
-                            }}
-                        />
-                    )}
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    {/* Page Size Selector */}
+                    {/* Top Pagination */}
                     {pagination && (
-                        <FormControl size="small" sx={{ minWidth: 100, bgcolor: 'background.paper' }}>
+                        <Stack direction="row" spacing={2} alignItems="center">
                             <Select
-                                value={pageSize}
-                                onChange={onPageSizeChanged}
-                                displayEmpty
+                                value={table.getState().pagination.pageSize}
+                                onChange={(e) => table.setPageSize(Number(e.target.value))}
+                                size="small"
+                                sx={{ 
+                                    height: 32,
+                                    fontSize: '0.75rem',
+                                    borderRadius: 1.5,
+                                    bgcolor: 'background.paper',
+                                    fontWeight: 700,
+                                    minWidth: 90
+                                }}
                             >
-                                <MenuItem value={10}>10 per page</MenuItem>
-                                <MenuItem value={20}>20 per page</MenuItem>
-                                <MenuItem value={50}>50 per page</MenuItem>
+                                {[10, 20, 50, 100].map(size => (
+                                    <MenuItem key={size} value={size}>{size} Rows</MenuItem>
+                                ))}
                             </Select>
-                        </FormControl>
+                            <Pagination
+                                count={table.getPageCount()}
+                                page={table.getState().pagination.pageIndex + 1}
+                                onChange={(e, page) => table.setPageIndex(page - 1)}
+                                color="primary"
+                                size="small"
+                                sx={{
+                                    '& .MuiPaginationItem-root': {
+                                        borderRadius: 1,
+                                        fontWeight: 700,
+                                        height: 32,
+                                        minWidth: 32
+                                    }
+                                }}
+                            />
+                        </Stack>
                     )}
 
-                    {/* Export Button */}
-                    <IconButton onClick={onExportClick} title="Export CSV" size="small">
-                        <DownloadIcon fontSize="small" />
-                    </IconButton>
-
-                    {/* Additional Actions (passed from parent) */}
-                    {actions}
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        {actions}
+                        <Tooltip title="Download CSV">
+                            <IconButton size="small" sx={{ bgcolor: 'action.hover' }}>
+                                <DownloadIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
                 </Box>
             </Box>
 
-            {/* Grid */}
-            <Box
-                className={isDark ? "ag-theme-material-dark" : "ag-theme-material"}
-                sx={{
-                    flexGrow: 1,
-                    width: '100%',
-                    '& .ag-root-wrapper': {
-                        border: `1px solid ${isDark ? '#333' : '#eaecf0'}`,
-                        borderRadius: borderRadius,
-                        boxShadow: 'none',
-                    },
-                    '& .ag-header': {
-                        borderBottom: `1px solid ${isDark ? '#333' : '#eaecf0'}`,
-                        textTransform: 'uppercase',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        letterSpacing: '0.05em',
-                    },
-                    '& .ag-header-cell': {
-                        paddingLeft: '16px',
-                        paddingRight: '16px',
-                    },
-                    '& .ag-cell': {
-                        paddingLeft: '12px',
-                        paddingRight: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '0.875rem',
-                    },
-                    ...gridStyle,
+            {/* Table Container */}
+            <TableContainer 
+                component={Paper} 
+                elevation={0}
+                sx={{ 
+                    borderRadius: 3, 
+                    border: `1px solid`,
+                    borderColor: isDark ? 'divider' : '#e2e8f0',
+                    maxHeight: height === 'auto' ? 'none' : height,
+                    overflow: 'auto',
+                    bgcolor: 'background.paper'
                 }}
             >
-                <AgGridReact
-                    ref={gridRef}
-                    rowData={rowData}
-                    columnDefs={columnDefs}
-                    pagination={pagination}
-                    paginationPageSize={pageSize}
-                    paginationPageSizeSelector={[10, 20, 50, 100]}
-                    suppressPaginationPanel={true}
-                    animateRows={true}
-                    onPaginationChanged={onPaginationChanged}
-                    domLayout={height === 'auto' ? 'autoHeight' : undefined}
-                    defaultColDef={{
-                        sortable: true,
-                        filter: false,
-                        resizable: false,
-                        suppressMovable: true,
-                        suppressHeaderMenuButton: true,
-                        flex: 1,
-                        minWidth: 100,
-                        headerClass: 'custom-header',
-                    }}
-                    rowSelection="multiple"
-                    suppressRowClickSelection={true}
-                    onSelectionChanged={props.onSelectionChanged}
-                    {...props}
-                />
-            </Box>
+                <Table stickyHeader size="medium">
+                    <TableHead>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableCell 
+                                        key={header.id}
+                                        sx={{ 
+                                            bgcolor: isDark ? '#1e293b' : '#f8fafc',
+                                            color: isDark ? '#94a3b8' : '#475569',
+                                            fontWeight: 700,
+                                            fontSize: '0.75rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                                            py: 1.5,
+                                            px: 2,
+                                            width: header.column.getSize(),
+                                            cursor: header.column.getCanSort() ? 'pointer' : 'default',
+                                            userSelect: 'none'
+                                        }}
+                                        onClick={header.column.getToggleSortingHandler()}
+                                    >
+                                        <Stack 
+                                            direction="row" 
+                                            spacing={0.5} 
+                                            alignItems="center"
+                                        >
+                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                            {header.column.getIsSorted() && (
+                                                <Typography sx={{ fontSize: 10 }}>
+                                                    {header.column.getIsSorted() === 'asc' ? ' 🔼' : ' 🔽'}
+                                                </Typography>
+                                            )}
+                                        </Stack>
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHead>
+                    <TableBody>
+                        {table.getRowModel().rows.map((row) => (
+                            <TableRow 
+                                key={row.id}
+                                hover
+                                selected={row.getIsSelected()}
+                                sx={{ 
+                                    '&:last-child td, &:last-child th': { border: 0 },
+                                    cursor: 'default',
+                                    transition: 'background-color 0.2s',
+                                    '&.Mui-selected': {
+                                        bgcolor: isDark ? 'rgba(59, 130, 246, 0.08) !important' : '#f0f7ff !important'
+                                    }
+                                }}
+                            >
+                                {row.getVisibleCells().map((cell) => (
+                                    <TableCell 
+                                        key={cell.id} 
+                                        sx={{ 
+                                            py: 1.5, 
+                                            px: 2, 
+                                            borderBottom: `1px solid ${isDark ? '#334155' : '#f1f5f9'}`,
+                                            fontSize: '0.85rem'
+                                        }}
+                                    >
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))}
+                        {table.getRowModel().rows.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={columns.length} align="center" sx={{ py: 10 }}>
+                                    <Typography variant="body1" color="text.secondary" fontWeight={600}>
+                                        No data available in table
+                                    </Typography>
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
-            {/* Premium Pagination Footer */}
-            {pagination && totalPages > 0 && (
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    p: 2,
-                    bgcolor: isDark ? 'action.hover' : '#f8f9fa',
-                    borderRadius: borderRadius,
-                    mt: 1
-                }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Showing page <b>{currentPage}</b> of <b>{totalPages}</b>
+            {/* Bottom Info Bar */}
+            {pagination && (
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-start', px: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Displaying records <b>{table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}</b> to <b>{Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, rowData.length)}</b> of <b>{rowData.length}</b>
                     </Typography>
-                    <Pagination
-                        count={totalPages}
-                        page={currentPage}
-                        onChange={handlePageChange}
-                        color="primary"
-                        variant="outlined"
-                        shape="rounded"
-                        size="medium"
-                        sx={{
-                            '& .MuiPaginationItem-root': {
-                                borderRadius: borderRadius,
-                                fontWeight: 600,
-                                bgcolor: 'background.paper'
-                            }
-                        }}
-                    />
                 </Box>
             )}
         </Box>
-
     );
 };
 

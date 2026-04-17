@@ -1,6 +1,16 @@
-import { Box, Typography, Card, CardContent, Divider, Grid } from '@mui/material';
+import { 
+    Box, Typography, Card, CardContent, Divider, Grid, 
+    Accordion, AccordionSummary, AccordionDetails, 
+    List, ListItem, ListItemIcon, ListItemText 
+} from '@mui/material';
 import AssignmentIcon from '@mui/icons-material/Assignment'; // Added this import
 import VideoPreview from '../../Common/VideoPreview';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import DescriptionIcon from '@mui/icons-material/Description';
+import AudiotrackIcon from '@mui/icons-material/Audiotrack';
+import FolderZipIcon from '@mui/icons-material/FolderZip';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 
 const ReviewStep = ({ values, categories = [] }) => {
     const categoryName = categories.find(c => c._id === values.category)?.name || values.category || 'N/A';
@@ -71,16 +81,38 @@ const ReviewStep = ({ values, categories = [] }) => {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {values.modules.length > 0 ? (
                             values.modules.map((module, index) => (
-                                <Card key={index} variant="outlined" sx={{ borderRadius: 1, bgcolor: 'background.default' }}>
-                                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                <Accordion key={index} variant="outlined" sx={{ borderRadius: 1, '&:before': { display: 'none' } }}>
+                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
                                         <Typography variant="subtitle2" fontWeight={600}>
                                             {index + 1}. {module.title}
                                         </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {module.videos?.length || 0} Resources
+                                        <Typography variant="caption" sx={{ ml: 'auto', mr: 2, color: 'text.secondary' }}>
+                                            {module.videos?.length || 0} items
                                         </Typography>
-                                    </CardContent>
-                                </Card>
+                                    </AccordionSummary>
+                                    <AccordionDetails sx={{ p: 0 }}>
+                                        <List disablePadding>
+                                            {module.videos && module.videos.map((item, idx) => (
+                                                <ListItem key={idx} divider={idx < module.videos.length - 1} sx={{ py: 0.5 }}>
+                                                    <ListItemIcon sx={{ minWidth: 32 }}>
+                                                        {item.type === 'video' ? <PlayCircleOutlineIcon fontSize="small" color="primary" /> :
+                                                         item.type === 'pdf' ? <DescriptionIcon fontSize="small" color="error" /> :
+                                                         item.type === 'audio' ? <AudiotrackIcon fontSize="small" color="warning" /> :
+                                                         item.type === 'exam' ? <ReceiptLongIcon fontSize="small" color="error" /> :
+                                                         item.type === 'assignment' ? <AssignmentIcon fontSize="small" color="secondary" /> :
+                                                         <FolderZipIcon fontSize="small" color="info" />}
+                                                    </ListItemIcon>
+                                                    <ListItemText 
+                                                        primary={item.title} 
+                                                        primaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
+                                                        secondary={item.type.toUpperCase()}
+                                                        secondaryTypographyProps={{ variant: 'caption', sx: { fontSize: '0.6rem' } }}
+                                                    />
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    </AccordionDetails>
+                                </Accordion>
                             ))
                         ) : (
                             <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>

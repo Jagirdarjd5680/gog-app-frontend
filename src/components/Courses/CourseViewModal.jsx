@@ -22,7 +22,8 @@ import {
     TextField,
     InputAdornment,
     Stack,
-    Tooltip
+    Tooltip,
+    Paper
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -49,7 +50,25 @@ import { toast } from 'react-toastify';
 
 const CourseViewModal = ({ open, onClose, course }) => {
     const [loading, setLoading] = useState(false);
+    const [fullCourseData, setFullCourseData] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+
+    React.useEffect(() => {
+        if (open && course?._id) {
+            fetchFullCourseDetails();
+        }
+    }, [open, course?._id]);
+
+    const fetchFullCourseDetails = async () => {
+        try {
+            const response = await api.get(`/courses/${course._id}`);
+            if (response.data.success) {
+                setFullCourseData(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching course details:', error);
+        }
+    };
 
     const stats = useMemo(() => {
         let videos = 0;
@@ -191,7 +210,9 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                 <Chip label={course.category?.name || 'Uncategorized'} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
                                 <Chip label={course.level} color="primary" size="small" sx={{ textTransform: 'capitalize', fontWeight: 600 }} />
                                 <Chip label={course.price === 0 ? 'FREE' : `₹${course.price}`} color={course.price === 0 ? "success" : "default"} size="small" sx={{ fontWeight: 900 }} />
-                                <Chip label={`${stats.videos} Videos`} size="small" color="info" variant="outlined" />
+                                <Chip label={`${stats.videos} Videos`} size="small" color="info" variant="outlined" sx={{ fontWeight: 600 }} />
+                                <Chip label={`${course.examCount || 0} Exams`} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(233, 30, 99, 0.08)', color: '#e91e63' }} />
+                                <Chip label={`${course.assignmentCount || 0} Assignments`} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(103, 58, 183, 0.08)', color: '#673ab7' }} />
                             </Box>
 
                             <Box sx={{ display: 'flex', gap: 3, mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
@@ -302,6 +323,51 @@ const CourseViewModal = ({ open, onClose, course }) => {
                             ) : (
                                 <Box sx={{ p: 4, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 2 }}>
                                     <Typography color="text.secondary">No materials match your search.</Typography>
+                                </Box>
+                            )}
+
+                            {/* Exams & Assignments Section */}
+                            {(fullCourseData?.exams?.length > 0 || fullCourseData?.assignments?.length > 0) && (
+                                <Box sx={{ mt: 4 }}>
+                                    <Typography variant="subtitle1" fontWeight={900} sx={{ mb: 2 }}>Assigned Resources</Typography>
+                                    
+                                    {fullCourseData.exams?.length > 0 && (
+                                        <Box sx={{ mb: 2 }}>
+                                            <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>Exams ({fullCourseData.exams.length})</Typography>
+                                            <Stack spacing={1}>
+                                                {fullCourseData.exams.map((exam) => (
+                                                    <Paper key={exam._id} variant="outlined" sx={{ p: 1.5, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(233,30,99,0.02)' }}>
+                                                        <Box sx={{ p: 1, bgcolor: 'rgba(233,30,99,0.1)', color: '#e91e63', borderRadius: 1.5, display: 'flex' }}>
+                                                            <ReceiptLongIcon fontSize="small" />
+                                                        </Box>
+                                                        <Box>
+                                                            <Typography variant="body2" fontWeight={700}>{exam.title}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">{exam.duration} Min • {exam.totalMarks} Marks</Typography>
+                                                        </Box>
+                                                    </Paper>
+                                                ))}
+                                            </Stack>
+                                        </Box>
+                                    )}
+
+                                    {fullCourseData.assignments?.length > 0 && (
+                                        <Box>
+                                            <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>Assignments ({fullCourseData.assignments.length})</Typography>
+                                            <Stack spacing={1}>
+                                                {fullCourseData.assignments.map((ass) => (
+                                                    <Paper key={ass._id} variant="outlined" sx={{ p: 1.5, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(103,58,183,0.02)' }}>
+                                                        <Box sx={{ p: 1, bgcolor: 'rgba(103,58,183,0.1)', color: '#673ab7', borderRadius: 1.5, display: 'flex' }}>
+                                                            <DescriptionIcon fontSize="small" />
+                                                        </Box>
+                                                        <Box>
+                                                            <Typography variant="body2" fontWeight={700}>{ass.title}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">Total Marks: {ass.totalMarks}</Typography>
+                                                        </Box>
+                                                    </Paper>
+                                                ))}
+                                            </Stack>
+                                        </Box>
+                                    )}
                                 </Box>
                             )}
                         </Box>

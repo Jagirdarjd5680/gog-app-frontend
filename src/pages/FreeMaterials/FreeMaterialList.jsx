@@ -12,6 +12,7 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import QuizIcon from '@mui/icons-material/Quiz';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import { format } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -56,6 +57,7 @@ const FreeMaterialList = () => {
             case 'video': return <VideoLibraryIcon fontSize="small" color="primary" />;
             case 'test': return <QuizIcon fontSize="small" color="success" />;
             case 'zoom': return <VideoCallIcon fontSize="small" color="secondary" />;
+            case 'assignment': return <AssignmentIcon fontSize="small" color="warning" />;
             default: return null;
         }
     };
@@ -68,6 +70,8 @@ const FreeMaterialList = () => {
             toast.info('Test material: Check in Exams section');
         } else if (material.type === 'zoom' && material.meeting) {
             toast.info('Zoom meeting: Check in Live Classes section');
+        } else if (material.type === 'assignment' && material.assignment) {
+            toast.info('Assignment material: Check in Assignments section');
         } else {
             toast.warning('No URL found for this material');
         }

@@ -37,11 +37,14 @@ const UserTableHeader = ({
     isDark
 }) => {
     const selectStyles = {
-        bgcolor: isDark ? '#1e1e1e' : '#f8f9fa',
-        color: isDark ? '#fff' : 'inherit',
-        borderRadius: 1,
-        '& .MuiOutlinedInput-notchedOutline': { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e0e0e0' },
-        '& .MuiSvgIcon-root': { color: isDark ? '#fff' : 'inherit' }
+        bgcolor: 'transparent',
+        color: isDark ? '#fff' : '#1e293b',
+        borderRadius: '8px',
+        fontSize: '0.85rem',
+        fontWeight: 500,
+        '& .MuiOutlinedInput-notchedOutline': { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#f1f5f9' },
+        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+        '& .MuiSvgIcon-root': { color: isDark ? '#fff' : '#64748b' }
     };
 
     const menuStyles = {
@@ -65,18 +68,20 @@ const UserTableHeader = ({
                         display: 'flex',
                         alignItems: 'center',
                         width: 400,
-                        bgcolor: isDark ? 'action.hover' : '#f8f9fa',
-                        border: '1px solid',
+                        bgcolor: 'transparent',
+                        borderBottom: '1.5px solid',
                         borderColor: 'divider',
-                        borderRadius: 2
+                        borderRadius: 0,
+                        transition: 'border-color 0.2s',
+                        '&:focus-within': { borderColor: 'primary.main' }
                     }}
                 >
-                    <IconButton sx={{ p: '10px' }} aria-label="search">
-                        <SearchIcon />
+                    <IconButton sx={{ p: '10px', color: 'text.secondary' }} aria-label="search">
+                        <SearchIcon sx={{ fontSize: 20 }} />
                     </IconButton>
                     <InputBase
-                        sx={{ ml: 1, flex: 1, color: 'inherit' }}
-                        placeholder="Search by Name, Email or Roll Num..."
+                        sx={{ ml: 1, flex: 1, color: 'inherit', fontSize: '0.95rem' }}
+                        placeholder="Search students..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />

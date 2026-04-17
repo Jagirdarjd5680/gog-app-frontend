@@ -93,7 +93,12 @@ const AssignmentList = () => {
                     label={params.value} 
                     size="small" 
                     variant="outlined" 
-                    color={params.value === 'None' ? 'default' : 'secondary'} 
+                    sx={{ 
+                        color: 'text.primary', 
+                        fontWeight: 600,
+                        borderColor: 'rgba(0,0,0,0.12)',
+                        bgcolor: 'background.paper'
+                    }} 
                 />
             )
         },

@@ -8,7 +8,11 @@ import {
     Stack,
     IconButton,
     Grid,
-    Button
+    Button,
+    FormControl,
+    Select,
+    MenuItem,
+    Tooltip
 } from '@mui/material';
 import DataTable from '../../components/Common/DataTable';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -22,6 +26,9 @@ import AppleIcon from '@mui/icons-material/Apple';
 import PhoneIcon from '@mui/icons-material/Phone';
 import PeopleIcon from '@mui/icons-material/People';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import SyncIcon from '@mui/icons-material/Sync';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import MetricsCard from '../../components/Dashboard/MetricsCard';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -31,6 +38,13 @@ import DeleteConfirmDialog from '../../components/Common/DeleteConfirmDialog';
 import RecycleBin from '../../components/Common/RecycleBin';
 import { format } from 'date-fns';
 import { useTheme } from '../../context/ThemeContext';
+import StarOutlineIcon from '@mui/icons-material/StarOutline';
+import StarIcon from '@mui/icons-material/Star';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import UserTableHeader from './UserTableHeader';
 
 // Helper to generate color from name
 const stringToColor = (string) => {
@@ -46,7 +60,7 @@ const stringToColor = (string) => {
     return color;
 };
 
-import UserTableHeader from './UserTableHeader';
+
 
 const UserList = () => {
     const { isDark } = useTheme();
@@ -67,6 +81,7 @@ const UserList = () => {
     const [binCount, setBinCount] = useState(0);
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [viewUserId, setViewUserId] = useState(null);
+    const [allBatches, setAllBatches] = useState([]);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -93,9 +108,21 @@ const UserList = () => {
         }
     };
 
+    const fetchAllBatches = async () => {
+        try {
+            const response = await api.get('/batches');
+            if (response.data.success) {
+                setAllBatches(response.data.data);
+            }
+        } catch (error) {
+            console.error('Fetch batches error:', error);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
         fetchBinCount();
+        fetchAllBatches();
 
         const openProfileId = searchParams.get('openProfile');
         if (openProfileId) {
@@ -138,33 +165,70 @@ const UserList = () => {
 
     // Custom Cell Renderers
     const StudentInfoRenderer = (params) => {
-        const { name, _id, avatar } = params.data;
-        const initials = name ? name.match(/(\w)\w*\s*(\w)?/) : []; // basic initials
+        const { name, rollNumber, avatar } = params.data;
+        const initials = name ? name.match(/(\w)\w*\s*(\w)?/) : [];
         const displayInitials = (initials && initials[1] ? initials[1] : '') + (initials && initials[2] ? initials[2] : '');
 
         return (
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: '100%' }}>
                 <Avatar
                     src={avatar}
-                    imgProps={{ referrerPolicy: 'no-referrer' }}
                     sx={{
-                        width: 38,
-                        height: 38,
+                        width: 32,
+                        height: 32,
                         bgcolor: !avatar ? stringToColor(name || 'User') : 'transparent',
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                        border: avatar ? '1px solid' : 'none',
-                        borderColor: 'divider'
+                        fontSize: '0.75rem',
+                        fontWeight: 700
                     }}
                 >
                     {!avatar && displayInitials.toUpperCase()}
                 </Avatar>
-                <Box>
-                    <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.1, mb: 0.3, fontSize: '0.875rem' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.85rem', lineHeight: 1.2 }}>
                         {name}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', opacity: 0.7 }}>
+                        #{rollNumber || '---'}
                     </Typography>
                 </Box>
             </Stack>
+        );
+    };
+
+    const SourceAuthRenderer = (params) => {
+        const { source, authMethod } = params.data;
+
+        const getSourceIcon = () => {
+            if (source === 'android') return <AndroidIcon sx={{ fontSize: 18, color: '#3ddc84' }} />;
+            if (source === 'ios') return <AppleIcon sx={{ fontSize: 18, color: '#000000' }} />;
+            if (source === 'mobile') return <PhoneIcon sx={{ fontSize: 18, color: '#1a73e8' }} />;
+            return <LanguageIcon sx={{ fontSize: 18, color: '#1a73e8' }} />;
+        };
+
+        const getAuthIcon = () => {
+            if (authMethod === 'google') return <GoogleIcon sx={{ fontSize: 16, color: '#DB4437' }} />;
+            if (authMethod === 'phone' || authMethod === 'otp') return <PhoneIcon sx={{ fontSize: 16, color: '#1a73e8' }} />;
+            return <EmailIcon sx={{ fontSize: 16, color: '#757575' }} />;
+        };
+
+        return (
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: '100%' }}>
+                <Tooltip title={`Source: ${source || 'Web'}`}>
+                    {getSourceIcon()}
+                </Tooltip>
+                <Tooltip title={`Auth: ${authMethod || 'Email'}`}>
+                    {getAuthIcon()}
+                </Tooltip>
+            </Stack>
+        );
+    };
+
+    const DateRenderer = (params) => {
+        const date = params.data.createdAt ? new Date(params.data.createdAt) : new Date();
+        return (
+            <Typography variant="body2" sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+                {format(date, 'dd MMM, yyyy')}
+            </Typography>
         );
     };
 
@@ -209,58 +273,29 @@ const UserList = () => {
         );
     };
 
-    const SourceAuthRenderer = (params) => {
-        const { source, authMethod } = params.data;
-
-        return (
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: '100%' }}>
-                {source === 'android' ? (
-                    <AndroidIcon fontSize="small" sx={{ color: '#3ddc84' }} titleAccess="Android App" />
-                ) : source === 'ios' ? (
-                    <AppleIcon fontSize="small" sx={{ color: '#000000' }} titleAccess="iOS App" />
-                ) : source === 'mobile' ? (
-                    <PhoneIcon fontSize="small" sx={{ color: '#1a73e8' }} titleAccess="Mobile App" />
-                ) : (
-                    <LanguageIcon fontSize="small" sx={{ color: '#00bcd4' }} titleAccess="Web Portal" />
-                )}
-
-                {authMethod === 'google' ? (
-                    <GoogleIcon fontSize="small" sx={{ color: '#DB4437' }} titleAccess="Google Login" />
-                ) : (authMethod === 'phone' || authMethod === 'mobile' || authMethod === 'otp') ? (
-                    <PhoneIcon fontSize="small" sx={{ color: '#1a73e8' }} titleAccess="OTP Login" />
-                ) : (
-                    <EmailIcon fontSize="small" sx={{ color: '#757575' }} titleAccess="Email/Password" />
-                )}
-            </Stack>
-        );
-    };
 
     const StatusRenderer = (params) => (
-        <Chip
-            label={params.value ? 'ACTIVE' : 'INACTIVE'}
-            size="small"
-            sx={{
-                bgcolor: params.value ? '#00c853' : '#e0e0e0', // Green for active
-                color: params.value ? '#fff' : '#757575',
-                borderRadius: 4,
-                fontWeight: 700,
-                fontSize: '0.65rem',
-                height: 22,
-                minWidth: 70
-            }}
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <Tooltip title={params.value ? 'Active Account' : 'Deactivated'}>
+                {params.value ? (
+                    <CheckCircleIcon sx={{ color: '#2e7d32', fontSize: 20 }} />
+                ) : (
+                    <CancelIcon sx={{ color: '#d32f2f', fontSize: 20 }} />
+                )}
+            </Tooltip>
+        </Box>
     );
 
     const ActionsRenderer = (params) => (
-        <Stack direction="row" spacing={1}>
-            <IconButton size="small" sx={{ bgcolor: 'rgba(0,188,212,0.06)', borderRadius: 1, color: 'info.main' }} onClick={() => handleView(params.data)}>
-                <VisibilityIcon fontSize="small" />
+        <Stack direction="row" spacing={0.5}>
+            <IconButton size="small" onClick={() => handleView(params.data)} title="View Detail">
+                <VisibilityIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
             </IconButton>
-            <IconButton size="small" sx={{ bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 1 }} onClick={() => handleEdit(params.data)}>
-                <EditIcon fontSize="small" />
+            <IconButton size="small" onClick={() => handleEdit(params.data)} title="Edit">
+                <EditIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
             </IconButton>
-            <IconButton size="small" sx={{ bgcolor: 'rgba(255,0,0,0.04)', borderRadius: 1, color: 'error.main' }} onClick={() => handleDelete(params.data)}>
-                <DeleteIcon fontSize="small" />
+            <IconButton size="small" onClick={() => handleDelete(params.data)} title="Archive">
+                <ArchiveIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
             </IconButton>
         </Stack>
     );
@@ -285,94 +320,110 @@ const UserList = () => {
         }
     };
 
+    const handleBulkSync = async () => {
+        if (!window.confirm(`Sync subscriptions for ${selectedRows.length} users? This will update expiry dates based on current course durations.`)) return;
+        setLoading(true);
+        try {
+            const userIds = selectedRows.map(u => u._id);
+            const response = await api.post('/users/bulk-sync-subscriptions', { userIds });
+            if (response.data.success) {
+                toast.success(response.data.message);
+                fetchUsers();
+                setSelectedRows([]);
+            }
+        } catch (error) {
+            toast.error('Sync failed: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBulkBatchAssign = async (batchName) => {
+        if (!batchName && !window.confirm('Clear batch for selected users?')) return;
+        setLoading(true);
+        try {
+            const userIds = selectedRows.map(u => u._id);
+            const response = await api.put('/users/bulk-assign-batch', { userIds, batchName });
+            if (response.data.success) {
+                toast.success(response.data.message);
+                fetchUsers();
+                setSelectedRows([]);
+            }
+        } catch (error) {
+            toast.error('Assignment failed: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const columnDefs = useMemo(() => [
         {
             headerName: '',
-            width: 50,
-            minWidth: 50,
+            width: 45,
+            minWidth: 45,
             flex: 0,
             checkboxSelection: true,
             headerCheckboxSelection: true,
-            suppressHeaderMenuButton: true,
-            sortable: false,
-            pinned: 'left'
+            pinned: 'left',
+            cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
         },
         {
-            headerName: 'ID',
-            width: 50,
-            minWidth: 50,
-            flex: 0,
-            valueGetter: (params) => params.node.rowIndex + 1,
-            suppressHeaderMenuButton: true,
-            sortable: false
-        },
-        {
-            headerName: 'STUDENT INFO',
+            headerName: 'NAME/ROLL',
             field: 'name',
             cellRenderer: StudentInfoRenderer,
-            flex: 1.2,
-            minWidth: 180
+            flex: 1.5,
+            minWidth: 200,
+            sortable: true
         },
         {
-            headerName: 'ROLL NUMBER',
-            field: 'rollNumber',
-            flex: 0.8,
-            minWidth: 140,
-            valueGetter: (params) => params.data.rollNumber || params.data._id?.substring(params.data._id.length - 8).toUpperCase()
-        },
-        {
-            headerName: 'MAIL',
+            headerName: 'EMAIL',
             field: 'email',
-            cellRenderer: MailRenderer,
             flex: 1.2,
-            minWidth: 180
-        },
-        {
-            headerName: 'COURSE',
-            field: 'enrolledCourses',
-            cellRenderer: CoursesRenderer,
-            flex: 1,
-            minWidth: 130
-        },
-        {
-            headerName: 'SOURCE',
-            cellRenderer: SourceAuthRenderer,
-            width: 120
-        },
-        {
-            headerName: 'EXAMS',
-            field: 'examCount',
-            width: 100,
+            minWidth: 200,
             cellRenderer: (params) => (
-                <Stack direction="row" alignItems="center" sx={{ height: '100%' }}>
-                    <Chip
-                        label={params.value || 0}
-                        size="small"
-                        color={params.value > 0 ? "primary" : "default"}
-                        sx={{ fontWeight: 'bold' }}
-                    />
-                </Stack>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                    {params.value}
+                </Typography>
             )
+        },
+        {
+            headerName: 'PHONE',
+            field: 'phone',
+            width: 130,
+            cellRenderer: (params) => (
+                <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.85rem' }}>
+                    {params.value || 'N/A'}
+                </Typography>
+            )
+        },
+        {
+            headerName: 'SOURCE/AUTH',
+            cellRenderer: SourceAuthRenderer,
+            width: 140
+        },
+        {
+            headerName: 'STATUS',
+            field: 'isActive',
+            cellRenderer: StatusRenderer,
+            width: 100,
+            cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
         },
         {
             headerName: 'BATCH',
             field: 'batch',
-            flex: 0.6,
-            minWidth: 100,
+            width: 120,
             cellRenderer: (params) => (
-                <Chip
-                    label={params.value || 'N/A'}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
-                />
+                <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'primary.main' }}>
+                    {params.value || '---'}
+                </Typography>
             )
         },
         {
-            headerName: 'ACTION',
+            headerName: 'ACTIONS',
             cellRenderer: ActionsRenderer,
-            width: 180,
-            pinned: 'right'
+            width: 140,
+            pinned: 'right',
+            sortable: false
         },
     ], []);
 
@@ -414,10 +465,11 @@ const UserList = () => {
 
     const getRowId = useCallback(params => params.data._id, []);
 
-    const batches = useMemo(() => 
-        [...new Set(users.filter(u => u.batch).map(u => u.batch))].sort(),
-        [users]
-    );
+    const batches = useMemo(() => {
+        const batchNamesFromUsers = [...new Set(users.filter(u => u.batch).map(u => u.batch))];
+        const officialBatchNames = allBatches.map(b => b.name);
+        return [...new Set([...batchNamesFromUsers, ...officialBatchNames])].sort();
+    }, [users, allBatches]);
 
     const activeUsers = users.filter(u => u.isActive).length;
     const googleUsers = users.filter(u => u.authMethod === 'google').length;
@@ -461,7 +513,7 @@ const UserList = () => {
                 </Grid>
             </Grid>
 
-            <Box sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ bgcolor: 'transparent', borderRadius: 0, border: 'none', px: '10px' }}>
                 <UserTableHeader
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
@@ -472,6 +524,7 @@ const UserList = () => {
                     authFilter={authFilter}
                     setAuthFilter={setAuthFilter}
                     roleFilter={roleFilter}
+                    setRoleFilter={setRoleFilter}
                     setRecycleBinOpen={setRecycleBinOpen}
                     batchFilter={batchFilter}
                     setBatchFilter={setBatchFilter}
@@ -484,24 +537,66 @@ const UserList = () => {
 
                 {selectedRows.length > 0 && (
                     <Box sx={{
-                        p: 1.5,
-                        bgcolor: 'rgba(255, 0, 0, 0.05)',
+                        p: 1,
+                        px: 2,
+                        bgcolor: isDark ? 'rgba(25, 118, 210, 0.1)' : 'rgba(25, 118, 210, 0.05)',
                         borderBottom: '1px solid',
-                        borderColor: 'error.light',
+                        borderColor: 'primary.main',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between'
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 2
                     }}>
-                        <Typography variant="subtitle2" color="error.main" fontWeight={700}>
-                            {selectedRows.length} users selected
-                        </Typography>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                            <Typography variant="subtitle2" color="primary.main" fontWeight={700}>
+                                {selectedRows.length} users selected
+                            </Typography>
+                            
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                size="small"
+                                startIcon={<SyncIcon />}
+                                onClick={handleBulkSync}
+                                sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none' }}
+                            >
+                                Batch Sync
+                            </Button>
+
+                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                                <Select
+                                    displayEmpty
+                                    value=""
+                                    onChange={(e) => handleBulkBatchAssign(e.target.value)}
+                                    sx={{ 
+                                        height: 32, 
+                                        fontSize: '0.8rem', 
+                                        borderRadius: 1.5,
+                                        bgcolor: 'background.paper'
+                                    }}
+                                    renderValue={() => (
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <GroupAddIcon sx={{ fontSize: 16 }} />
+                                            <span>Assign Batch</span>
+                                        </Stack>
+                                    )}
+                                >
+                                    <MenuItem value=""><em>None / Clear</em></MenuItem>
+                                    {batches.map(b => (
+                                        <MenuItem key={b} value={b}>{b}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Stack>
+
                         <Button
                             variant="contained"
                             color="error"
                             size="small"
                             startIcon={<DeleteIcon />}
                             onClick={handleBulkDelete}
-                            sx={{ borderRadius: 1.5, fontWeight: 700 }}
+                            sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none' }}
                         >
                             Bulk Delete
                         </Button>

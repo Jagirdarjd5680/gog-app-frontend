@@ -19,7 +19,8 @@ import {
     Checkbox,
     TablePagination,
     Alert,
-    Collapse
+    Collapse,
+    Stack
 } from '@mui/material';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import SearchIcon from '@mui/icons-material/Search';
@@ -33,6 +34,9 @@ import { useAuth } from '../../context/AuthContext';
 import MediaSidebar from './MediaSidebar';
 import MediaCard from './MediaCard';
 import ChatMediaLibrary from './ChatMediaLibrary';
+import SdStorageIcon from '@mui/icons-material/SdStorage';
+import LinkIcon from '@mui/icons-material/Link';
+import StorageIcon from '@mui/icons-material/Storage';
 
 const MediaLibrary = () => {
     const theme = useTheme();
@@ -57,6 +61,13 @@ const MediaLibrary = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+    
+    // Stats & URL Import
+    const [stats, setStats] = useState(null);
+    const [statsModalOpen, setStatsModalOpen] = useState(false);
+    const [urlImportOpen, setUrlImportOpen] = useState(false);
+    const [importingUrl, setImportingUrl] = useState(false);
+    const [importForm, setImportForm] = useState({ title: '', url: '', type: 'video' });
 
     const fetchFiles = async () => {
         try {
@@ -94,9 +105,21 @@ const MediaLibrary = () => {
         }
     };
 
+    const fetchStats = async () => {
+        try {
+            const response = await api.get('/upload/stats');
+            if (response.data.success) {
+                setStats(response.data);
+            }
+        } catch (error) {
+            console.error('Fetch Stats Error:', error);
+        }
+    };
+
     useEffect(() => {
         if (user && activeTab !== 'chat') {
             fetchFiles();
+            fetchStats();
             if (user.role === 'admin') {
                 fetchTeachers();
             }
@@ -193,6 +216,37 @@ const MediaLibrary = () => {
         toast.info('Link copied to clipboard');
     };
 
+    const handleUrlImport = async () => {
+        if (!importForm.url || !importForm.title) {
+            toast.error('Please provide both title and URL');
+            return;
+        }
+
+        try {
+            setImportingUrl(true);
+            const response = await api.post('/upload/import-url', importForm);
+            if (response.data.success) {
+                toast.success('Resource imported successfully');
+                setUrlImportOpen(false);
+                setImportForm({ title: '', url: '', type: 'video' });
+                fetchFiles();
+            }
+        } catch (error) {
+            console.error('Import Error:', error);
+            toast.error(error.response?.data?.message || 'Failed to import URL');
+        } finally {
+            setImportingUrl(false);
+        }
+    };
+
+    const formatSize = (bytes) => {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
     const filteredFiles = files.filter(file => {
         const matchesSearch = file.name.toLowerCase().includes(searchTerm.toLowerCase());
         if (activeTab === 'all') return matchesSearch;
@@ -263,6 +317,54 @@ const MediaLibrary = () => {
                             </Paper>
                         </Collapse>
 
+                        {/* Storage Stats Cards */}
+                        <Grid container spacing={3} sx={{ mb: 4 }}>
+                            <Grid item xs={12} md={4}>
+                                <Paper 
+                                    onClick={() => setStatsModalOpen(true)}
+                                    sx={{ 
+                                        p: 2.5, borderRadius: 3, cursor: 'pointer',
+                                        bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
+                                        transition: 'all 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[4] }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+                                        <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: 'primary.50', color: 'primary.main' }}>
+                                            <SdStorageIcon />
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase' }}>Local Storage</Typography>
+                                            <Typography variant="h6" fontWeight={800}>{formatSize(stats?.totalSize || 0)}</Typography>
+                                        </Box>
+                                    </Box>
+                                    <LinearProgress 
+                                        variant="determinate" 
+                                        value={Math.min(((stats?.totalSize || 0) / (50 * 1024 * 1024 * 1024)) * 100, 100)} 
+                                        sx={{ height: 6, borderRadius: 3, bgcolor: 'action.hover' }}
+                                    />
+                                    <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'right', fontWeight: 600 }}>
+                                        {formatSize(stats?.totalSize || 0)} / 50 GB Used
+                                    </Typography>
+                                </Paper>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                                <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: 'success.50', color: 'success.main' }}>
+                                            <LinkIcon />
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase' }}>External Links</Typography>
+                                            <Typography variant="h6" fontWeight={800}>{stats?.breakdown?.find(b => b.type === 'video' && !b.isLocal)?.count || 0} Assets</Typography>
+                                        </Box>
+                                    </Box>
+                                    <Typography variant="caption" sx={{ mt: 1, display: 'block', color: 'text.secondary' }}>
+                                        YouTube, Vimeo & Cloud Links
+                                    </Typography>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+
                         <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                 <Checkbox
@@ -304,32 +406,43 @@ const MediaLibrary = () => {
                                     />
                                 </Paper>
 
-                                <input
-                                    type="file"
-                                    id="media-upload-input"
-                                    style={{ display: 'none' }}
-                                    onChange={handleFileUpload}
-                                    disabled={uploading}
-                                />
-                                <label htmlFor="media-upload-input">
+                                <Box sx={{ display: 'flex', gap: 1 }}>
                                     <Button
-                                        variant="contained"
-                                        component="span"
-                                        startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
-                                        disabled={uploading}
-                                        sx={{
-                                            borderRadius: 1.5,
-                                            textTransform: 'none',
-                                            px: 3,
-                                            py: 1.1,
-                                            fontWeight: 700,
-                                            boxShadow: theme.shadows[4],
-                                            '&:hover': { boxShadow: theme.shadows[8] }
-                                        }}
+                                        variant="outlined"
+                                        startIcon={<LinkIcon />}
+                                        onClick={() => setUrlImportOpen(true)}
+                                        sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
                                     >
-                                        {uploading ? `Uploading ${uploadProgress}%` : 'Upload New'}
+                                        Import URL
                                     </Button>
-                                </label>
+
+                                    <input
+                                        type="file"
+                                        id="media-upload-input"
+                                        style={{ display: 'none' }}
+                                        onChange={handleFileUpload}
+                                        disabled={uploading}
+                                    />
+                                    <label htmlFor="media-upload-input">
+                                        <Button
+                                            variant="contained"
+                                            component="span"
+                                            startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+                                            disabled={uploading}
+                                            sx={{
+                                                borderRadius: 1.5,
+                                                textTransform: 'none',
+                                                px: 3,
+                                                py: 1.1,
+                                                fontWeight: 700,
+                                                boxShadow: theme.shadows[4],
+                                                '&:hover': { boxShadow: theme.shadows[8] }
+                                            }}
+                                        >
+                                            {uploading ? `Uploading ${uploadProgress}%` : 'Upload'}
+                                        </Button>
+                                    </label>
+                                </Box>
                             </Box>
                         </Box>
 
@@ -452,63 +565,88 @@ const MediaLibrary = () => {
                 )}
             </Box>
 
-            {/* Bulk Delete Dialog */}
-            <Dialog
-                open={bulkDeleteDialogOpen}
-                onClose={() => setBulkDeleteDialogOpen(false)}
-                PaperProps={{ sx: { borderRadius: 2, p: 1 } }}
+            {/* Storage Breakdown Modal */}
+            <Dialog 
+                open={statsModalOpen} 
+                onClose={() => setStatsModalOpen(false)}
+                fullWidth maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: 3 } }}
             >
-                <DialogTitle sx={{ fontWeight: 800 }}>Bulk Delete</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>Storage Breakdown</DialogTitle>
                 <DialogContent>
-                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 1.5 }}>
-                        This action cannot be undone.
-                    </Alert>
-                    <Typography variant="body1">
-                        Are you sure you want to delete <strong>{selectedFiles.length}</strong> selected files?
-                    </Typography>
+                    <Stack spacing={2} sx={{ py: 2 }}>
+                        {stats?.breakdown?.map((item) => (
+                            <Paper key={item.type} variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Box sx={{ p: 1, borderRadius: 1, bgcolor: 'action.hover' }}>
+                                        {item.type === 'video' ? '🎥' : item.type === 'image' ? '🖼️' : item.type === 'audio' ? '🎧' : '📄'}
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="subtitle2" fontWeight={700} sx={{ textTransform: 'capitalize' }}>{item.type}s</Typography>
+                                        <Typography variant="caption" color="text.secondary">{item.count} files</Typography>
+                                    </Box>
+                                </Box>
+                                <Typography variant="body2" fontWeight={800}>{formatSize(item.size)}</Typography>
+                            </Paper>
+                        ))}
+                    </Stack>
                 </DialogContent>
-                <DialogActions sx={{ p: 3, pt: 1 }}>
-                    <Button onClick={() => setBulkDeleteDialogOpen(false)} sx={{ borderRadius: 1.5 }}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        color="error"
-                        onClick={handleBulkDelete}
-                        sx={{ borderRadius: 1.5, fontWeight: 700 }}
-                    >
-                        Delete All
-                    </Button>
+                <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+                    <Button onClick={() => setStatsModalOpen(false)} variant="contained" sx={{ borderRadius: 2, px: 4 }}>Close</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog
-                open={deleteDialogOpen}
-                onClose={() => setDeleteDialogOpen(false)}
-                PaperProps={{
-                    sx: {
-                        borderRadius: 2,
-                        p: 1
-                    }
-                }}
+            {/* URL Import Modal */}
+            <Dialog 
+                open={urlImportOpen} 
+                onClose={() => setUrlImportOpen(false)}
+                fullWidth maxWidth="sm"
+                PaperProps={{ sx: { borderRadius: 3 } }}
             >
-                <DialogTitle sx={{ fontWeight: 800 }}>Confirm Deletion</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800 }}>Import from URL</DialogTitle>
                 <DialogContent>
-                    <Typography variant="body1" color="text.secondary">
-                        Are you sure you want to delete <strong>{selectedFile?.name}</strong>?
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Enter a direct link to a video, image, or PDF to add it to your library.
                     </Typography>
-                    <Typography variant="body2" sx={{ mt: 1, color: 'error.main', fontWeight: 600 }}>
-                        This file will be permanently removed from the server.
-                    </Typography>
+                    <Stack spacing={3}>
+                        <TextField
+                            fullWidth
+                            label="Resource Title"
+                            placeholder="e.g. Introduction Video"
+                            value={importForm.title}
+                            onChange={(e) => setImportForm({ ...importForm, title: e.target.value })}
+                        />
+                        <TextField
+                            fullWidth
+                            label="Resource URL"
+                            placeholder="https://example.com/video.mp4"
+                            value={importForm.url}
+                            onChange={(e) => setImportForm({ ...importForm, url: e.target.value })}
+                        />
+                        <TextField
+                            select
+                            fullWidth
+                            label="Resource Type"
+                            value={importForm.type}
+                            onChange={(e) => setImportForm({ ...importForm, type: e.target.value })}
+                            SelectProps={{ native: true }}
+                        >
+                            <option value="video">Video</option>
+                            <option value="image">Image</option>
+                            <option value="raw">PDF / Other</option>
+                        </TextField>
+                    </Stack>
                 </DialogContent>
-                <DialogActions sx={{ p: 3, pt: 1 }}>
-                    <Button onClick={() => setDeleteDialogOpen(false)} sx={{ borderRadius: 1.5, px: 3 }}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        color="error"
-                        onClick={handleDelete}
-                        sx={{ borderRadius: 1.5, px: 3, fontWeight: 700, boxShadow: theme.shadows[4] }}
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setUrlImportOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={handleUrlImport}
+                        disabled={importingUrl}
+                        startIcon={importingUrl ? <CircularProgress size={20} /> : null}
+                        sx={{ borderRadius: 2, px: 3 }}
                     >
-                        Delete Now
+                        Import Now
                     </Button>
                 </DialogActions>
             </Dialog>
