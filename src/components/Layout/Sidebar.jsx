@@ -34,6 +34,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 
 const DRAWER_WIDTH = 260;
 
@@ -41,8 +42,11 @@ const Sidebar = ({ open, onClose }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
+    const { settings } = useSettings();
     const theme = useMuiTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+    const siteName = settings?.general?.siteName || 'LMS Admin';
 
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/', roles: ['admin', 'teacher', 'student'] },
@@ -108,10 +112,19 @@ const Sidebar = ({ open, onClose }) => {
     const drawerContent = (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="h5" fontWeight={700} color="primary">
-                    LMS Admin
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
+                {settings?.general?.siteLogo ? (
+                    <Box
+                        component="img"
+                        src={settings.general.siteLogo}
+                        sx={{ height: 40, mb: 1 }}
+                        alt="Logo"
+                    />
+                ) : (
+                    <Typography variant="h6" fontWeight={700} color="primary" sx={{ lineHeight: 1.2 }}>
+                        {siteName}
+                    </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                     Learning Management System
                 </Typography>
             </Box>
@@ -156,7 +169,7 @@ const Sidebar = ({ open, onClose }) => {
 
             <Box sx={{ p: 2 }}>
                 <Typography variant="caption" color="text.secondary">
-                    © 2024 LMS Admin
+                    © {new Date().getFullYear()} {siteName}
                 </Typography>
             </Box>
         </Box>
