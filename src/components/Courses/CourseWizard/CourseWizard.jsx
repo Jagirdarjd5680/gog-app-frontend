@@ -76,6 +76,10 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
         gstPercent: 0,
         fakeLikes: 0,
         modules: [],
+        // New fields
+        courseType: 'online',
+        assignedBatches: [],
+        allowOtherBatchMaterials: false,
     });
 
     const isEditMode = Boolean(courseId);
@@ -117,6 +121,10 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                     gstPercent: 0,
                     fakeLikes: 0,
                     modules: [],
+                    // New fields
+                    courseType: 'online',
+                    assignedBatches: [],
+                    allowOtherBatchMaterials: false,
                 });
             }
         }
@@ -156,7 +164,11 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                 gstType: courseData.gstType || 'none',
                 gstPercent: courseData.gstPercent ?? 0,
                 fakeLikes: courseData.fakeLikes ?? 0,
-                modules: modulesWithIds
+                modules: modulesWithIds,
+                // New fields
+                courseType: courseData.courseType || 'online',
+                assignedBatches: (courseData.assignedBatches || []).map(b => typeof b === 'object' ? b._id : b),
+                allowOtherBatchMaterials: courseData.allowOtherBatchMaterials || false,
             });
         } catch (error) {
             console.error('Error fetching course:', error);

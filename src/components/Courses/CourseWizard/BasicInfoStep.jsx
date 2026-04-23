@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import {
     Grid, TextField, MenuItem, FormControl, InputLabel, Select, Box, Typography, Button, Divider,
-    Card, CardContent, InputAdornment, CircularProgress, Switch, FormControlLabel, Stack, Chip
+    Card, CardContent, InputAdornment, CircularProgress, Switch, FormControlLabel, Stack, Chip,
+    ToggleButtonGroup, ToggleButton, Alert, Autocomplete
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import TitleIcon from '@mui/icons-material/Title';
@@ -11,6 +12,10 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import SettingsIcon from '@mui/icons-material/Settings';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import CollectionsIcon from '@mui/icons-material/Collections';
+import PublicIcon from '@mui/icons-material/Public';
+import LockIcon from '@mui/icons-material/Lock';
+import GroupsIcon from '@mui/icons-material/Groups';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
 import VideoPreview from '../../Common/VideoPreview';
 import { uploadFile } from '../../../utils/upload';
 import api, { fixUrl } from '../../../utils/api';
@@ -41,6 +46,18 @@ const SectionHeader = ({ icon, title, subtitle }) => (
 const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [] }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const [allBatches, setAllBatches] = useState([]);
+
+    useEffect(() => {
+        // Fetch batches for offline course assignment
+        const fetchBatches = async () => {
+            try {
+                const res = await api.get('/batches');
+                if (res.data.success) setAllBatches(res.data.data);
+            } catch {}
+        };
+        fetchBatches();
+    }, []);
 
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState('image');
@@ -187,6 +204,98 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                         </Box>
                                     </Grid>
                                 </Grid>
+                            </CardContent>
+                        </Card>
+
+                        {/* Course Type Card */}
+                        <Card className="premium-card">
+                            <CardContent sx={{ p: 4 }}>
+                                <SectionHeader
+                                    icon={<PublicIcon />}
+                                    title="Course Type"
+                                    subtitle="Online courses are public; Offline courses are private and batch-only"
+                                />
+                                <Stack direction="row" spacing={2}>
+                                    <Box
+                                        onClick={() => setFieldValue('courseType', 'online')}
+                                        sx={{
+                                            flex: 1, p: 2.5, borderRadius: 3, cursor: 'pointer', transition: 'all 0.2s',
+                                            border: '2px solid',
+                                            borderColor: values.courseType !== 'offline' ? 'primary.main' : 'divider',
+                                            bgcolor: values.courseType !== 'offline' ? 'rgba(99,102,241,0.08)' : 'transparent',
+                                            '&:hover': { borderColor: 'primary.main' }
+                                        }}
+                                    >
+                                        <Stack direction="row" alignItems="center" spacing={1.5}>
+                                            <PublicIcon sx={{ color: values.courseType !== 'offline' ? 'primary.main' : 'text.secondary', fontSize: 28 }} />
+                                            <Box>
+                                                <Typography fontWeight={700}>Online Course</Typography>
+                                                <Typography variant="caption" color="text.secondary">Visible on homepage, open to all</Typography>
+                                            </Box>
+                                        </Stack>
+                                    </Box>
+                                    <Box
+                                        onClick={() => setFieldValue('courseType', 'offline')}
+                                        sx={{
+                                            flex: 1, p: 2.5, borderRadius: 3, cursor: 'pointer', transition: 'all 0.2s',
+                                            border: '2px solid',
+                                            borderColor: values.courseType === 'offline' ? '#FF9800' : 'divider',
+                                            bgcolor: values.courseType === 'offline' ? 'rgba(255,152,0,0.08)' : 'transparent',
+                                            '&:hover': { borderColor: '#FF9800' }
+                                        }}
+                                    >
+                                        <Stack direction="row" alignItems="center" spacing={1.5}>
+                                            <LockIcon sx={{ color: values.courseType === 'offline' ? '#FF9800' : 'text.secondary', fontSize: 28 }} />
+                                            <Box>
+                                                <Typography fontWeight={700}>Offline Course</Typography>
+                                                <Typography variant="caption" color="text.secondary">Private, assigned batches only</Typography>
+                                            </Box>
+                                        </Stack>
+                                    </Box>
+                                </Stack>
+
+                                {values.courseType === 'offline' && (
+                                    <Box sx={{ mt: 3 }}>
+                                        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                                            This course will <strong>NOT appear on the homepage</strong> or any public pages. Only students in assigned batches can view it.
+                                        </Alert>
+                                        <Autocomplete
+                                            multiple
+                                            options={allBatches}
+                                            getOptionLabel={(b) => b.name}
+                                            value={allBatches.filter(b => (values.assignedBatches || []).includes(b._id))}
+                                            onChange={(e, newVal) => setFieldValue('assignedBatches', newVal.map(b => b._id))}
+                                            renderInput={(params) => (
+                                                <TextField {...params} label="Assign Batches (required for offline)" placeholder="Select batches..."
+                                                    InputProps={{ ...params.InputProps, sx: { borderRadius: '10px' } }} />
+                                            )}
+                                            renderTags={(tagValue, getTagProps) =>
+                                                tagValue.map((option, index) => {
+                                                    const { key, ...tagProps } = getTagProps({ index });
+                                                    return <Chip key={key} label={option.name} {...tagProps} color="warning" size="small" />;
+                                                })
+                                            }
+                                        />
+                                        <FormControlLabel
+                                            sx={{ mt: 2 }}
+                                            control={
+                                                <Switch
+                                                    checked={values.allowOtherBatchMaterials || false}
+                                                    onChange={(e) => setFieldValue('allowOtherBatchMaterials', e.target.checked)}
+                                                    color="warning"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={600}>Allow Other Batches' Materials</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Students can view materials from other batches in this course
+                                                    </Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </Box>
+                                )}
                             </CardContent>
                         </Card>
 

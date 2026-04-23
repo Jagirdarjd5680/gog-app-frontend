@@ -46,6 +46,7 @@ import ViewCarouselIcon from '@mui/icons-material/ViewCarousel';
 import StarIcon from '@mui/icons-material/Star';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import EventSeatIcon from '@mui/icons-material/EventSeat';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -75,6 +76,8 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
         { text: 'Live Classes', icon: <VideoCallIcon />, path: '/live-classes', roles: ['admin', 'teacher'] },
         { text: 'Assignments', icon: <AssignmentIcon />, path: '/assignments', roles: ['admin', 'teacher'] },
         { text: 'Payments', icon: <PaymentIcon />, path: '/payments', roles: ['admin'] },
+        { text: 'Booking', icon: <EventSeatIcon />, path: '/booking', roles: ['admin'] },
+        { text: 'Fee Records', icon: <PaymentIcon />, path: '/fee-records', roles: ['admin'] },
         { text: 'Notifications', icon: <NotificationsIcon />, path: '/notifications', roles: ['admin', 'teacher'] },
         { text: 'Exam Management', icon: <QuizIcon />, path: '/exam-management', roles: ['admin', 'teacher'] },
         { text: 'Exam Results', icon: <AssignmentTurnedInIcon />, path: '/exam-results', roles: ['admin', 'teacher'] },

@@ -31,6 +31,7 @@ import ArticleIcon from '@mui/icons-material/Article';
 import StarIcon from '@mui/icons-material/Star';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import EventSeatIcon from '@mui/icons-material/EventSeat';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -61,6 +62,7 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'Assignments', icon: <AssignmentIcon />, path: '/assignments', roles: ['admin', 'teacher'] },
         { text: 'Coupons', icon: <LocalOfferIcon />, path: '/coupons', roles: ['admin', 'teacher'] },
         { text: 'Payments', icon: <PaymentIcon />, path: '/payments', roles: ['admin'] },
+        { text: 'Booking', icon: <EventSeatIcon />, path: '/booking', roles: ['admin'] },
         { text: 'Notifications', icon: <NotificationsIcon />, path: '/notifications', roles: ['admin', 'teacher'] },
         { text: 'Reports', icon: <AssessmentIcon />, path: '/reports', roles: ['admin'] },
         { text: 'Blogs', icon: <ArticleIcon />, path: '/blogs', roles: ['admin', 'teacher'] },

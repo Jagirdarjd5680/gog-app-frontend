@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
     useReactTable,
     getCoreRowModel,
@@ -38,6 +38,8 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useTheme } from '../../context/ThemeContext';
 import { TableSkeleton } from './SkeletonLoaders';
 
+const EMPTY_ARRAY = [];
+
 const DataTable = ({
     rowData = [],
     columnDefs = [],
@@ -52,6 +54,7 @@ const DataTable = ({
     externalSearchTerm = '',
     onSelectionChanged,
     getRowId,
+    selectedIds, // Truly optional, no default value
 }) => {
     const { isDark } = useTheme();
     const [sorting, setSorting] = useState([]);
@@ -64,16 +67,25 @@ const DataTable = ({
         setGlobalFilter(externalSearchTerm || '');
     }, [externalSearchTerm]);
 
-    // Handle selection changes
+    // Sync initial selection
     useEffect(() => {
-        if (onSelectionChanged) {
-            const selectedRows = Object.keys(rowSelection).map(idx => rowData[idx]).filter(Boolean);
-            // Simulate Ag-Grid's event structure if needed, or just pass the data
-            onSelectionChanged({ 
-                api: { getSelectedNodes: () => Object.keys(rowSelection).map(idx => ({ data: rowData[idx] })) } 
+        // Only sync if selectedIds is explicitly provided (including empty array)
+        if (selectedIds !== undefined && Array.isArray(selectedIds)) {
+            // Check if we actually need to update to avoid infinite loops
+            const currentSelectedIds = Object.keys(rowSelection).filter(key => rowSelection[key]);
+            const isSame = selectedIds.length === currentSelectedIds.length && 
+                          selectedIds.every(id => rowSelection[id]);
+            
+            if (isSame) return;
+
+            console.log('🔄 Syncing initial selection in DataTable', selectedIds);
+            const selectionObj = {};
+            selectedIds.forEach(id => {
+                selectionObj[id] = true;
             });
+            setRowSelection(selectionObj);
         }
-    }, [rowSelection, rowData, onSelectionChanged]);
+    }, [selectedIds]);
 
     // Map Ag-Grid column definitions to TanStack Column format
     const columns = useMemo(() => {
@@ -85,7 +97,7 @@ const DataTable = ({
                         <Checkbox
                             checked={table.getIsAllPageRowsSelected()}
                             indeterminate={table.getIsSomePageRowsSelected()}
-                            onChange={table.getToggleAllPageRowsSelectedHandler()}
+                            onChange={(e) => table.toggleAllPageRowsSelected(!!e.target.checked)}
                             size="small"
                         />
                     ),
@@ -94,7 +106,7 @@ const DataTable = ({
                             checked={row.getIsSelected()}
                             disabled={!row.getCanSelect()}
                             indeterminate={row.getIsSomeSelected()}
-                            onChange={row.getToggleSelectedHandler()}
+                            onChange={(e) => row.toggleSelected(!!e.target.checked)}
                             size="small"
                         />
                     ),
@@ -176,16 +188,44 @@ const DataTable = ({
         onGlobalFilterChange: setGlobalFilter,
         onColumnFiltersChange: setColumnFilters,
         onRowSelectionChange: setRowSelection,
+        getRowId,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        enableRowSelection: true,
         initialState: {
             pagination: {
                 pageSize: paginationPageSize,
             },
         },
     });
+
+    // Use a ref to prevent infinite loops by tracking the last dispatched selection
+    const lastDispatchedRef = useRef('');
+
+    // Handle selection changes
+    useEffect(() => {
+        if (onSelectionChanged) {
+            const selectedRows = table.getSelectedRowModel().rows.map(row => row.original);
+            // Create a stable string representation of selected IDs to compare
+            const selectionIds = selectedRows.map(r => getRowId ? getRowId(r) : (r.id || r._id)).sort().join(',');
+            
+            if (lastDispatchedRef.current === selectionIds) return;
+            lastDispatchedRef.current = selectionIds;
+
+            console.log('📢 DataTable dispatching onSelectionChanged', { 
+                count: selectedRows.length,
+                selectionState: rowSelection 
+            });
+            onSelectionChanged({ 
+                api: { 
+                    getSelectedNodes: () => table.getSelectedRowModel().rows.map(row => ({ data: row.original })),
+                    getSelectedRows: () => selectedRows
+                } 
+            });
+        }
+    }, [rowSelection, onSelectionChanged, table, getRowId]);
 
     if (loading) {
         return <TableSkeleton rows={10} columns={columnDefs?.length || 5} />;

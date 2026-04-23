@@ -32,6 +32,12 @@ import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import api from '../../../utils/api';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Chip from '@mui/material/Chip';
+import QuestionPickerModal from '../../Exams/QuestionPickerModal';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 const LectureModal = ({ open, onClose, onSave, initialData }) => {
     const [uploading, setUploading] = useState(false);
@@ -44,11 +50,23 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
         duration: '',
         isFree: false,
         resourceId: '',
-        resourceModel: ''
+        resourceModel: '',
+        // Google Meet fields
+        meetLink: '',
+        meetTitle: '',
+        meetScheduledAt: '',
+        meetEndsAt: '',
+        // Assignment creation fields
+        assignmentDesc: '',
+        assignmentType: 'file_upload',
+        maxMb: 10,
+        allowedFormats: '.pdf,.zip,.jpg,.png',
+        selectedQuestions: []
     });
     const [assignments, setAssignments] = useState([]);
     const [exams, setExams] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [questionPickerOpen, setQuestionPickerOpen] = useState(false);
 
     useEffect(() => {
         if (open) {
@@ -60,10 +78,24 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                     duration: initialData.duration || '',
                     isFree: initialData.freePreview || false,
                     resourceId: initialData.resourceId || '',
-                    resourceModel: initialData.resourceModel || ''
+                    resourceModel: initialData.resourceModel || '',
+                    // Google Meet fields
+                    meetLink: initialData.meetLink || '',
+                    meetTitle: initialData.meetTitle || '',
+                    meetScheduledAt: initialData.meetScheduledAt ? initialData.meetScheduledAt.slice(0, 16) : '',
+                    meetEndsAt: initialData.meetEndsAt ? initialData.meetEndsAt.slice(0, 16) : '',
+                    assignmentDesc: initialData.assignmentDesc || '',
+                    assignmentType: initialData.assignmentType || 'file_upload',
+                    maxMb: initialData.maxMb || 10,
+                    allowedFormats: initialData.allowedFormats || '.pdf,.zip,.jpg,.png',
+                    selectedQuestions: initialData.selectedQuestions || []
                 });
             } else {
-                setVideoForm({ title: '', type: 'video', videoUrl: '', duration: '', isFree: false, resourceId: '', resourceModel: '' });
+                setVideoForm({ 
+                    title: '', type: 'video', videoUrl: '', duration: '', isFree: false, resourceId: '', resourceModel: '', 
+                    meetLink: '', meetTitle: '', meetScheduledAt: '', meetEndsAt: '',
+                    assignmentDesc: '', assignmentType: 'file_upload', maxMb: 10, allowedFormats: '.pdf,.zip,.jpg,.png', selectedQuestions: []
+                });
             }
             setSelectedFile(null);
             setUploadProgress(0);
@@ -99,10 +131,62 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
             type, 
             videoUrl: '', 
             resourceId: '', 
-            resourceModel: type === 'assignment' ? 'Assignment' : type === 'exam' ? 'Exam' : '' 
+            resourceModel: type === 'assignment' ? 'Assignment' : type === 'exam' ? 'Exam' : '',
+            // Reset assignment fields if switching to assignment
+            assignmentType: 'file_upload',
+            assignmentDesc: '',
+            maxMb: 10,
+            selectedQuestions: []
         });
         if (type === 'assignment') fetchAssignments();
         if (type === 'exam') fetchExams();
+    };
+
+    const handleQuestionSelect = (ids) => {
+        setVideoForm(prev => ({ ...prev, selectedQuestions: ids }));
+    };
+
+    const [generating, setGenerating] = useState(false);
+
+    const handleGenerateMeet = async () => {
+        const tokens = localStorage.getItem('googleMeetTokens');
+        if (!tokens) {
+            try {
+                const response = await api.get('/live-classes/auth/url');
+                // Redirect to Google Auth - it will return to CourseList which we will handle
+                window.location.href = response.data.url;
+            } catch (error) {
+                toast.error('Failed to get auth URL');
+            }
+            return;
+        }
+
+        if (!videoForm.title || !videoForm.meetScheduledAt) {
+            toast.warning('Please fill lecture title and scheduled date first');
+            return;
+        }
+
+        setGenerating(true);
+        try {
+            const response = await api.post('/live-classes/generate-meet', {
+                tokens: JSON.parse(tokens),
+                classInfo: {
+                    title: videoForm.title,
+                    scheduledDate: videoForm.meetScheduledAt,
+                    duration: 60 // Default duration
+                }
+            });
+            if (response.data.success) {
+                setVideoForm({ ...videoForm, meetLink: response.data.meetLink });
+                toast.success('Meet link generated successfully!');
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to generate Meet link. You might need to re-connect Google.');
+            localStorage.removeItem('googleMeetTokens');
+        } finally {
+            setGenerating(false);
+        }
     };
 
     const handleSave = async () => {
@@ -136,7 +220,43 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
             }
         }
 
-        const saveData = { ...videoForm, videoUrl: finalUrl };
+        let finalResourceId = videoForm.resourceId;
+        let finalResourceModel = videoForm.resourceModel;
+
+        // Instant Assignment Creation
+        if (videoForm.type === 'assignment' && !initialData) {
+            try {
+                setUploading(true);
+                const assRes = await api.post('/assignments', {
+                    title: videoForm.title,
+                    description: videoForm.assignmentDesc || 'No description provided',
+                    assignmentType: videoForm.assignmentType,
+                    deadline: videoForm.meetScheduledAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                    totalMarks: 100,
+                    questions: videoForm.selectedQuestions,
+                    maxMb: videoForm.maxMb,
+                    allowedFormats: videoForm.allowedFormats
+                });
+                
+                if (assRes.data.success) {
+                    finalResourceId = assRes.data.data._id;
+                    finalResourceModel = 'Assignment';
+                    toast.success('Assignment created successfully');
+                }
+            } catch (error) {
+                toast.error('Failed to create assignment');
+                setUploading(false);
+                return;
+            }
+        }
+
+        const saveData = { 
+            ...videoForm, 
+            videoUrl: finalUrl, 
+            resourceId: finalResourceId, 
+            resourceModel: finalResourceModel 
+        };
+        
         if (!saveData.resourceId) delete saveData.resourceId;
         if (!saveData.resourceModel) delete saveData.resourceModel;
 
@@ -151,6 +271,7 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
             case 'zip': return <FolderZipIcon color="primary" />;
             case 'assignment': return <AssignmentIcon color="secondary" />;
             case 'exam': return <ReceiptLongIcon color="error" />;
+            case 'google_meet': return <VideoCallIcon sx={{ color: '#1A73E8' }} />;
             default: return <OndemandVideoIcon color="success" />;
         }
     };
@@ -204,35 +325,130 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                             <MenuItem value="zip">📦 Resource Pack (ZIP)</MenuItem>
                             <MenuItem value="assignment">📝 Student Assignment</MenuItem>
                             <MenuItem value="exam">🏆 Quiz/Exam</MenuItem>
+                            <MenuItem value="google_meet">📹 Google Meet</MenuItem>
                         </TextField>
                     </Grid>
-                    {/* Dynamic Selection for Assignment/Exam */}
-                    {(videoForm.type === 'assignment' || videoForm.type === 'exam') && (
+                    {/* Instant Assignment Creation UI */}
+                    {videoForm.type === 'assignment' && (
+                        <>
+                            <Grid item xs={12}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                    Assignment Description
+                                </Typography>
+                                <Box sx={{ 
+                                    '.ql-editor': { minHeight: '120px' },
+                                    '.ql-toolbar': { borderRadius: '12px 12px 0 0' },
+                                    '.ql-container': { borderRadius: '0 0 12px 12px', bgcolor: 'white' }
+                                }}>
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={videoForm.assignmentDesc}
+                                        onChange={(content) => setVideoForm({ ...videoForm, assignmentDesc: content })}
+                                        placeholder="Enter assignment details and instructions..."
+                                    />
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    select
+                                    label="Assignment Type"
+                                    value={videoForm.assignmentType}
+                                    onChange={(e) => setVideoForm({ ...videoForm, assignmentType: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: '12px' } }}
+                                >
+                                    <MenuItem value="file_upload">📁 File Upload</MenuItem>
+                                    <MenuItem value="quiz">📝 Quiz (Questions)</MenuItem>
+                                    <MenuItem value="text_answer">✍️ Text Answer</MenuItem>
+                                </TextField>
+                            </Grid>
+                            {videoForm.assignmentType === 'file_upload' && (
+                                <Grid item xs={12}>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                type="number"
+                                                label="Max File Size (MB)"
+                                                value={videoForm.maxMb}
+                                                onChange={(e) => setVideoForm({ ...videoForm, maxMb: e.target.value })}
+                                                InputProps={{ sx: { borderRadius: '12px' } }}
+                                                helperText="Limit for student upload"
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                label="Allowed Formats"
+                                                placeholder=".pdf, .zip, .jpg"
+                                                value={videoForm.allowedFormats}
+                                                onChange={(e) => setVideoForm({ ...videoForm, allowedFormats: e.target.value })}
+                                                InputProps={{ sx: { borderRadius: '12px' } }}
+                                                helperText="Comma separated (e.g. .pdf, .zip)"
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </Grid>
+                            )}
+                            
+                            {videoForm.assignmentType === 'quiz' && (
+                                <Grid item xs={12}>
+                                    <Button
+                                        fullWidth
+                                        variant="outlined"
+                                        startIcon={<PlaylistAddCheckIcon />}
+                                        onClick={() => setQuestionPickerOpen(true)}
+                                        sx={{ 
+                                            height: '56px', 
+                                            borderRadius: '12px',
+                                            borderStyle: 'dashed',
+                                            color: videoForm.selectedQuestions.length > 0 ? 'success.main' : 'primary.main',
+                                            borderColor: videoForm.selectedQuestions.length > 0 ? 'success.main' : 'primary.main'
+                                        }}
+                                    >
+                                        {videoForm.selectedQuestions.length > 0 
+                                            ? `Questions Selected: ${videoForm.selectedQuestions.length}` 
+                                            : 'Pick Questions for Quiz'}
+                                    </Button>
+                                </Grid>
+                            )}
+
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Assignment Deadline"
+                                    type="datetime-local"
+                                    value={videoForm.meetScheduledAt || ''} // Reusing scheduledAt for deadline
+                                    onChange={(e) => setVideoForm({ ...videoForm, meetScheduledAt: e.target.value })}
+                                    InputLabelProps={{ shrink: true }}
+                                    InputProps={{ sx: { borderRadius: '12px' } }}
+                                />
+                            </Grid>
+                        </>
+                    )}
+
+                    {/* Dynamic Selection for Exam */}
+                    {videoForm.type === 'exam' && (
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                label={videoForm.type === 'assignment' ? "Select Assignment" : "Select Exam"}
+                                label="Select Exam"
                                 select
                                 value={videoForm.resourceId || ''}
                                 onChange={(e) => {
                                     const selectedId = e.target.value;
-                                    const items = videoForm.type === 'assignment' ? assignments : exams;
-                                    const selectedItem = items.find(i => i._id === selectedId);
+                                    const selectedItem = exams.find(i => i._id === selectedId);
                                     setVideoForm({ 
                                         ...videoForm, 
                                         resourceId: selectedId,
                                         title: videoForm.title || selectedItem?.title || '',
-                                        videoUrl: `linked_${videoForm.type}_${selectedId}` // Placeholder for UI compatibility
+                                        videoUrl: `linked_exam_${selectedId}`
                                     });
                                 }}
                                 InputProps={{ sx: { borderRadius: '12px' } }}
                             >
-                                <MenuItem value=""><em>Select {videoForm.type === 'assignment' ? 'an assignment' : 'an exam'}</em></MenuItem>
-                                {videoForm.type === 'assignment' ? (
-                                    assignments.map(ass => <MenuItem key={ass._id} value={ass._id}>{ass.title}</MenuItem>)
-                                ) : (
-                                    exams.map(ex => <MenuItem key={ex._id} value={ex._id}>{ex.title}</MenuItem>)
-                                )}
+                                <MenuItem value=""><em>Select an exam</em></MenuItem>
+                                {exams.map(ex => <MenuItem key={ex._id} value={ex._id}>{ex.title}</MenuItem>)}
                             </TextField>
                         </Grid>
                     )}
@@ -249,7 +465,7 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                             }}
                         />
                     </Grid>
-                    {videoForm.type !== 'assignment' && videoForm.type !== 'exam' && (
+                    {videoForm.type !== 'assignment' && videoForm.type !== 'exam' && videoForm.type !== 'google_meet' && (
                         <Grid item xs={12}>
                             <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                                 Lecture Source
@@ -328,6 +544,86 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                         ) : null}
                     </Grid>
 
+                    {/* Google Meet Fields */}
+                    {videoForm.type === 'google_meet' && (
+                        <Grid item xs={12}>
+                            <Box sx={{ p: 2.5, bgcolor: '#E8F0FE', borderRadius: 3, border: '1px solid #1A73E8' }}>
+                                <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+                                    <VideoCallIcon sx={{ color: '#1A73E8', fontSize: 24 }} />
+                                    <Typography fontWeight={700} color="#1A73E8">Google Meet Session</Typography>
+                                </Stack>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12}>
+                                        <TextField
+                                            fullWidth
+                                            label="Meeting Title"
+                                            value={videoForm.meetTitle || ''}
+                                            onChange={(e) => setVideoForm({ ...videoForm, meetTitle: e.target.value })}
+                                            placeholder="e.g. Week 3 Live Session"
+                                            InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Start Date & Time"
+                                            type="datetime-local"
+                                            value={videoForm.meetScheduledAt || ''}
+                                            onChange={(e) => setVideoForm({ ...videoForm, meetScheduledAt: e.target.value })}
+                                            InputLabelProps={{ shrink: true }}
+                                            InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="End Date & Time"
+                                            type="datetime-local"
+                                            value={videoForm.meetEndsAt || ''}
+                                            onChange={(e) => setVideoForm({ ...videoForm, meetEndsAt: e.target.value })}
+                                            InputLabelProps={{ shrink: true }}
+                                            InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="Google Meet Link"
+                                                value={videoForm.meetLink || ''}
+                                                onChange={(e) => setVideoForm({ ...videoForm, meetLink: e.target.value })}
+                                                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                                InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                            />
+                                            <Button
+                                                variant="outlined"
+                                                onClick={handleGenerateMeet}
+                                                disabled={generating}
+                                                sx={{ minWidth: 140, borderRadius: 2 }}
+                                            >
+                                                {generating ? <CircularProgress size={20} /> : 'Auto Generate'}
+                                            </Button>
+                                        </Box>
+                                    </Grid>
+                                    {videoForm.meetLink && (
+                                        <Grid item xs={12}>
+                                            <Button
+                                                fullWidth
+                                                variant="contained"
+                                                href={videoForm.meetLink}
+                                                target="_blank"
+                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, bgcolor: '#1A73E8', '&:hover': { bgcolor: '#1557B0' } }}
+                                                startIcon={<VideoCallIcon />}
+                                            >
+                                                Join Meeting (Preview)
+                                            </Button>
+                                        </Grid>
+                                    )}
+                                </Grid>
+                            </Box>
+                        </Grid>
+                    )}
+
                     <Grid item xs={12}>
                         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                             <Box>
@@ -370,6 +666,13 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                     setVideoForm({ ...videoForm, videoUrl: file.url });
                     setSelectedFile(null);
                 }}
+            />
+
+            <QuestionPickerModal
+                open={questionPickerOpen}
+                onClose={() => setQuestionPickerOpen(false)}
+                onSelect={handleQuestionSelect}
+                selectedIds={videoForm.selectedQuestions}
             />
         </Dialog>
     );

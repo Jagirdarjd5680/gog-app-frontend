@@ -32,6 +32,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SyncIcon from '@mui/icons-material/Sync';
 import PaymentIcon from '@mui/icons-material/Payment';
 import GroupsIcon from '@mui/icons-material/Groups';
+import UserFeeHistory from './UserFeeHistory';
 
 const TabPanel = (props) => {
     const { children, value, index, ...other } = props;
@@ -187,12 +188,25 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                             <Typography variant="body1" fontWeight={500}>{user?.phone || 'Not Provided'}</Typography>
                             <Divider sx={{ my: 1.5 }} />
 
-                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Assigned Batch</Typography>
-                            <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>Assigned Batches</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                                 <GroupsIcon fontSize="small" color="primary" />
-                                <Typography variant="body1" fontWeight={700} color="primary.main">
-                                    {user?.batch || 'No Batch Assigned'}
-                                </Typography>
+                                {(() => {
+                                    const batches = user?.batches || (user?.batch ? [user.batch] : []);
+                                    if (batches.length === 0) {
+                                        return <Typography variant="body1" fontWeight={500} color="text.disabled">No Batches Assigned</Typography>;
+                                    }
+                                    return batches.map((b, i) => (
+                                        <Chip 
+                                            key={i} 
+                                            label={b} 
+                                            size="small" 
+                                            color="primary" 
+                                            variant="outlined" 
+                                            sx={{ fontWeight: 600, borderRadius: 1.5 }} 
+                                        />
+                                    ));
+                                })()}
                             </Stack>
                         </Grid>
                         <Grid item xs={12} md={6}>
@@ -340,102 +354,7 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                 </TabPanel>
 
                 <TabPanel value={value} index={3}>
-                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button
-                            startIcon={<SyncIcon />}
-                            variant="outlined"
-                            size="small"
-                            onClick={fetchUserPayments}
-                            disabled={loading}
-                        >
-                            Refresh Payments
-                        </Button>
-                    </Box>
-                    {payments?.length > 0 ? (
-                        <List spacing={2}>
-                            {payments.map((payment) => (
-                                <Paper key={payment._id} variant="outlined" sx={{ mb: 2, p: 2 }}>
-                                    <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-                                        <Box sx={{ flexGrow: 1 }}>
-                                            <Typography variant="subtitle1" fontWeight={700}>
-                                                {payment.courseName || payment.course?.title || 'Course Payment'}
-                                            </Typography>
-                                            <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Amount</Typography>
-                                                    <Typography variant="body2" fontWeight={600} color="primary.main">
-                                                        ₹{payment.amount?.toLocaleString() || '0'}
-                                                    </Typography>
-                                                </Box>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Payment Date</Typography>
-                                                    <Typography variant="body2">
-                                                        {payment.paymentDate ? format(new Date(payment.paymentDate), 'MMM dd, yyyy') : 'N/A'}
-                                                    </Typography>
-                                                </Box>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Payment ID</Typography>
-                                                    <Typography variant="body2" fontFamily="monospace">
-                                                        {payment.paymentId || payment.transactionId || 'N/A'}
-                                                    </Typography>
-                                                </Box>
-                                            </Stack>
-                                        </Box>
-                                        <Chip
-                                            label={payment.status || 'Completed'}
-                                            color={payment.status === 'completed' || payment.status === 'success' ? 'success' : 'warning'}
-                                            variant="outlined"
-                                            size="small"
-                                            sx={{ fontWeight: 700 }}
-                                        />
-                                    </Stack>
-                                </Paper>
-                            ))}
-                        </List>
-                    ) : user?.payments?.length > 0 ? (
-                        // Fallback: Check if payments are in user object
-                        <List spacing={2}>
-                            {user.payments.map((payment) => (
-                                <Paper key={payment._id} variant="outlined" sx={{ mb: 2, p: 2 }}>
-                                    <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-                                        <Box sx={{ flexGrow: 1 }}>
-                                            <Typography variant="subtitle1" fontWeight={700}>
-                                                {payment.courseName || payment.course?.title || 'Course Payment'}
-                                            </Typography>
-                                            <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Amount</Typography>
-                                                    <Typography variant="body2" fontWeight={600} color="primary.main">
-                                                        ₹{payment.amount?.toLocaleString() || '0'}
-                                                    </Typography>
-                                                </Box>
-                                                <Box>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Payment Date</Typography>
-                                                    <Typography variant="body2">
-                                                        {payment.paymentDate ? format(new Date(payment.paymentDate), 'MMM dd, yyyy') : 'N/A'}
-                                                    </Typography>
-                                                </Box>
-                                            </Stack>
-                                        </Box>
-                                        <Chip
-                                            label={payment.status || 'Completed'}
-                                            color={payment.status === 'completed' || payment.status === 'success' ? 'success' : 'warning'}
-                                            variant="outlined"
-                                            size="small"
-                                            sx={{ fontWeight: 700 }}
-                                        />
-                                    </Stack>
-                                </Paper>
-                            ))}
-                        </List>
-                    ) : (
-                        <Box sx={{ py: 5, textAlign: 'center' }}>
-                            <Typography variant="body1" color="text.secondary">No payment history found.</Typography>
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                                User ID: {userId}
-                            </Typography>
-                        </Box>
-                    )}
+                    <UserFeeHistory userId={userId} user={user} />
                 </TabPanel>
             </DialogContent>
 

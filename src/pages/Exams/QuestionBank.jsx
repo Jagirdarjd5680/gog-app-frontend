@@ -590,6 +590,7 @@ const QuestionBank = () => {
                 pagination={true}
                 paginationPageSize={10}
                 onSelectionChanged={handleSelectionChanged}
+                getRowId={(row) => row._id}
             />
 
             <QuestionForm

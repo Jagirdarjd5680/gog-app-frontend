@@ -353,16 +353,30 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                     {fullCourseData.assignments?.length > 0 && (
                                         <Box>
                                             <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>Assignments ({fullCourseData.assignments.length})</Typography>
-                                            <Stack spacing={1}>
+                                            <Stack spacing={2}>
                                                 {fullCourseData.assignments.map((ass) => (
-                                                    <Paper key={ass._id} variant="outlined" sx={{ p: 1.5, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(103,58,183,0.02)' }}>
-                                                        <Box sx={{ p: 1, bgcolor: 'rgba(103,58,183,0.1)', color: '#673ab7', borderRadius: 1.5, display: 'flex' }}>
-                                                            <DescriptionIcon fontSize="small" />
+                                                    <Paper key={ass._id} variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(103,58,183,0.02)' }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+                                                            <Box sx={{ p: 1, bgcolor: 'rgba(103,58,183,0.1)', color: '#673ab7', borderRadius: 1.5, display: 'flex' }}>
+                                                                <DescriptionIcon fontSize="small" />
+                                                            </Box>
+                                                            <Box>
+                                                                <Typography variant="body2" fontWeight={700}>{ass.title}</Typography>
+                                                                <Typography variant="caption" color="text.secondary">Total Marks: {ass.totalMarks}</Typography>
+                                                            </Box>
                                                         </Box>
-                                                        <Box>
-                                                            <Typography variant="body2" fontWeight={700}>{ass.title}</Typography>
-                                                            <Typography variant="caption" color="text.secondary">Total Marks: {ass.totalMarks}</Typography>
-                                                        </Box>
+                                                        {ass.description && (
+                                                            <Box 
+                                                                sx={{ 
+                                                                    fontSize: '0.85rem', 
+                                                                    color: 'text.secondary',
+                                                                    pl: 5.5,
+                                                                    '& p': { m: 0 },
+                                                                    '& ul, & ol': { m: 0, pl: 2 }
+                                                                }}
+                                                                dangerouslySetInnerHTML={{ __html: ass.description }}
+                                                            />
+                                                        )}
                                                     </Paper>
                                                 ))}
                                             </Stack>

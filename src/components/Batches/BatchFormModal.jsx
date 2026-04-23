@@ -23,11 +23,9 @@ const BatchFormModal = ({ open, batch, onClose, onSuccess }) => {
     const isEdit = !!batch;
     const [loading, setLoading] = useState(false);
     const [courses, setCourses] = useState([]);
-    const [teachers, setTeachers] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
         course: '',
-        teacher: '',
         timing: '',
         startDate: '',
         maxStudents: 50,
@@ -36,27 +34,22 @@ const BatchFormModal = ({ open, batch, onClose, onSuccess }) => {
 
     useEffect(() => {
         fetchInitialData();
-        if (batch) {
             setFormData({
-                name: batch.name || '',
-                course: batch.course?._id || batch.course || '',
-                teacher: batch.teacher?._id || batch.teacher || '',
-                timing: batch.timing || '',
-                startDate: batch.startDate ? batch.startDate.split('T')[0] : '',
-                maxStudents: batch.maxStudents || 50,
-                isActive: batch.isActive ?? true
+                name: batch?.name || '',
+                course: batch?.course?._id || batch?.course || '',
+                timing: batch?.timing || '',
+                startDate: batch?.startDate ? batch.startDate.split('T')[0] : '',
+                maxStudents: batch?.maxStudents || 50,
+                isActive: batch?.isActive ?? true
             });
-        }
     }, [batch]);
 
     const fetchInitialData = async () => {
         try {
-            const [coursesRes, teachersRes] = await Promise.all([
-                api.get('/courses'),
-                api.get('/users?role=teacher')
+            const [coursesRes] = await Promise.all([
+                api.get('/courses')
             ]);
             setCourses(coursesRes.data.data || []);
-            setTeachers(teachersRes.data.data || []);
         } catch (error) {
             toast.error('Failed to load initial data');
         }
@@ -106,7 +99,7 @@ const BatchFormModal = ({ open, batch, onClose, onSuccess }) => {
                                 required
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid item xs={12}>
                             <FormControl fullWidth required>
                                 <InputLabel>Course</InputLabel>
                                 <Select
@@ -118,26 +111,6 @@ const BatchFormModal = ({ open, batch, onClose, onSuccess }) => {
                                     {courses.map(course => (
                                         <MenuItem key={course._id} value={course._id}>
                                             {course.title}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Primary Teacher</InputLabel>
-                                <Select
-                                    name="teacher"
-                                    value={formData.teacher}
-                                    label="Primary Teacher"
-                                    onChange={handleChange}
-                                >
-                                    <MenuItem value="">
-                                        <em>None</em>
-                                    </MenuItem>
-                                    {teachers.map(t => (
-                                        <MenuItem key={t._id} value={t._id}>
-                                            {t.name}
                                         </MenuItem>
                                     ))}
                                 </Select>

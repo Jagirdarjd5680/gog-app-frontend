@@ -132,7 +132,7 @@ const ExamResults = () => {
     const columnDefs = [
         {
             headerName: 'STUDENT',
-            field: 'user.name',
+            field: 'user',
             flex: 1.2,
             minWidth: 150,
             valueGetter: (params) => params.data.user?.name || 'Unknown'

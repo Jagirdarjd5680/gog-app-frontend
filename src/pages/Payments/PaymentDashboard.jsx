@@ -114,7 +114,7 @@ const PaymentDashboard = () => {
     const columnDefs = [
         {
             headerName: 'USER',
-            field: 'user.name',
+            field: 'user',
             flex: 1.5,
             minWidth: 200,
             cellRenderer: (params) => {

@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, Tooltip, Chip } from '@mui/material';
+import { Box, Typography, Button, IconButton, Tooltip, Chip, Stack } from '@mui/material';
 import DataTable from '../../components/Common/DataTable';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FolderIcon from '@mui/icons-material/Folder';
+import PeopleIcon from '@mui/icons-material/People';
 import { format } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import BatchFormModal from '../../components/Batches/BatchFormModal';
+import BatchMaterialsModal from '../../components/Batches/BatchMaterialsModal';
 
 const BatchList = () => {
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedBatch, setSelectedBatch] = useState(null);
+    const [materialsOpen, setMaterialsOpen] = useState(false);
+    const [materialsBatch, setMaterialsBatch] = useState(null);
 
     useEffect(() => {
         fetchBatches();
@@ -55,27 +60,45 @@ const BatchList = () => {
         }
     };
 
+    const handleOpenMaterials = (batch) => {
+        setMaterialsBatch(batch);
+        setMaterialsOpen(true);
+    };
+
     const columnDefs = [
         { field: 'name', headerName: 'Batch Name', flex: 1.2 },
-        { 
-            field: 'course', 
-            headerName: 'Course', 
+        {
+            field: 'course',
+            headerName: 'Course',
             flex: 1,
             valueGetter: (params) => params.data.course?.title || 'N/A'
         },
-        { 
-            field: 'teacher', 
-            headerName: 'Primary Teacher', 
+        {
+            field: 'teacher',
+            headerName: 'Primary Teacher',
             flex: 1,
             valueGetter: (params) => params.data.teacher?.name || 'Unassigned'
         },
-        { 
-            field: 'timing', 
+        {
+            field: 'students',
+            headerName: 'Students',
+            width: 110,
+            cellRenderer: (params) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <PeopleIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" fontWeight={600}>
+                        {params.data.studentCount || 0}
+                    </Typography>
+                </Box>
+            )
+        },
+        {
+            field: 'timing',
             headerName: 'Timing',
             flex: 1
         },
-        { 
-            field: 'startDate', 
+        {
+            field: 'startDate',
             headerName: 'Start Date',
             valueFormatter: (params) => params.value ? format(new Date(params.value), 'PP') : 'N/A',
             flex: 1
@@ -84,10 +107,10 @@ const BatchList = () => {
             field: 'isActive',
             headerName: 'Status',
             cellRenderer: (params) => (
-                <Chip 
-                    label={params.value ? 'Active' : 'Inactive'} 
-                    color={params.value ? 'success' : 'default'} 
-                    size="small" 
+                <Chip
+                    label={params.value ? 'Active' : 'Inactive'}
+                    color={params.value ? 'success' : 'default'}
+                    size="small"
                 />
             ),
             width: 100
@@ -97,20 +120,35 @@ const BatchList = () => {
             headerName: 'Actions',
             sortable: false,
             filter: false,
-            width: 120,
+            width: 160,
+            pinned: 'right',
             cellRenderer: (params) => (
-                <Box>
-                    <Tooltip title="Edit">
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ height: '100%' }}>
+                    <Tooltip title="Batch Materials (File Manager)">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleOpenMaterials(params.data)}
+                            sx={{
+                                color: '#FF9800',
+                                bgcolor: 'rgba(255,152,0,0.1)',
+                                '&:hover': { bgcolor: 'rgba(255,152,0,0.2)' },
+                                borderRadius: 1.5
+                            }}
+                        >
+                            <FolderIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Edit Batch">
                         <IconButton size="small" color="primary" onClick={() => handleEdit(params.data)}>
                             <EditIcon fontSize="small" />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
+                    <Tooltip title="Delete Batch">
                         <IconButton size="small" color="error" onClick={() => handleDelete(params.data._id)}>
                             <DeleteIcon fontSize="small" />
                         </IconButton>
                     </Tooltip>
-                </Box>
+                </Stack>
             )
         }
     ];
@@ -123,7 +161,7 @@ const BatchList = () => {
                         Batch Management
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Manage your student cohorts and timings
+                        Manage your student cohorts, timings and batch materials
                     </Typography>
                 </Box>
                 <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
@@ -138,11 +176,19 @@ const BatchList = () => {
             />
 
             {modalOpen && (
-                <BatchFormModal 
-                    open={modalOpen} 
+                <BatchFormModal
+                    open={modalOpen}
                     batch={selectedBatch}
-                    onClose={() => setModalOpen(false)} 
+                    onClose={() => setModalOpen(false)}
                     onSuccess={fetchBatches}
+                />
+            )}
+
+            {materialsOpen && (
+                <BatchMaterialsModal
+                    open={materialsOpen}
+                    onClose={() => setMaterialsOpen(false)}
+                    batch={materialsBatch}
                 />
             )}
         </Box>

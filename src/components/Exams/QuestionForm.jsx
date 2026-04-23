@@ -24,6 +24,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 const QuestionForm = ({ open, onClose, onSuccess, initialData }) => {
     const [formData, setFormData] = useState({
@@ -161,16 +163,23 @@ const QuestionForm = ({ open, onClose, onSuccess, initialData }) => {
             </DialogTitle>
             <DialogContent dividers>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                    <TextField
-                        label="Question Content"
-                        name="content"
-                        value={formData.content}
-                        onChange={handleChange}
-                        fullWidth
-                        multiline
-                        rows={3}
-                        required
-                    />
+                    <Box>
+                        <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                            Question Content
+                        </Typography>
+                        <Box sx={{ 
+                            '.ql-editor': { minHeight: '100px' },
+                            '.ql-toolbar': { borderRadius: '8px 8px 0 0' },
+                            '.ql-container': { borderRadius: '0 0 8px 8px', bgcolor: 'white' }
+                        }}>
+                            <ReactQuill
+                                theme="snow"
+                                value={formData.content}
+                                onChange={(content) => setFormData({ ...formData, content })}
+                                placeholder="Type your question here..."
+                            />
+                        </Box>
+                    </Box>
 
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <FormControl fullWidth>

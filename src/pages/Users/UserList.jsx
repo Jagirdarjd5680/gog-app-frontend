@@ -304,7 +304,15 @@ const UserList = () => {
 
     const onSelectionChanged = useCallback((event) => {
         const selectedNodes = event.api.getSelectedNodes();
-        setSelectedRows(selectedNodes.map(node => node.data));
+        const newSelection = selectedNodes.map(node => node.data);
+        
+        setSelectedRows(prev => {
+            // Only update if selection has actually changed
+            if (prev.length === 0 && newSelection.length === 0) return prev;
+            if (prev.length === newSelection.length && 
+                prev.every((u, i) => u._id === newSelection[i]._id)) return prev;
+            return newSelection;
+        });
     }, []);
 
     const handleBulkDelete = async () => {
@@ -410,13 +418,33 @@ const UserList = () => {
         },
         {
             headerName: 'BATCH',
-            field: 'batch',
-            width: 120,
-            cellRenderer: (params) => (
-                <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 600, color: 'primary.main' }}>
-                    {params.value || '---'}
-                </Typography>
-            )
+            field: 'batches',
+            width: 220,
+            cellRenderer: (params) => {
+                const batches = params.data.batches || (params.data.batch ? [params.data.batch] : []);
+                if (batches.length === 0) return <Typography variant="body2" sx={{ color: 'text.disabled' }}>---</Typography>;
+                return (
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', overflow: 'hidden', alignItems: 'center', height: '100%' }}>
+                        {batches.map((b, i) => (
+                            <Chip 
+                                key={i} 
+                                label={b} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined" 
+                                sx={{ 
+                                    height: 20, 
+                                    fontSize: '0.65rem', 
+                                    fontWeight: 700,
+                                    borderRadius: 1,
+                                    bgcolor: 'primary.50',
+                                    borderColor: 'primary.200'
+                                }} 
+                            />
+                        ))}
+                    </Box>
+                );
+            }
         },
         {
             headerName: 'ACTIONS',
@@ -457,16 +485,17 @@ const UserList = () => {
 
             // Batch Filter
             if (batchFilter !== 'all') {
-                if (user.batch !== batchFilter) return false;
+                const userBatches = user.batches || (user.batch ? [user.batch] : []);
+                if (!userBatches.includes(batchFilter)) return false;
             }
             return true;
         });
     }, [users, statusFilter, sourceFilter, authFilter, roleFilter, batchFilter]);
 
-    const getRowId = useCallback(params => params.data._id, []);
+    const getRowId = useCallback(row => row?._id || Math.random().toString(), []);
 
     const batches = useMemo(() => {
-        const batchNamesFromUsers = [...new Set(users.filter(u => u.batch).map(u => u.batch))];
+        const batchNamesFromUsers = users.flatMap(u => u.batches || (u.batch ? [u.batch] : []));
         const officialBatchNames = allBatches.map(b => b.name);
         return [...new Set([...batchNamesFromUsers, ...officialBatchNames])].sort();
     }, [users, allBatches]);

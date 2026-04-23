@@ -41,6 +41,9 @@ const AppReviewManagement = lazy(() => import('./pages/AppReviews/AppReviewManag
 const NewsTickerManagement = lazy(() => import('./pages/Banners/NewsTickerManagement'));
 const FreeMaterialList = lazy(() => import('./pages/FreeMaterials/FreeMaterialList'));
 const IndividualResult = lazy(() => import('./pages/Exams/IndividualResult'));
+const FeeRecordsPage = lazy(() => import('./pages/Payments/FeeRecordsPage'));
+const BookingManagement = lazy(() => import('./pages/Booking/BookingManagement'));
+const PublicSeatBooking = lazy(() => import('./pages/Booking/PublicSeatBooking'));
 
 
 function App() {
@@ -85,6 +88,7 @@ function App() {
             path="/forgot-password"
             element={isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />}
           />
+          <Route path="/seat-booking" element={<PublicSeatBooking />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* Protected Routes */}
@@ -280,6 +284,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin', 'teacher']}>
                   <FreeMaterialList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="fee-records"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <FeeRecordsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="booking"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <BookingManagement />
                 </ProtectedRoute>
               }
             />
