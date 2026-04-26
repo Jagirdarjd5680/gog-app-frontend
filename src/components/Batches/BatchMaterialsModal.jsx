@@ -23,11 +23,13 @@ import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FolderZipIcon from '@mui/icons-material/FolderZip';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove';
 import CollectionsIcon from '@mui/icons-material/Collections';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
+import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -94,6 +96,9 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
     const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     const [previewItem, setPreviewItem] = useState(null);
+
+    // Filter Menu
+    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
     const fetchAllItems = useCallback(async () => {
         if (!batch?._id) return;
@@ -526,14 +531,55 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         InputProps={{
-                            startAdornment: <InputAdornment position="start"><NavigateNextIcon sx={{ transform: 'rotate(90deg)', fontSize: 16 }} /></InputAdornment>,
-                            sx: { borderRadius: 1.5, height: 32, fontSize: '0.8rem', width: 200 }
+                            startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 16, color: 'text.secondary' }} /></InputAdornment>,
+                            sx: { borderRadius: 1.5, height: 32, fontSize: '0.8rem', width: 160 }
                         }}
                     />
-                    <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                    
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+                        startIcon={<MoreVertIcon sx={{ transform: 'rotate(90deg)', fontSize: 16 }} />}
+                        sx={{ height: 32, borderRadius: 1.5, textTransform: 'none', fontWeight: 600 }}
+                    >
+                        {typeFilter === 'all' ? 'All Files' : typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}
+                    </Button>
+
+                    <Menu
+                        anchorEl={filterAnchorEl}
+                        open={Boolean(filterAnchorEl)}
+                        onClose={() => setFilterAnchorEl(null)}
+                        PaperProps={{ sx: { borderRadius: 2, minWidth: 180, mt: 1, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' } }}
+                    >
+                        <MenuItem onClick={() => { setTypeFilter('all'); setFilterAnchorEl(null); }} selected={typeFilter === 'all'}>
+                            <ListItemIcon><MoreVertIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="All Files" primaryTypographyProps={{ fontSize: '0.85rem' }} />
+                        </MenuItem>
+                        <Divider />
+                        {[
+                            { id: 'folder', name: 'Folders', icon: <FolderIcon fontSize="small" /> },
+                            { id: 'image', name: 'Images', icon: <CollectionsIcon fontSize="small" /> },
+                            { id: 'video', name: 'Videos', icon: <UploadFileIcon fontSize="small" /> },
+                            { id: 'pdf', name: 'PDF Documents', icon: <PictureAsPdfIcon fontSize="small" /> },
+                            { id: 'code', name: 'Code Files', icon: <InsertDriveFileIcon fontSize="small" /> },
+                            { id: 'zip', name: 'Archives (ZIP)', icon: <FolderZipIcon fontSize="small" /> },
+                        ].map((filter) => (
+                            <MenuItem 
+                                key={filter.id} 
+                                onClick={() => { setTypeFilter(filter.id); setFilterAnchorEl(null); }} 
+                                selected={typeFilter === filter.id}
+                            >
+                                <ListItemIcon>{filter.icon}</ListItemIcon>
+                                <ListItemText primary={filter.name} primaryTypographyProps={{ fontSize: '0.85rem' }} />
+                            </MenuItem>
+                        ))}
+                    </Menu>
+
+                    <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
                     <Tooltip title="List View">
                         <IconButton size="small" onClick={() => setViewMode('list')} color={viewMode === 'list' ? 'primary' : 'default'}>
-                            <MoreVertIcon sx={{ transform: 'rotate(90deg)' }} />
+                            <MoreVertIcon sx={{ transform: 'rotate(90deg)', fontSize: 20 }} />
                         </IconButton>
                     </Tooltip>
                     <Tooltip title="Grid View">
@@ -597,39 +643,6 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                             </Button>
                         </Stack>
                     </Box>
-
-                    <Typography variant="overline" sx={{ px: 3, mt: 3, color: 'text.disabled', fontWeight: 700, fontSize: '0.65rem', display: 'block' }}>
-                        QUICK FILTERS
-                    </Typography>
-                    <List sx={{ px: 1 }}>
-                        {[
-                            { id: 'all', name: 'All Files', icon: <MoreVertIcon fontSize="small" /> },
-                            { id: 'folder', name: 'Folders', icon: <FolderIcon fontSize="small" /> },
-                            { id: 'image', name: 'Images', icon: <CollectionsIcon fontSize="small" /> },
-                            { id: 'video', name: 'Videos', icon: <UploadFileIcon fontSize="small" /> },
-                            { id: 'pdf', name: 'PDF Documents', icon: <PictureAsPdfIcon fontSize="small" /> },
-                            { id: 'code', name: 'Code Files', icon: <InsertDriveFileIcon fontSize="small" /> },
-                            { id: 'zip', name: 'Archives (ZIP)', icon: <FolderZipIcon fontSize="small" /> },
-                        ].map((filter) => (
-                            <ListItemButton
-                                key={filter.id}
-                                selected={typeFilter === filter.id}
-                                onClick={() => setTypeFilter(filter.id)}
-                                sx={{ 
-                                    borderRadius: 1.5, 
-                                    mb: 0.5,
-                                    '&.Mui-selected': { bgcolor: 'primary.50', color: 'primary.main' }
-                                }}
-                            >
-                                <ListItemIcon sx={{ minWidth: 32, color: typeFilter === filter.id ? 'primary.main' : 'inherit' }}>
-                                    {filter.icon}
-                                </ListItemIcon>
-                                <ListItemText primary={filter.name} primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: typeFilter === filter.id ? 700 : 500 }} />
-                            </ListItemButton>
-                        ))}
-                    </List>
-
-                    <Divider sx={{ my: 2 }} />
 
                     <Typography variant="overline" sx={{ px: 3, color: 'text.disabled', fontWeight: 700, fontSize: '0.65rem' }}>
                         FOLDER NAVIGATION
