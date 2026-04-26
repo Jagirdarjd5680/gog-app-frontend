@@ -1,8 +1,8 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import {
     Grid, TextField, MenuItem, FormControl, InputLabel, Select, Box, Typography, Button, Divider,
     Card, CardContent, InputAdornment, CircularProgress, Switch, FormControlLabel, Stack, Chip,
-    ToggleButtonGroup, ToggleButton, Alert, Autocomplete
+    ToggleButtonGroup, ToggleButton, Alert
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import TitleIcon from '@mui/icons-material/Title';
@@ -43,21 +43,9 @@ const SectionHeader = ({ icon, title, subtitle }) => (
     </Box>
 );
 
-const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [] }) => {
+const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [], courseId }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
-    const [allBatches, setAllBatches] = useState([]);
-
-    useEffect(() => {
-        // Fetch batches for offline course assignment
-        const fetchBatches = async () => {
-            try {
-                const res = await api.get('/batches');
-                if (res.data.success) setAllBatches(res.data.data);
-            } catch {}
-        };
-        fetchBatches();
-    }, []);
 
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState('image');
@@ -255,27 +243,10 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                 </Stack>
 
                                 {values.courseType === 'offline' && (
-                                    <Box sx={{ mt: 3 }}>
+                                    <>
                                         <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
-                                            This course will <strong>NOT appear on the homepage</strong> or any public pages. Only students in assigned batches can view it.
+                                            This course will <strong>NOT appear on the homepage</strong> or any public pages. It is private and only accessible via assigned batches.
                                         </Alert>
-                                        <Autocomplete
-                                            multiple
-                                            options={allBatches}
-                                            getOptionLabel={(b) => b.name}
-                                            value={allBatches.filter(b => (values.assignedBatches || []).includes(b._id))}
-                                            onChange={(e, newVal) => setFieldValue('assignedBatches', newVal.map(b => b._id))}
-                                            renderInput={(params) => (
-                                                <TextField {...params} label="Assign Batches (required for offline)" placeholder="Select batches..."
-                                                    InputProps={{ ...params.InputProps, sx: { borderRadius: '10px' } }} />
-                                            )}
-                                            renderTags={(tagValue, getTagProps) =>
-                                                tagValue.map((option, index) => {
-                                                    const { key, ...tagProps } = getTagProps({ index });
-                                                    return <Chip key={key} label={option.name} {...tagProps} color="warning" size="small" />;
-                                                })
-                                            }
-                                        />
                                         <FormControlLabel
                                             sx={{ mt: 2 }}
                                             control={
@@ -294,7 +265,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                 </Box>
                                             }
                                         />
-                                    </Box>
+                                    </>
                                 )}
                             </CardContent>
                         </Card>

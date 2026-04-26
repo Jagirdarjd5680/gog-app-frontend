@@ -275,7 +275,7 @@ const SortableModule = ({
     );
 };
 
-const CurriculumStep = ({ values, setFieldValue }) => {
+const CurriculumStep = ({ values, setFieldValue, courseId }) => {
     const [editingModuleId, setEditingModuleId] = useState(null);
     const [moduleTitle, setModuleTitle] = useState('');
     const [videoModalOpen, setVideoModalOpen] = useState(false);
@@ -499,6 +499,7 @@ const CurriculumStep = ({ values, setFieldValue }) => {
                 onClose={() => setVideoModalOpen(false)}
                 onSave={handleSaveLecture}
                 initialData={selectedVideo}
+                courseId={courseId}
             />
         </Box>
     );

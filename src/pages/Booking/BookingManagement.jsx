@@ -32,6 +32,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
 import { useTheme } from '../../context/ThemeContext';
@@ -83,6 +84,20 @@ const BookingManagement = () => {
     const handleViewDetails = (booking) => {
         setSelectedBooking(booking);
         setViewDialogOpen(true);
+    };
+
+    const handleDeleteBooking = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this booking? This will allow the student to request again.')) return;
+        try {
+            const res = await api.delete(`/booking/${id}`);
+            if (res.data.success) {
+                toast.success('Booking deleted successfully');
+                if (viewDialogOpen) setViewDialogOpen(false);
+                fetchData();
+            }
+        } catch (error) {
+            toast.error('Failed to delete booking');
+        }
     };
 
     const handleStatusUpdate = async (id, status) => {
@@ -262,7 +277,13 @@ const BookingManagement = () => {
                                                         />
                                                     </td>
                                                     <td style={{ padding: '16px', textAlign: 'right' }}>
-                                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                            <IconButton 
+                                                                size="small" 
+                                                                onClick={() => handleDeleteBooking(booking._id)}
+                                                                sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
                                                             <IconButton 
                                                                 size="small" 
                                                                 onClick={() => handleViewDetails(booking)}
@@ -270,7 +291,7 @@ const BookingManagement = () => {
                                                             >
                                                                 <VisibilityIcon fontSize="small" />
                                                             </IconButton>
-                                                            {booking.status === 'pending' && (
+                                                            {booking.status === 'pending' ? (
                                                                 <>
                                                                     <IconButton 
                                                                         size="small" 
@@ -287,8 +308,18 @@ const BookingManagement = () => {
                                                                         <CancelIcon fontSize="small" />
                                                                     </IconButton>
                                                                 </>
+                                                            ) : (
+                                                                booking.status === 'approved' && (
+                                                                    <IconButton 
+                                                                        size="small"
+                                                                        onClick={() => handleStatusUpdate(booking._id, 'rejected')}
+                                                                        sx={{ bgcolor: 'error.light', color: 'error.contrastText' }}
+                                                                        title="Reject Approved Booking"
+                                                                    >
+                                                                        <CancelIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                )
                                                             )}
-                                                        </Stack>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -348,18 +379,21 @@ const BookingManagement = () => {
                         </Stack>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setViewDialogOpen(false)} sx={{ fontWeight: 700 }}>Close</Button>
-                    {selectedBooking?.status === 'pending' && (
-                        <>
-                            <Button 
-                                variant="contained" 
-                                color="error"
-                                onClick={() => handleStatusUpdate(selectedBooking._id, 'rejected')}
-                                sx={{ borderRadius: 2, fontWeight: 700 }}
-                            >
-                                Reject
-                            </Button>
+                <DialogActions sx={{ p: 3, justifyContent: 'space-between' }}>
+                    <Box>
+                        <Button 
+                            variant="outlined" 
+                            color="error"
+                            onClick={() => handleDeleteBooking(selectedBooking._id)}
+                            startIcon={<DeleteIcon />}
+                            sx={{ borderRadius: 2, fontWeight: 700 }}
+                        >
+                            Delete
+                        </Button>
+                    </Box>
+                    <Stack direction="row" spacing={1}>
+                        <Button onClick={() => setViewDialogOpen(false)} sx={{ fontWeight: 700 }}>Close</Button>
+                        {selectedBooking?.status === 'pending' && (
                             <Button 
                                 variant="contained" 
                                 color="success"
@@ -368,8 +402,18 @@ const BookingManagement = () => {
                             >
                                 Approve
                             </Button>
-                        </>
-                    )}
+                        )}
+                        {selectedBooking?.status !== 'rejected' && (
+                            <Button 
+                                variant="contained" 
+                                color="error"
+                                onClick={() => handleStatusUpdate(selectedBooking._id, 'rejected')}
+                                sx={{ borderRadius: 2, fontWeight: 700 }}
+                            >
+                                Reject
+                            </Button>
+                        )}
+                    </Stack>
                 </DialogActions>
             </Dialog>
         </Box>

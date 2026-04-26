@@ -26,12 +26,16 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
         description: assignment?.description || '',
         thumbnail: assignment?.thumbnail || '',
         course: assignment?.course?._id || assignment?.course || '',
-
         deadline: assignment?.deadline ? new Date(assignment.deadline).toISOString().slice(0, 16) : '',
         totalMarks: assignment?.totalMarks || 100,
-        isPublished: assignment?.isPublished || false
+        isPublished: assignment?.isPublished || false,
+        assignmentType: assignment?.assignmentType || 'file_upload',
+        maxMb: assignment?.maxMb || 10,
+        allowedFormats: assignment?.allowedFormats || '.pdf,.zip,.jpg,.png',
+        attachments: assignment?.attachments || []
     });
     const [loading, setLoading] = useState(false);
+    const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
     useEffect(() => {
         const fetchCourses = async () => {
@@ -44,8 +48,6 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
         };
         fetchCourses();
     }, []);
-
-
 
     const handleChange = (e) => {
         const { name, value, checked, type } = e.target;
@@ -72,6 +74,34 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                 setUploadingImage(false);
             }
         }
+    };
+
+    const handleAttachmentUpload = async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            try {
+                setUploadingAttachment(true);
+                const result = await uploadFile(file);
+                if (result.success) {
+                    setFormData(prev => ({
+                        ...prev,
+                        attachments: [...prev.attachments, { title: file.name, url: result.url }]
+                    }));
+                    toast.success('Attachment added');
+                }
+            } catch (error) {
+                toast.error('Failed to upload attachment');
+            } finally {
+                setUploadingAttachment(false);
+            }
+        }
+    };
+
+    const removeAttachment = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            attachments: prev.attachments.filter((_, i) => i !== index)
+        }));
     };
 
     const handleMediaSelect = (file) => {
@@ -251,6 +281,74 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                                     </Box>
                                 </CardContent>
                             </Card>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Assignment Type</InputLabel>
+                                <Select
+                                    name="assignmentType"
+                                    value={formData.assignmentType}
+                                    label="Assignment Type"
+                                    onChange={handleChange}
+                                    sx={{ borderRadius: 1 }}
+                                >
+                                    <MenuItem value="file_upload">File Upload</MenuItem>
+                                    <MenuItem value="text_answer">Text Answer</MenuItem>
+                                    <MenuItem value="quiz">Quiz (Question Bank)</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                name="maxMb"
+                                label="Max File Size (MB)"
+                                value={formData.maxMb}
+                                onChange={handleChange}
+                                disabled={formData.assignmentType !== 'file_upload'}
+                                InputProps={{ sx: { borderRadius: 1 } }}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                name="allowedFormats"
+                                label="Allowed Formats (comma separated)"
+                                placeholder=".pdf,.zip,.jpg"
+                                value={formData.allowedFormats}
+                                onChange={handleChange}
+                                disabled={formData.assignmentType !== 'file_upload'}
+                                InputProps={{ sx: { borderRadius: 1 } }}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Reference Attachments (for students)</Typography>
+                            <Box sx={{ p: 2, border: '1px dashed grey', borderRadius: 2, bgcolor: 'background.paper' }}>
+                                <Stack spacing={1}>
+                                    {formData.attachments.map((file, idx) => (
+                                        <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                            <Typography variant="body2" noWrap sx={{ maxWidth: '80%' }}>{file.title}</Typography>
+                                            <IconButton size="small" color="error" onClick={() => removeAttachment(idx)}>
+                                                <CloseIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    ))}
+                                    <Button
+                                        component="label"
+                                        variant="outlined"
+                                        startIcon={uploadingAttachment ? <CircularProgress size={20} /> : <CloudUploadIcon />}
+                                        disabled={uploadingAttachment}
+                                    >
+                                        {uploadingAttachment ? 'Uploading...' : 'Upload Reference File'}
+                                        <input type="file" hidden onChange={handleAttachmentUpload} />
+                                    </Button>
+                                </Stack>
+                            </Box>
                         </Grid>
 
                         <Grid item xs={12}>

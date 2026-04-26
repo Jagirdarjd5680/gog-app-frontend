@@ -48,6 +48,8 @@ const MediaLibrary = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [deleting, setDeleting] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
     const { user } = useAuth();
 
     // Uploader Filtering
@@ -155,6 +157,7 @@ const MediaLibrary = () => {
 
     const handleBulkDelete = async () => {
         try {
+            setBulkDeleting(true);
             const response = await api.post('/upload/bulk-delete', { fileNames: selectedFiles });
             if (response.data.success) {
                 toast.success(response.data.message);
@@ -165,11 +168,14 @@ const MediaLibrary = () => {
         } catch (error) {
             console.error('Bulk Delete Error:', error);
             toast.error('Failed to delete selected files');
+        } finally {
+            setBulkDeleting(false);
         }
     };
 
     const handleDelete = async () => {
         try {
+            setDeleting(true);
             const response = await api.delete(`/upload/${selectedFile.name}`);
             if (response.data.success) {
                 toast.success('File deleted successfully');
@@ -179,6 +185,8 @@ const MediaLibrary = () => {
         } catch (error) {
             console.error('Delete Error:', error);
             toast.error('Failed to delete file');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -249,11 +257,17 @@ const MediaLibrary = () => {
 
     const filteredFiles = files.filter(file => {
         const matchesSearch = file.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const codeExts = ['js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'cpp', 'c', 'java', 'php', 'json', 'sql', 'dart'];
+        
         if (activeTab === 'all') return matchesSearch;
         if (activeTab === 'image') return matchesSearch && file.type === 'image';
         if (activeTab === 'video') return matchesSearch && file.type === 'video';
         if (activeTab === 'pdf') return matchesSearch && file.format === 'pdf';
-        if (activeTab === 'other') return matchesSearch && !['image', 'video'].includes(file.type) && file.format !== 'pdf';
+        if (activeTab === 'code') return matchesSearch && codeExts.includes(file.format?.toLowerCase());
+        if (activeTab === 'other') {
+            const knownTypes = ['image', 'video'];
+            return matchesSearch && !knownTypes.includes(file.type) && file.format !== 'pdf' && !codeExts.includes(file.format?.toLowerCase());
+        }
         return matchesSearch;
     });
 
@@ -523,8 +537,8 @@ const MediaLibrary = () => {
                             </Box>
                         ) : (
                             <Grid container spacing={4}>
-                                {filteredFiles.map((file) => (
-                                    <Grid item xs={12} sm={6} lg={4} xl={3} key={file.name}>
+                                {filteredFiles.map((file, idx) => (
+                                    <Grid item xs={12} sm={6} lg={4} xl={3} key={`${file.name}-${idx}`}>
                                         <MediaCard
                                             file={file}
                                             isSelected={selectedFiles.includes(file.name)}
@@ -593,6 +607,60 @@ const MediaLibrary = () => {
                 </DialogContent>
                 <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
                     <Button onClick={() => setStatsModalOpen(false)} variant="contained" sx={{ borderRadius: 2, px: 4 }}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Single Delete Confirmation */}
+            <Dialog 
+                open={deleteDialogOpen} 
+                onClose={() => !deleting && setDeleteDialogOpen(false)}
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>Confirm Delete</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete <strong>{selectedFile?.name}</strong>? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>Cancel</Button>
+                    <Button 
+                        onClick={handleDelete} 
+                        variant="contained" 
+                        color="error" 
+                        disabled={deleting}
+                        startIcon={deleting ? <CircularProgress size={18} color="inherit" /> : null}
+                        sx={{ borderRadius: 2 }}
+                    >
+                        {deleting ? 'Deleting...' : 'Delete File'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Bulk Delete Confirmation */}
+            <Dialog 
+                open={bulkDeleteDialogOpen} 
+                onClose={() => !bulkDeleting && setBulkDeleteDialogOpen(false)}
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>Delete Multiple Items</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete <strong>{selectedFiles.length}</strong> items? This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setBulkDeleteDialogOpen(false)} disabled={bulkDeleting}>Cancel</Button>
+                    <Button 
+                        onClick={handleBulkDelete} 
+                        variant="contained" 
+                        color="error" 
+                        disabled={bulkDeleting}
+                        startIcon={bulkDeleting ? <CircularProgress size={18} color="inherit" /> : null}
+                        sx={{ borderRadius: 2 }}
+                    >
+                        {bulkDeleting ? 'Deleting...' : 'Delete Items'}
+                    </Button>
                 </DialogActions>
             </Dialog>
 

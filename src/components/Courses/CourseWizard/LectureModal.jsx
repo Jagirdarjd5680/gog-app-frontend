@@ -33,13 +33,15 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import api from '../../../utils/api';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Chip from '@mui/material/Chip';
 import QuestionPickerModal from '../../Exams/QuestionPickerModal';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
-const LectureModal = ({ open, onClose, onSave, initialData }) => {
+const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
@@ -61,7 +63,8 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
         assignmentType: 'file_upload',
         maxMb: 10,
         allowedFormats: '.pdf,.zip,.jpg,.png',
-        selectedQuestions: []
+        selectedQuestions: [],
+        attachments: []
     });
     const [assignments, setAssignments] = useState([]);
     const [exams, setExams] = useState([]);
@@ -109,7 +112,7 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
 
     const fetchAssignments = async () => {
         try {
-            const { data } = await api.get('/assignments?limit=100');
+            const { data } = await api.get(`/assignments?limit=100${courseId ? `&course=${courseId}` : ''}`);
             setAssignments(data.data || []);
         } catch (error) {
             console.error('Error fetching assignments:', error);
@@ -118,7 +121,7 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
 
     const fetchExams = async () => {
         try {
-            const { data } = await api.get('/exams?limit=100');
+            const { data } = await api.get(`/exams?limit=100${courseId ? `&course=${courseId}` : ''}`);
             setExams(data.data || []);
         } catch (error) {
             console.error('Error fetching exams:', error);
@@ -235,7 +238,8 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                     totalMarks: 100,
                     questions: videoForm.selectedQuestions,
                     maxMb: videoForm.maxMb,
-                    allowedFormats: videoForm.allowedFormats
+                    allowedFormats: videoForm.allowedFormats,
+                    attachments: videoForm.attachments
                 });
                 
                 if (assRes.data.success) {
@@ -390,6 +394,56 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                                     </Grid>
                                 </Grid>
                             )}
+
+                            <Grid item xs={12}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                    Reference Attachments (Question Papers/Guides)
+                                </Typography>
+                                <Box sx={{ p: 2, border: '1px dashed #e2e8f0', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                                    <Stack spacing={1}>
+                                        {videoForm.attachments?.map((file, idx) => (
+                                            <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, bgcolor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                <Typography variant="caption" noWrap sx={{ maxWidth: '80%', fontWeight: 600 }}>{file.title}</Typography>
+                                                <IconButton size="small" color="error" onClick={() => {
+                                                    setVideoForm(prev => ({ ...prev, attachments: prev.attachments.filter((_, i) => i !== idx) }));
+                                                }}>
+                                                    <CloseIcon fontSize="inherit" />
+                                                </IconButton>
+                                            </Box>
+                                        ))}
+                                        <Button
+                                            component="label"
+                                            variant="outlined"
+                                            size="small"
+                                            startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
+                                            disabled={uploading}
+                                            sx={{ borderRadius: '8px', textTransform: 'none' }}
+                                        >
+                                            {uploading ? 'Uploading...' : 'Upload Reference File'}
+                                            <input type="file" hidden onChange={async (e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    try {
+                                                        setUploading(true);
+                                                        const res = await uploadFile(file);
+                                                        if (res.success) {
+                                                            setVideoForm(prev => ({ 
+                                                                ...prev, 
+                                                                attachments: [...(prev.attachments || []), { title: file.name, url: res.url }] 
+                                                            }));
+                                                            toast.success('Attachment added');
+                                                        }
+                                                    } catch (err) {
+                                                        toast.error('Upload failed');
+                                                    } finally {
+                                                        setUploading(false);
+                                                    }
+                                                }
+                                            }} />
+                                        </Button>
+                                    </Stack>
+                                </Box>
+                            </Grid>
                             
                             {videoForm.assignmentType === 'quiz' && (
                                 <Grid item xs={12}>
@@ -457,8 +511,11 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                             fullWidth
                             label="Estimated Duration (m)"
                             type="number"
-                            value={videoForm.duration || ''}
-                            onChange={(e) => setVideoForm({ ...videoForm, duration: e.target.value })}
+                            value={videoForm.duration ? (videoForm.duration / 60).toFixed(1) : ''}
+                            onChange={(e) => {
+                                const mins = parseFloat(e.target.value) || 0;
+                                setVideoForm({ ...videoForm, duration: Math.round(mins * 60) });
+                            }}
                             InputProps={{ 
                                 sx: { borderRadius: '12px' },
                                 startAdornment: <Typography variant="caption" sx={{ mr: 1, color: 'text.disabled' }}>m</Typography>
@@ -476,7 +533,21 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                                     label="Source URL"
                                     placeholder="Paste link or upload..."
                                     value={videoForm.videoUrl || ''}
-                                    onChange={(e) => setVideoForm({ ...videoForm, videoUrl: e.target.value })}
+                                    onChange={async (e) => {
+                                        const url = e.target.value;
+                                        setVideoForm({ ...videoForm, videoUrl: url });
+                                        
+                                        // Auto-fetch duration if it's a direct video link
+                                        if (url && (url.match(/\.(mp4|webm|ogg|mov)$/) || url.includes('storage.googleapis.com'))) {
+                                            const video = document.createElement('video');
+                                            video.preload = 'metadata';
+                                            video.onloadedmetadata = () => {
+                                                setVideoForm(prev => ({ ...prev, duration: Math.round(video.duration) }));
+                                                window.URL.revokeObjectURL(video.src);
+                                            };
+                                            video.src = url;
+                                        }
+                                    }}
                                     InputProps={{ sx: { borderRadius: '12px' } }}
                                 />
                                 <Tooltip title="Upload from Device">
@@ -496,11 +567,21 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                                                         videoForm.type === 'audio' ? 'audio/*' :
                                                             '.zip,.rar,.7z'
                                             }
-                                            onChange={(e) => {
+                                            onChange={async (e) => {
                                                 const file = e.target.files[0];
                                                 if (file) {
                                                     setSelectedFile(file);
                                                     setVideoForm({ ...videoForm, videoUrl: file.name });
+                                                    
+                                                    // Auto-fetch duration for local file
+                                                    if (videoForm.type === 'video' || videoForm.type === 'audio') {
+                                                        const media = document.createElement(videoForm.type);
+                                                        media.preload = 'metadata';
+                                                        media.onloadedmetadata = () => {
+                                                            setVideoForm(prev => ({ ...prev, duration: Math.round(media.duration) }));
+                                                        };
+                                                        media.src = URL.createObjectURL(file);
+                                                    }
                                                 }
                                             }}
                                         />
@@ -663,8 +744,19 @@ const LectureModal = ({ open, onClose, onSave, initialData }) => {
                 onClose={() => setMediaPickerOpen(false)}
                 type={videoForm.type}
                 onSelect={(file) => {
-                    setVideoForm({ ...videoForm, videoUrl: file.url });
+                    const url = file.url;
+                    setVideoForm(prev => ({ ...prev, videoUrl: url }));
                     setSelectedFile(null);
+                    
+                    // Auto-fetch duration from library file
+                    if (url && (videoForm.type === 'video' || videoForm.type === 'audio')) {
+                        const media = document.createElement(videoForm.type);
+                        media.preload = 'metadata';
+                        media.onloadedmetadata = () => {
+                            setVideoForm(prev => ({ ...prev, duration: Math.round(media.duration) }));
+                        };
+                        media.src = url;
+                    }
                 }}
             />
 

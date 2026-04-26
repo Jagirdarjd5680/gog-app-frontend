@@ -369,12 +369,14 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                             handleChange={handleChange}
                                             setFieldValue={setFieldValue}
                                             categories={categories}
+                                            courseId={courseId}
                                         />
                                     )}
                                     {activeStep === 1 && (
                                         <CurriculumStep
                                             values={values}
                                             setFieldValue={setFieldValue}
+                                            courseId={courseId}
                                         />
                                     )}
                                     {activeStep === 2 && (

@@ -207,7 +207,7 @@ const UserList = () => {
 
         const getAuthIcon = () => {
             if (authMethod === 'google') return <GoogleIcon sx={{ fontSize: 16, color: '#DB4437' }} />;
-            if (authMethod === 'phone' || authMethod === 'otp') return <PhoneIcon sx={{ fontSize: 16, color: '#1a73e8' }} />;
+            if (authMethod === 'phone' || authMethod === 'otp' || authMethod === 'mobile') return <PhoneIcon sx={{ fontSize: 16, color: '#1a73e8' }} />;
             return <EmailIcon sx={{ fontSize: 16, color: '#757575' }} />;
         };
 

@@ -499,6 +499,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                                         <MenuItem value="web">Web Portal</MenuItem>
                                         <MenuItem value="android">Android App</MenuItem>
                                         <MenuItem value="ios">iOS App</MenuItem>
+                                        <MenuItem value="mobile">Mobile App</MenuItem>
                                     </TextField>
                                 </Grid>
 
@@ -516,6 +517,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                                         <MenuItem value="email">Email/Password</MenuItem>
                                         <MenuItem value="google">Google Login</MenuItem>
                                         <MenuItem value="phone">Phone/OTP</MenuItem>
+                                        <MenuItem value="mobile">Mobile Auth</MenuItem>
                                     </TextField>
                                 </Grid>
                             </Grid>

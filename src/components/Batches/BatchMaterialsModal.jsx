@@ -66,6 +66,8 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [downloading, setDownloading] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState(0);
 
     // Navigation
     const [currentParent, setCurrentParent] = useState(null);
@@ -88,6 +90,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
     const [allItems, setAllItems] = useState([]); // All files and folders for tree
     const [expandedFolders, setExpandedFolders] = useState({}); // {id: boolean}
     const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
     const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     const [previewItem, setPreviewItem] = useState(null);
@@ -268,6 +271,38 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         setAnchorEl(null);
     };
 
+    const handleDownload = async (item) => {
+        if (!item.url) return;
+        setDownloading(true);
+        setDownloadProgress(0);
+        try {
+            const url = item.url.startsWith('http') ? item.url : `${import.meta.env.VITE_API_URL || ''}${item.url}`;
+            const response = await api.get(url, {
+                responseType: 'blob',
+                onDownloadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setDownloadProgress(percentCompleted);
+                }
+            });
+
+            const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.setAttribute('download', item.name);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(blobUrl);
+            toast.success('Download complete');
+        } catch (error) {
+            console.error('Download failed:', error);
+            toast.error('Failed to download file');
+        } finally {
+            setDownloading(false);
+            setDownloadProgress(0);
+        }
+    };
+
     const handleContextMenu = (e, item) => {
         e.stopPropagation();
         setAnchorEl(e.currentTarget);
@@ -377,9 +412,11 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         );
     };
 
-    const filteredMaterials = materials.filter(m => 
-        m.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredMaterials = materials.filter(m => {
+        const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = typeFilter === 'all' || m.type === typeFilter;
+        return matchesSearch && matchesType;
+    });
 
     const cardBg = isDark ? 'rgba(255,255,255,0.05)' : '#f8f9ff';
     const cardHover = isDark ? 'rgba(255,255,255,0.1)' : '#e8ecff';
@@ -424,13 +461,25 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                 </IconButton>
             </Box>
 
-            {/* Upload Progress */}
-            {uploading && (
-                <LinearProgress
-                    variant="determinate"
-                    value={uploadProgress}
-                    sx={{ height: 4 }}
-                />
+            {/* Progress Bars */}
+            {(uploading || downloading) && (
+                <Box sx={{ width: '100%', position: 'relative' }}>
+                    <LinearProgress
+                        variant="determinate"
+                        value={uploading ? uploadProgress : downloadProgress}
+                        color={uploading ? "primary" : "secondary"}
+                        sx={{ height: 4 }}
+                    />
+                    <Box sx={{ 
+                        position: 'absolute', top: 6, right: 12, zIndex: 10,
+                        bgcolor: 'background.paper', px: 1, borderRadius: 1, 
+                        boxShadow: 1, display: 'flex', alignItems: 'center', gap: 1
+                    }}>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                            {uploading ? `Uploading: ${uploadProgress}%` : `Downloading: ${downloadProgress}%`}
+                        </Typography>
+                    </Box>
+                </Box>
             )}
 
             {/* Toolbar */}
@@ -549,6 +598,39 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                         </Stack>
                     </Box>
 
+                    <Typography variant="overline" sx={{ px: 3, mt: 3, color: 'text.disabled', fontWeight: 700, fontSize: '0.65rem', display: 'block' }}>
+                        QUICK FILTERS
+                    </Typography>
+                    <List sx={{ px: 1 }}>
+                        {[
+                            { id: 'all', name: 'All Files', icon: <MoreVertIcon fontSize="small" /> },
+                            { id: 'folder', name: 'Folders', icon: <FolderIcon fontSize="small" /> },
+                            { id: 'image', name: 'Images', icon: <CollectionsIcon fontSize="small" /> },
+                            { id: 'video', name: 'Videos', icon: <UploadFileIcon fontSize="small" /> },
+                            { id: 'pdf', name: 'PDF Documents', icon: <PictureAsPdfIcon fontSize="small" /> },
+                            { id: 'code', name: 'Code Files', icon: <InsertDriveFileIcon fontSize="small" /> },
+                            { id: 'zip', name: 'Archives (ZIP)', icon: <FolderZipIcon fontSize="small" /> },
+                        ].map((filter) => (
+                            <ListItemButton
+                                key={filter.id}
+                                selected={typeFilter === filter.id}
+                                onClick={() => setTypeFilter(filter.id)}
+                                sx={{ 
+                                    borderRadius: 1.5, 
+                                    mb: 0.5,
+                                    '&.Mui-selected': { bgcolor: 'primary.50', color: 'primary.main' }
+                                }}
+                            >
+                                <ListItemIcon sx={{ minWidth: 32, color: typeFilter === filter.id ? 'primary.main' : 'inherit' }}>
+                                    {filter.icon}
+                                </ListItemIcon>
+                                <ListItemText primary={filter.name} primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: typeFilter === filter.id ? 700 : 500 }} />
+                            </ListItemButton>
+                        ))}
+                    </List>
+
+                    <Divider sx={{ my: 2 }} />
+
                     <Typography variant="overline" sx={{ px: 3, color: 'text.disabled', fontWeight: 700, fontSize: '0.65rem' }}>
                         FOLDER NAVIGATION
                     </Typography>
@@ -565,35 +647,45 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                     Back
                                 </Button>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{previewItem.name}</Typography>
-                                <Button size="small" variant="outlined" onClick={() => window.open(previewItem.url.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem.url}`, '_blank')}>
-                                    Open Externally
+                                <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    onClick={() => handleDownload(previewItem)}
+                                    disabled={downloading}
+                                >
+                                    {downloading ? 'Downloading...' : 'Download File'}
                                 </Button>
                             </Box>
                             <Box sx={{ flex: 1, overflow: 'auto', p: 2, bgcolor: isDark ? '#0a0a0a' : '#f0f0f0' }}>
                                 {previewItem.type === 'image' ? (
                                     <img 
-                                        src={previewItem.url.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem.url}`} 
+                                        src={previewItem?.url?.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem?.url || ''}`} 
                                         alt={previewItem.name}
                                         style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', margin: 'auto', display: 'block' }}
                                     />
                                 ) : previewItem.type === 'pdf' ? (
                                     <iframe 
-                                        src={previewItem.url.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem.url}#toolbar=0`} 
+                                        src={previewItem?.url?.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem?.url || ''}#toolbar=0`} 
                                         width="100%" 
                                         height="100%" 
                                         style={{ border: 'none' }}
                                     />
                                 ) : previewItem.type === 'video' ? (
                                     <video controls style={{ width: '100%', height: '100%' }}>
-                                        <source src={previewItem.url.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem.url}`} />
+                                        <source src={previewItem?.url?.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem?.url || ''}`} />
                                     </video>
                                 ) : (
                                     <Box sx={{ p: 4, textAlign: 'center' }}>
                                         <FileIcon type={previewItem.type} size={100} />
                                         <Typography variant="h6" sx={{ mt: 2 }}>{previewItem.name}</Typography>
                                         <Typography variant="body2" color="text.secondary">Preview not available for this file type.</Typography>
-                                        <Button variant="contained" sx={{ mt: 3 }} onClick={() => window.open(previewItem.url.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem.url}`, '_blank')}>
-                                            Download / View Original
+                                        <Button 
+                                            variant="contained" 
+                                            sx={{ mt: 3 }} 
+                                            onClick={() => handleDownload(previewItem)}
+                                            disabled={downloading}
+                                        >
+                                            {downloading ? `Downloading ${downloadProgress}%` : 'Download File'}
                                         </Button>
                                     </Box>
                                 )}
@@ -720,10 +812,10 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
             >
                 {contextItem?.url && contextItem?.type !== 'folder' && (
                     <MenuItem onClick={() => {
-                        window.open(contextItem.url.startsWith('http') ? contextItem.url : `${import.meta.env.VITE_API_URL || ''}${contextItem.url}`, '_blank');
+                        handleDownload(contextItem);
                         setAnchorEl(null);
-                    }}>
-                        <DriveFileMoveIcon sx={{ mr: 1, fontSize: 18 }} /> Open / Download
+                    }} disabled={downloading}>
+                        <DriveFileMoveIcon sx={{ mr: 1, fontSize: 18 }} /> {downloading ? 'Downloading...' : 'Download File'}
                     </MenuItem>
                 )}
                 <MenuItem onClick={() => handleDeleteItem(contextItem)} sx={{ color: 'error.main' }}>
