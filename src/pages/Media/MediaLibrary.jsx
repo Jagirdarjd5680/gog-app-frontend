@@ -20,13 +20,16 @@ import {
     TablePagination,
     Alert,
     Collapse,
-    Stack
+    Stack,
+    Tooltip,
+    IconButton,
+    Chip
 } from '@mui/material';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import SearchIcon from '@mui/icons-material/Search';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import api from '../../utils/api';
+import api, { fixUrl } from '../../utils/api';
 import { uploadFile } from '../../utils/upload';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +40,8 @@ import ChatMediaLibrary from './ChatMediaLibrary';
 import SdStorageIcon from '@mui/icons-material/SdStorage';
 import LinkIcon from '@mui/icons-material/Link';
 import StorageIcon from '@mui/icons-material/Storage';
+import GridViewIcon from '@mui/icons-material/GridView';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 
 const MediaLibrary = () => {
     const theme = useTheme();
@@ -62,6 +67,7 @@ const MediaLibrary = () => {
     const [rowsPerPage, setRowsPerPage] = useState(12);
     const [totalCount, setTotalCount] = useState(0);
     const [selectedFiles, setSelectedFiles] = useState([]);
+    const [viewMode, setViewMode] = useState('grid');
     const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
     
     // Stats & URL Import
@@ -164,6 +170,7 @@ const MediaLibrary = () => {
                 setSelectedFiles([]);
                 setBulkDeleteDialogOpen(false);
                 fetchFiles();
+                fetchStats();
             }
         } catch (error) {
             console.error('Bulk Delete Error:', error);
@@ -179,7 +186,8 @@ const MediaLibrary = () => {
             const response = await api.delete(`/upload/${selectedFile.name}`);
             if (response.data.success) {
                 toast.success('File deleted successfully');
-                setFiles(files.filter(f => f.name !== selectedFile.name));
+                fetchFiles();
+                fetchStats();
                 setDeleteDialogOpen(false);
             }
         } catch (error) {
@@ -272,7 +280,20 @@ const MediaLibrary = () => {
     });
 
     return (
-        <Box sx={{ display: 'flex', height: 'calc(100vh - 80px)', overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', height: 'calc(100vh - 80px)', overflow: 'hidden', position: 'relative' }}>
+            {/* Global Deletion Loader */}
+            {(deleting || bulkDeleting) && (
+                <Box sx={{ 
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+                    bgcolor: 'rgba(255,255,255,0.7)', zIndex: 9999,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2
+                }}>
+                    <CircularProgress size={60} thickness={4} />
+                    <Typography variant="h6" fontWeight={700} color="primary">Deleting Items...</Typography>
+                    <Typography variant="body2" color="text.secondary">Please wait while we clean up your storage</Typography>
+                </Box>
+            )}
+
             <MediaSidebar
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -420,6 +441,25 @@ const MediaLibrary = () => {
                                     />
                                 </Paper>
 
+                                <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}`, p: 0.5 }}>
+                                    <IconButton 
+                                        size="small" 
+                                        onClick={() => setViewMode('grid')}
+                                        color={viewMode === 'grid' ? 'primary' : 'default'}
+                                        sx={{ borderRadius: 1 }}
+                                    >
+                                        <GridViewIcon fontSize="small" />
+                                    </IconButton>
+                                    <IconButton 
+                                        size="small" 
+                                        onClick={() => setViewMode('list')}
+                                        color={viewMode === 'list' ? 'primary' : 'default'}
+                                        sx={{ borderRadius: 1 }}
+                                    >
+                                        <FormatListBulletedIcon fontSize="small" />
+                                    </IconButton>
+                                </Box>
+
                                 <Box sx={{ display: 'flex', gap: 1 }}>
                                     <Button
                                         variant="outlined"
@@ -535,7 +575,7 @@ const MediaLibrary = () => {
                                     Reset all filters
                                 </Button>
                             </Box>
-                        ) : (
+                        ) : viewMode === 'grid' ? (
                             <Grid container spacing={4}>
                                 {filteredFiles.map((file, idx) => (
                                     <Grid item xs={12} sm={6} lg={4} xl={3} key={`${file.name}-${idx}`}>
@@ -552,6 +592,85 @@ const MediaLibrary = () => {
                                     </Grid>
                                 ))}
                             </Grid>
+                        ) : (
+                            <Paper sx={{ borderRadius: 3, overflow: 'hidden', border: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper' }}>
+                                <Box sx={{ minWidth: 600 }}>
+                                    {/* Table Header */}
+                                    <Box sx={{ display: 'flex', px: 3, py: 2, borderBottom: `2px solid ${theme.palette.action.hover}`, bgcolor: 'action.hover' }}>
+                                        <Box sx={{ width: 50 }} /> {/* For Checkbox */}
+                                        <Typography sx={{ flex: 2, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>NAME</Typography>
+                                        <Typography sx={{ flex: 1, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>TYPE</Typography>
+                                        <Typography sx={{ flex: 1, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>SIZE</Typography>
+                                        <Typography sx={{ flex: 1.5, fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>DATE</Typography>
+                                        <Typography sx={{ width: 100, textAlign: 'right', fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>ACTIONS</Typography>
+                                    </Box>
+
+                                    {/* Table Body */}
+                                    {filteredFiles.map((file, idx) => (
+                                        <Box 
+                                            key={`${file.name}-${idx}`}
+                                            sx={{ 
+                                                display: 'flex', px: 3, py: 1.5, alignItems: 'center',
+                                                borderBottom: `1px solid ${theme.palette.divider}`,
+                                                '&:hover': { bgcolor: 'action.hover' }
+                                            }}
+                                        >
+                                            <Box sx={{ width: 50 }}>
+                                                <Checkbox
+                                                    size="small"
+                                                    checked={selectedFiles.includes(file.name)}
+                                                    onChange={() => toggleFileSelection(file.name)}
+                                                />
+                                            </Box>
+                                            <Box sx={{ flex: 2, display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden' }}>
+                                                <Box sx={{ 
+                                                    width: 40, height: 40, borderRadius: 1.5, overflow: 'hidden', flexShrink: 0,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.selected'
+                                                }}>
+                                                    {file.type === 'image' ? (
+                                                        <img src={fixUrl(file.url)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : file.type === 'video' ? (
+                                                        <Box sx={{ color: 'primary.main' }}>🎥</Box>
+                                                    ) : (
+                                                        <InsertDriveFileIcon sx={{ color: 'text.disabled' }} />
+                                                    )}
+                                                </Box>
+                                                <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: '100%' }}>
+                                                    {file.name}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ flex: 1 }}>
+                                                <Chip label={file.type} size="small" variant="outlined" sx={{ borderRadius: 1, height: 20, fontSize: '0.65rem', textTransform: 'uppercase' }} />
+                                            </Box>
+                                            <Typography sx={{ flex: 1 }} variant="body2" color="text.secondary">
+                                                {formatSize(file.size)}
+                                            </Typography>
+                                            <Typography sx={{ flex: 1.5 }} variant="body2" color="text.secondary">
+                                                {new Date(file.createdAt).toLocaleDateString()}
+                                            </Typography>
+                                            <Box sx={{ width: 100, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                                <Tooltip title="Copy Link">
+                                                    <IconButton size="small" onClick={() => copyToClipboard(file.url)}>
+                                                        <LinkIcon fontSize="inherit" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Delete">
+                                                    <IconButton 
+                                                        size="small" 
+                                                        color="error" 
+                                                        onClick={() => {
+                                                            setSelectedFile(file);
+                                                            setDeleteDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <DeleteSweepIcon fontSize="inherit" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Paper>
                         )}
 
                         {!loading && totalCount > 0 && (

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Dialog, DialogTitle, DialogContent, Box, Typography, IconButton,
     Button, TextField, MenuItem, Breadcrumbs, Link, Tooltip, Chip,
     Stack, Grid, CircularProgress, Menu, InputAdornment, Divider,
     Alert, LinearProgress, Drawer, List, ListItemButton, ListItemIcon,
-    ListItemText, Collapse
+    ListItemText, Collapse, Checkbox
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
@@ -31,7 +32,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
 import { useTheme } from '../../context/ThemeContext';
-import api from '../../utils/api';
+import api, { fixUrl } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import MediaPickerModal from '../Media/MediaPickerModal';
@@ -49,9 +50,52 @@ const FILE_TYPE_CONFIG = {
     other: { icon: InsertDriveFileIcon, color: '#607D8B', label: 'File' },
 };
 
-const FileIcon = ({ type, size = 40 }) => {
-    const cfg = FILE_TYPE_CONFIG[type] || FILE_TYPE_CONFIG.other;
+const FileIcon = ({ type, url, size = 40 }) => {
+    const cfg = FILE_TYPE_CONFIG[type?.toLowerCase()] || FILE_TYPE_CONFIG.other;
     const Icon = cfg.icon;
+    
+    const isImageFile = type?.toLowerCase() === 'image' || 
+                        (url && url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i));
+    
+    if (isImageFile && url) {
+        return (
+            <Box
+                sx={{
+                    width: size,
+                    height: size,
+                    borderRadius: 1,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'rgba(0,0,0,0.05)',
+                    border: '1px solid rgba(0,0,0,0.1)',
+                    position: 'relative'
+                }}
+            >
+                <img
+                    src={fixUrl(url)}
+                    alt="preview"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    loading="lazy"
+                    onError={(e) => { 
+                        e.target.style.display = 'none'; 
+                        const iconEl = e.target.parentElement.querySelector('.fallback-icon');
+                        if (iconEl) iconEl.style.display = 'block';
+                    }}
+                />
+                <Icon 
+                    className="fallback-icon"
+                    sx={{ 
+                        fontSize: size * 0.6, 
+                        color: cfg.color, 
+                        display: 'none' 
+                    }} 
+                />
+            </Box>
+        );
+    }
+    
     return <Icon sx={{ fontSize: size, color: cfg.color }} />;
 };
 
@@ -64,12 +108,14 @@ const formatSize = (bytes) => {
 
 const BatchMaterialsModal = ({ open, onClose, batch }) => {
     const { isDark } = useTheme();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [downloading, setDownloading] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState(0);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     // Navigation
     const [currentParent, setCurrentParent] = useState(null);
@@ -131,12 +177,46 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
 
     useEffect(() => {
         if (open && batch?._id) {
-            setCurrentParent(null);
-            setBreadcrumbs([]);
-            fetchAllItems();
-            fetchMaterials(null);
+            const folderId = searchParams.get('folderId');
+            const parentId = folderId || null;
+            
+            setCurrentParent(parentId);
+            setSelectedIds([]); // Clear selection when opening or changing folder
+            fetchAllItems().then(() => {
+                if (parentId) {
+                    // Update breadcrumbs from items once loaded
+                    const items = allItems.length > 0 ? allItems : [];
+                }
+            });
+            fetchMaterials(parentId);
         }
-    }, [open, batch?._id, fetchMaterials, fetchAllItems]);
+    }, [open, batch?._id]); // Only run on open or batch change
+
+    // Breadcrumb sync when items load or parent changes
+    useEffect(() => {
+        if (open && allItems.length > 0) {
+            if (currentParent) {
+                const path = getPathToItem(currentParent, allItems);
+                setBreadcrumbs(path);
+                // Also expand parent folders
+                const expansions = {};
+                path.forEach(p => expansions[p.id] = true);
+                setExpandedFolders(prev => ({ ...prev, ...expansions }));
+            } else {
+                setBreadcrumbs([]);
+            }
+        }
+    }, [currentParent, allItems, open]);
+
+    const updateUrl = (folderId) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (folderId) {
+            newParams.set('folderId', folderId);
+        } else {
+            newParams.delete('folderId');
+        }
+        setSearchParams(newParams);
+    };
 
     const getPathToItem = useCallback((itemId, items) => {
         const path = [];
@@ -151,22 +231,20 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
 
     const navigateToFolder = useCallback((item) => {
         setCurrentParent(item._id);
-        // Build path from allItems to ensure no duplicates and correct hierarchy
-        const newPath = getPathToItem(item._id, allItems);
-        setBreadcrumbs(newPath);
+        updateUrl(item._id);
         fetchMaterials(item._id);
-    }, [allItems, getPathToItem, fetchMaterials]);
+    }, [searchParams, fetchMaterials]);
 
     const navigateToBreadcrumb = useCallback(async (index) => {
         let parentId = null;
         if (index === -1) {
             setCurrentParent(null);
-            setBreadcrumbs([]);
+            updateUrl(null);
             parentId = null;
         } else {
             const crumb = breadcrumbs[index];
             setCurrentParent(crumb.id);
-            setBreadcrumbs(prev => prev.slice(0, index + 1));
+            updateUrl(crumb.id);
             parentId = crumb.id;
         }
         fetchMaterials(parentId);
@@ -175,7 +253,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         if (parentId) {
             setExpandedFolders(prev => ({ ...prev, [parentId]: true }));
         }
-    }, [breadcrumbs, fetchMaterials]);
+    }, [breadcrumbs, fetchMaterials, searchParams]);
 
     const handleCreateFolder = async () => {
         if (!newFolderName.trim()) return;
@@ -190,6 +268,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
             setNewFolderName('');
             setFolderDialogOpen(false);
             fetchMaterials(currentParent);
+            fetchAllItems();
         } catch (error) {
             toast.error('Failed to create folder');
         }
@@ -210,6 +289,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
             setNewLinkUrl('');
             setLinkDialogOpen(false);
             fetchMaterials(currentParent);
+            fetchAllItems();
         } catch (error) {
             toast.error('Failed to add link');
         }
@@ -224,6 +304,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
             });
             toast.success('Added from gallery successfully');
             fetchMaterials(currentParent);
+            fetchAllItems();
         } catch (error) {
             toast.error('Failed to add from gallery');
         }
@@ -244,13 +325,27 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
             if (currentParent) formData.append('parent', currentParent);
 
             try {
-                await api.post('/batch-materials/upload', formData, {
+                console.log(`📤 Starting upload for: ${file.name} (${file.size} bytes)`);
+                const response = await api.post('/batch-materials/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
-                    onUploadProgress: (p) => setUploadProgress(Math.round((p.loaded * 100) / p.total))
+                    timeout: 60000, // 60 seconds timeout
+                    onUploadProgress: (p) => {
+                        const prog = Math.round((p.loaded * 100) / p.total);
+                        setUploadProgress(prog);
+                        console.log(`⏳ Uploading ${file.name}: ${prog}%`);
+                    }
                 });
+                console.log(`✅ Upload success for: ${file.name}`, response.data);
                 successCount++;
-            } catch {
-                toast.error(`Failed to upload: ${file.name}`);
+            } catch (error) {
+                console.error(`❌ Upload failed for: ${file.name}`);
+                console.error('Error Details:', {
+                    message: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status
+                });
+                const errorMsg = error.response?.data?.message || 'Upload failed';
+                toast.error(`${file.name}: ${errorMsg}`);
             }
             setUploadProgress(Math.round(((i + 1) / files.length) * 100));
         }
@@ -261,6 +356,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         setUploading(false);
         setUploadProgress(0);
         fetchMaterials(currentParent);
+        fetchAllItems();
         e.target.value = '';
     };
 
@@ -269,7 +365,24 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         try {
             await api.delete(`/batch-materials/${item._id}`);
             toast.success('Deleted successfully');
-            fetchMaterials(currentParent);
+            
+            // If we deleted the folder we are currently in, go back to root
+            if (currentParent === item._id) {
+                setCurrentParent(null);
+                updateUrl(null);
+                fetchMaterials(null);
+            } else {
+                fetchMaterials(currentParent);
+            }
+            fetchAllItems();
+            
+            // Clear selection if this item was selected
+            setSelectedIds(prev => prev.filter(id => id !== item._id));
+            
+            // Clear preview if this item was being previewed
+            if (previewItem?._id === item._id) {
+                setPreviewItem(null);
+            }
         } catch {
             toast.error('Failed to delete');
         }
@@ -281,7 +394,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         setDownloading(true);
         setDownloadProgress(0);
         try {
-            const url = item.url.startsWith('http') ? item.url : `${import.meta.env.VITE_API_URL || ''}${item.url}`;
+            const url = fixUrl(item.url);
             const response = await api.get(url, {
                 responseType: 'blob',
                 onDownloadProgress: (progressEvent) => {
@@ -308,6 +421,16 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         }
     };
 
+    useEffect(() => {
+        if (previewItem) {
+            console.log('🖼️ Preview Item Updated:', {
+                name: previewItem.name,
+                url: previewItem.url,
+                resolvedUrl: fixUrl(previewItem.url)
+            });
+        }
+    }, [previewItem]);
+
     const handleContextMenu = (e, item) => {
         e.stopPropagation();
         setAnchorEl(e.currentTarget);
@@ -319,7 +442,62 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         setExpandedFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }));
     };
 
+    const handleToggleSelect = (e, id) => {
+        e.stopPropagation();
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(filteredMaterials.map(m => m._id));
+        } else {
+            setSelectedIds([]);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!selectedIds.length) return;
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} items?`)) return;
+
+        try {
+            setLoading(true);
+            await api.post('/batch-materials/bulk-delete', { ids: selectedIds });
+            toast.success('Items deleted successfully');
+            
+            // Check if our current folder was among the deleted items
+            if (selectedIds.includes(currentParent)) {
+                setCurrentParent(null);
+                updateUrl(null);
+                fetchMaterials(null);
+            } else {
+                fetchMaterials(currentParent);
+            }
+            
+            fetchAllItems();
+            setSelectedIds([]);
+            
+            // Clear preview if previewed item was deleted
+            if (previewItem && selectedIds.includes(previewItem._id)) {
+                setPreviewItem(null);
+            }
+        } catch (error) {
+            toast.error('Failed to delete items');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleItemClick = (item) => {
+        console.log('🔍 Item Clicked:', {
+            id: item._id,
+            name: item.name,
+            type: item.type,
+            url: item.url,
+            fixedUrl: item.url ? fixUrl(item.url) : 'N/A'
+        });
+
         if (item.type === 'folder') {
             navigateToFolder(item);
             // Toggle expand if clicking folder again
@@ -366,8 +544,8 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                 selected={isActive}
                                 onClick={() => handleItemClick(item)}
                                 sx={{
-                                    pl: level * 2 + 1.5,
-                                    py: 0.5,
+                                    pl: level * 1.5 + 0.5,
+                                    py: 0.3,
                                     borderRadius: 1,
                                     mx: 0.5,
                                     mb: 0.2,
@@ -379,11 +557,23 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                     }
                                 }}
                             >
-                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                <Checkbox 
+                                    size="small" 
+                                    checked={selectedIds.includes(item._id)}
+                                    onChange={(e) => handleToggleSelect(e, item._id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    sx={{ 
+                                        p: 0.5, 
+                                        mr: 0.5,
+                                        color: isActive ? 'rgba(255,255,255,0.7)' : 'inherit',
+                                        '&.Mui-checked': { color: isActive ? 'white' : 'primary.main' }
+                                    }}
+                                />
+                                <ListItemIcon sx={{ minWidth: 24 }}>
                                     {isFolder ? (
                                         <FolderIcon sx={{ fontSize: 18, color: isActive ? 'inherit' : '#FFB300' }} />
                                     ) : (
-                                        <FileIcon type={item.type} size={18} color={isActive ? 'inherit' : undefined} />
+                                        <FileIcon type={item.type} url={item.url} size={18} color={isActive ? 'inherit' : undefined} />
                                     )}
                                 </ListItemIcon>
                                 <ListItemText 
@@ -652,7 +842,44 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                 </Box>
 
                 {/* File Grid / List View / Inner Preview */}
-                <DialogContent sx={{ flex: 1, overflow: 'auto', p: 0, position: 'relative' }}>
+                <DialogContent sx={{ flex: 1, overflow: 'auto', p: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                    {/* Bulk Action Bar */}
+                    {!previewItem && (
+                        <Box sx={{ 
+                            px: 3, py: 1, 
+                            borderBottom: `1px solid ${borderColor}`, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: isDark ? 'rgba(255,255,255,0.02)' : '#fafbfe'
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Checkbox 
+                                    size="small" 
+                                    checked={filteredMaterials.length > 0 && selectedIds.length === filteredMaterials.length}
+                                    indeterminate={selectedIds.length > 0 && selectedIds.length < filteredMaterials.length}
+                                    onChange={handleSelectAll}
+                                />
+                                <Typography variant="caption" fontWeight={700} color="text.secondary">
+                                    {selectedIds.length > 0 ? `${selectedIds.length} Selected` : 'Select All'}
+                                </Typography>
+                            </Box>
+                            
+                            {selectedIds.length > 0 && (
+                                <Button 
+                                    size="small" 
+                                    variant="contained" 
+                                    color="error" 
+                                    startIcon={<DeleteIcon />}
+                                    onClick={handleBulkDelete}
+                                    sx={{ borderRadius: 1.5, textTransform: 'none', px: 2, py: 0.5 }}
+                                >
+                                    Delete {selectedIds.length} items
+                                </Button>
+                            )}
+                        </Box>
+                    )}
+
                     {previewItem ? (
                         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <Box sx={{ px: 3, py: 1, borderBottom: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -672,24 +899,24 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                             <Box sx={{ flex: 1, overflow: 'auto', p: 2, bgcolor: isDark ? '#0a0a0a' : '#f0f0f0' }}>
                                 {previewItem.type === 'image' ? (
                                     <img 
-                                        src={previewItem?.url?.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem?.url || ''}`} 
+                                        src={fixUrl(previewItem?.url)} 
                                         alt={previewItem.name}
                                         style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', margin: 'auto', display: 'block' }}
                                     />
                                 ) : previewItem.type === 'pdf' ? (
                                     <iframe 
-                                        src={previewItem?.url?.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem?.url || ''}#toolbar=0`} 
+                                        src={`${fixUrl(previewItem?.url)}#toolbar=0`} 
                                         width="100%" 
                                         height="100%" 
                                         style={{ border: 'none' }}
                                     />
                                 ) : previewItem.type === 'video' ? (
                                     <video controls style={{ width: '100%', height: '100%' }}>
-                                        <source src={previewItem?.url?.startsWith('http') ? previewItem.url : `${import.meta.env.VITE_API_URL || ''}${previewItem?.url || ''}`} />
+                                        <source src={fixUrl(previewItem?.url)} />
                                     </video>
                                 ) : (
                                     <Box sx={{ p: 4, textAlign: 'center' }}>
-                                        <FileIcon type={previewItem.type} size={100} />
+                                        <FileIcon type={previewItem.type} url={previewItem.url} size={100} />
                                         <Typography variant="h6" sx={{ mt: 2 }}>{previewItem.name}</Typography>
                                         <Typography variant="body2" color="text.secondary">Preview not available for this file type.</Typography>
                                         <Button 
@@ -747,7 +974,14 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                         </IconButton>
     
                                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, textAlign: 'center' }}>
-                                            <FileIcon type={item.type} size={48} />
+                                            <Checkbox 
+                                                size="small" 
+                                                checked={selectedIds.includes(item._id)}
+                                                onChange={(e) => handleToggleSelect(e, item._id)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                sx={{ position: 'absolute', top: 4, left: 4 }}
+                                            />
+                                            <FileIcon type={item.type} url={item.url} size={48} />
                                             <Typography
                                                 variant="body2"
                                                 sx={{ fontWeight: 600, fontSize: '0.82rem', wordBreak: 'break-word', lineHeight: 1.3, maxWidth: '100%' }}
@@ -796,7 +1030,13 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                         }}
                                     >
                                         <Box sx={{ flex: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                            <FileIcon type={item.type} size={24} />
+                                            <Checkbox 
+                                                size="small" 
+                                                checked={selectedIds.includes(item._id)}
+                                                onChange={(e) => handleToggleSelect(e, item._id)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <FileIcon type={item.type} url={item.url} size={24} />
                                             <Typography variant="body2" sx={{ fontWeight: 500, noWrap: true }}>{item.name}</Typography>
                                         </Box>
                                         <Typography variant="body2" sx={{ flex: 1, color: 'text.secondary' }}>

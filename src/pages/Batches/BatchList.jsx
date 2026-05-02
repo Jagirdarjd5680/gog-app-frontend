@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Box, Typography, Button, IconButton, Tooltip, Chip, Stack } from '@mui/material';
 import DataTable from '../../components/Common/DataTable';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,6 +14,7 @@ import BatchFormModal from '../../components/Batches/BatchFormModal';
 import BatchMaterialsModal from '../../components/Batches/BatchMaterialsModal';
 
 const BatchList = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -23,6 +25,20 @@ const BatchList = () => {
     useEffect(() => {
         fetchBatches();
     }, []);
+
+    // Sync modal state with URL
+    useEffect(() => {
+        const batchId = searchParams.get('batchId');
+        if (batchId && batches.length > 0) {
+            const batch = batches.find(b => b._id === batchId);
+            if (batch) {
+                setMaterialsBatch(batch);
+                setMaterialsOpen(true);
+            }
+        } else if (!batchId && materialsOpen) {
+            setMaterialsOpen(false);
+        }
+    }, [searchParams, batches, materialsOpen]);
 
     const fetchBatches = async () => {
         setLoading(true);
@@ -61,8 +77,17 @@ const BatchList = () => {
     };
 
     const handleOpenMaterials = (batch) => {
+        setSearchParams({ batchId: batch._id });
         setMaterialsBatch(batch);
         setMaterialsOpen(true);
+    };
+
+    const handleCloseMaterials = () => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('batchId');
+        newParams.delete('folderId'); // Clean up folder too
+        setSearchParams(newParams);
+        setMaterialsOpen(false);
     };
 
     const columnDefs = [
@@ -187,7 +212,7 @@ const BatchList = () => {
             {materialsOpen && (
                 <BatchMaterialsModal
                     open={materialsOpen}
-                    onClose={() => setMaterialsOpen(false)}
+                    onClose={handleCloseMaterials}
                     batch={materialsBatch}
                 />
             )}
