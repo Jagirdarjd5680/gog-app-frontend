@@ -47,6 +47,7 @@ import StarIcon from '@mui/icons-material/Star';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -79,6 +80,7 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
         { text: 'Booking', icon: <EventSeatIcon />, path: '/booking', roles: ['admin'] },
         { text: 'Fee Records', icon: <PaymentIcon />, path: '/fee-records', roles: ['admin'] },
         { text: 'Notifications', icon: <NotificationsIcon />, path: '/notifications', roles: ['admin', 'teacher'] },
+        { text: 'Leave Management', icon: <EventBusyIcon />, path: '/leaves', roles: ['admin', 'teacher', 'student'] },
         { text: 'Exam Management', icon: <QuizIcon />, path: '/exam-management', roles: ['admin', 'teacher'] },
         { text: 'Exam Results', icon: <AssignmentTurnedInIcon />, path: '/exam-results', roles: ['admin', 'teacher'] },
         { text: 'Question Bank', icon: <LibraryBooksIcon />, path: '/question-bank', roles: ['admin', 'teacher'] },
@@ -94,6 +96,12 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
 
     const filteredMenuItems = menuItems.filter(item => {
         const matchesRole = item.roles.includes(user?.role);
+        
+        // Custom condition for Student Leave Management
+        if (user?.role === 'student' && item.path === '/leaves') {
+            if (user?.registrationStatus !== 'approved') return false;
+        }
+
         const matchesSearch = item.text.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesRole && matchesSearch;
     });

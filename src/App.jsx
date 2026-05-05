@@ -44,10 +44,14 @@ const IndividualResult = lazy(() => import('./pages/Exams/IndividualResult'));
 const FeeRecordsPage = lazy(() => import('./pages/Payments/FeeRecordsPage'));
 const BookingManagement = lazy(() => import('./pages/Booking/BookingManagement'));
 const PublicSeatBooking = lazy(() => import('./pages/Booking/PublicSeatBooking'));
+const StudentProfileForm = lazy(() => import('./pages/Users/StudentProfileForm'));
+const LeaveManagement = lazy(() => import('./pages/Dashboard/LeaveManagement'));
+const AdminLeaveRequests = lazy(() => import('./pages/Users/AdminLeaveRequests'));
+const BatchAttendance = lazy(() => import('./pages/Batches/BatchAttendance'));
 
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { settings } = useSettings();
 
   const googleClientId = settings?.integrations?.googleClientId;
@@ -113,6 +117,16 @@ function App() {
             />
 
             <Route
+              path="leave-requests"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminLeaveRequests />
+                </ProtectedRoute>
+              }
+            />
+
+
+            <Route
               path="batches"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'teacher']}>
@@ -120,6 +134,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="batches/:batchId/attendance"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
+                  <BatchAttendance />
+                </ProtectedRoute>
+              }
+            />
+
 
             <Route
               path="courses"
@@ -153,6 +176,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <PaymentDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="leaves"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
+                  {user?.role === 'student' ? <LeaveManagement /> : <AdminLeaveRequests />}
                 </ProtectedRoute>
               }
             />
@@ -303,6 +335,25 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Student Specific Routes */}
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentProfileForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="leaves"
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <LeaveManagement />
+                </ProtectedRoute>
+              }
+            />
+
           </Route>
 
           <Route

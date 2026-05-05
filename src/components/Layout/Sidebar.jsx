@@ -32,6 +32,8 @@ import StarIcon from '@mui/icons-material/Star';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -51,8 +53,11 @@ const Sidebar = ({ open, onClose }) => {
 
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/', roles: ['admin', 'teacher', 'student'] },
+        { text: 'Personal Info', icon: <AccountCircleIcon />, path: '/profile', roles: ['student'] },
         { text: user?.role === 'admin' ? 'Message Management' : 'Admin Support', icon: <ChatIcon />, path: '/chat', roles: ['admin', 'teacher', 'student'] },
         { text: 'Users', icon: <PeopleIcon />, path: '/users', roles: ['admin'] },
+        { text: 'Leave Requests', icon: <ExitToAppIcon />, path: '/leave-requests', roles: ['admin'] },
+        { text: 'My Leaves', icon: <ExitToAppIcon />, path: '/leaves', roles: ['student'] },
         { text: 'Courses', icon: <SchoolIcon />, path: '/courses', roles: ['admin', 'teacher'] },
         { text: 'Exams', icon: <QuizIcon />, path: '/exam-management', roles: ['admin', 'teacher'] },
         { text: 'Exam Results', icon: <AssignmentTurnedInIcon />, path: '/exam-results', roles: ['admin', 'teacher'] },

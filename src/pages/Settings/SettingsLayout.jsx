@@ -42,6 +42,8 @@ import SocialMediaSettings from './SocialMediaSettings';
 import ResultSettings from './ResultSettings';
 import AppSettings from './AppSettings';
 import BackupSettings from './BackupSettings';
+import PoliciesSettings from './PoliciesSettings';
+import PolicyIcon from '@mui/icons-material/Policy';
 
 const SettingsLayout = () => {
     const { mode, isDark } = useTheme();
@@ -61,6 +63,7 @@ const SettingsLayout = () => {
         { id: 'payments', label: 'Payments', icon: <PaymentsIcon /> },
         { id: 'integrations', label: 'Integrations', icon: <IntegrationInstructionsIcon /> },
         { id: 'social', label: 'Social Media', icon: <ShareIcon /> },
+        { id: 'policies', label: 'Company & Policies', icon: <PolicyIcon /> },
         { id: 'app', label: 'App Settings', icon: <AndroidIcon /> },
         { id: 'backup', label: 'Backup & Restore', icon: <StorageIcon /> },
     ];
@@ -116,6 +119,7 @@ const SettingsLayout = () => {
             case 'payments': return <PaymentSettings {...props} />;
             case 'integrations': return <IntegrationSettings {...props} />;
             case 'social': return <SocialMediaSettings {...props} />;
+            case 'policies': return <PoliciesSettings {...props} />;
             case 'app': return <AppSettings {...props} />;
             case 'backup': return <BackupSettings />;
             default: return <GeneralSettings {...props} />;

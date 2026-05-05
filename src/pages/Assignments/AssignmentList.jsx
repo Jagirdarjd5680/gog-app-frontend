@@ -5,11 +5,13 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsIcon from '@mui/icons-material/Settings';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { format } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import AssignmentFormModal from '../../components/Assignments/AssignmentFormModal';
 import QuestionSelector from '../../components/Exams/QuestionSelector';
+import AssignmentSubmissionsModal from '../../components/Assignments/AssignmentSubmissionsModal';
 
 const AssignmentList = () => {
     const [assignments, setAssignments] = useState([]);
@@ -18,6 +20,7 @@ const AssignmentList = () => {
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const [questionSelectorOpen, setQuestionSelectorOpen] = useState(false);
     const [currentAssignmentId, setCurrentAssignmentId] = useState(null);
+    const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchAssignments();
@@ -62,6 +65,11 @@ const AssignmentList = () => {
     const handleOpenQuestionSelector = (assignmentId) => {
         setCurrentAssignmentId(assignmentId);
         setQuestionSelectorOpen(true);
+    };
+
+    const handleViewSubmissions = (assignmentId) => {
+        setCurrentAssignmentId(assignmentId);
+        setSubmissionsModalOpen(true);
     };
 
     const handleAddQuestions = async (questionIds) => {
@@ -138,9 +146,14 @@ const AssignmentList = () => {
             headerName: 'Actions',
             sortable: false,
             filter: false,
-            width: 180,
+            width: 220,
             cellRenderer: (params) => (
                 <Box>
+                    <Tooltip title="View Submissions">
+                        <IconButton size="small" color="secondary" onClick={() => handleViewSubmissions(params.data._id)}>
+                            <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Manage Questions">
                         <IconButton size="small" color="info" onClick={() => handleOpenQuestionSelector(params.data._id)}>
                             <SettingsIcon fontSize="small" />
@@ -193,6 +206,14 @@ const AssignmentList = () => {
                 onSelect={handleAddQuestions}
                 existingQuestionIds={assignments.find(a => a._id === currentAssignmentId)?.questions?.map(q => q._id || q) || []}
             />
+
+            {submissionsModalOpen && (
+                <AssignmentSubmissionsModal
+                    open={submissionsModalOpen}
+                    onClose={() => setSubmissionsModalOpen(false)}
+                    assignmentId={currentAssignmentId}
+                />
+            )}
         </Box>
     );
 };

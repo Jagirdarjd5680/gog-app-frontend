@@ -12,8 +12,11 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import BatchFormModal from '../../components/Batches/BatchFormModal';
 import BatchMaterialsModal from '../../components/Batches/BatchMaterialsModal';
+import FaceIcon from '@mui/icons-material/Face';
+import { useNavigate } from 'react-router-dom';
 
 const BatchList = () => {
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -145,10 +148,24 @@ const BatchList = () => {
             headerName: 'Actions',
             sortable: false,
             filter: false,
-            width: 160,
+            width: 200,
             pinned: 'right',
             cellRenderer: (params) => (
                 <Stack direction="row" spacing={0.5} alignItems="center" sx={{ height: '100%' }}>
+                    <Tooltip title="Face ID Attendance">
+                        <IconButton
+                            size="small"
+                            onClick={() => navigate(`/batches/${params.data._id}/attendance`)}
+                            sx={{
+                                color: '#4CAF50',
+                                bgcolor: 'rgba(76,175,80,0.1)',
+                                '&:hover': { bgcolor: 'rgba(76,175,80,0.2)' },
+                                borderRadius: 1.5
+                            }}
+                        >
+                            <FaceIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Batch Materials (File Manager)">
                         <IconButton
                             size="small"

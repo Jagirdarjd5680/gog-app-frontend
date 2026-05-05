@@ -173,6 +173,12 @@ const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const updateUser = (updatedUserData) => {
+        const newUser = { ...user, ...updatedUserData };
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+    };
+
     const refreshToken = async () => {
         try {
             const response = await api.get('/auth/refresh');
@@ -208,6 +214,7 @@ const AuthProvider = ({ children }) => {
         register,
         googleLogin,
         logout,
+        updateUser,
         refreshToken,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
