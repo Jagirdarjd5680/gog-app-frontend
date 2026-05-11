@@ -52,7 +52,7 @@ const MediaPickerModal = ({ open, onClose, onSelect, type }) => {
                 setFiles(filteredFiles);
             }
         } catch (error) {
-            console.error('Fetch Files Error:', error);
+            
         } finally {
             setLoading(false);
         }

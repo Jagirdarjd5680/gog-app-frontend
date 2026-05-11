@@ -46,7 +46,7 @@ const ExamList = () => {
             const response = await api.get('/exams');
             setExams(response.data.data || response.data);
         } catch (error) {
-            console.error('Error fetching exams:', error);
+            
             // toast.error('Failed to load exams');
         } finally {
             setLoading(false);
@@ -75,7 +75,7 @@ const ExamList = () => {
             toast.success('Exam deleted');
             fetchExams();
         } catch (error) {
-            console.error(error);
+            
             toast.error('Failed to delete');
         }
         setExamToDelete(null);
@@ -93,7 +93,7 @@ const ExamList = () => {
             toast.success(`${questionIds.length} questions added to exam`);
             fetchExams();
         } catch (error) {
-            console.error('Error adding questions:', error);
+            
             toast.error('Failed to add questions');
         }
     };
@@ -105,7 +105,7 @@ const ExamList = () => {
             toast.success(`Exam ${!exam.isActive ? 'activated' : 'deactivated'}`);
             fetchExams();
         } catch (error) {
-            console.error('Error toggling status:', error);
+            
             toast.error('Failed to update status');
         } finally {
             setTogglingId(null);

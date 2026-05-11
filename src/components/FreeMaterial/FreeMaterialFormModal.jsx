@@ -98,7 +98,7 @@ const FreeMaterialFormModal = ({ open, onClose, material, onSuccess }) => {
             setLiveClasses(liveRes.data.data || liveRes.data || []);
             setAssignments(assignRes.data.data || assignRes.data || []);
         } catch (error) {
-            console.error('Error fetching modal data:', error);
+            
         }
     };
 

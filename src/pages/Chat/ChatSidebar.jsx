@@ -180,9 +180,16 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
                                 disableTypography
                                 primary={
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Typography variant="body2" fontWeight={selectedUser?._id === user._id || user.unreadCount > 0 ? 800 : 500}>
-                                            {user.name}
-                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="body2" fontWeight={selectedUser?._id === user._id || user.unreadCount > 0 ? 800 : 500}>
+                                                {user.name}
+                                            </Typography>
+                                            {user.isBlockedFromChat && (
+                                                <Typography variant="caption" sx={{ bgcolor: 'error.50', color: 'error.main', px: 0.5, borderRadius: 0.5, fontWeight: 700, fontSize: '0.65rem', border: '1px solid', borderColor: 'error.100' }}>
+                                                    BLOCKED
+                                                </Typography>
+                                            )}
+                                        </Box>
                                         {user.lastMessage && (
                                             <Typography variant="caption" color="text.disabled">
                                                 {format(new Date(user.lastMessage.createdAt), 'HH:mm')}

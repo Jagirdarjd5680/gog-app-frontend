@@ -110,12 +110,15 @@ const NotificationHistory = () => {
 
     const fetchNotifications = async (pg = 1, onlyMe = sentOnly) => {
         setLoading(true);
+        
         try {
             const { data } = await api.get(`/notifications?page=${pg}&limit=10&sentByMe=${onlyMe}`);
+            
             setNotifications(data.data || []);
             setTotalPages(data.totalPages || 1);
             setSelectedIds([]); // Clear selection on page change
-        } catch {
+        } catch (err) {
+            
             toast.error('Failed to load notifications');
         } finally {
             setLoading(false);

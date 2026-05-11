@@ -20,7 +20,7 @@ const AppReviewSection = () => {
                 // Only show top 5 active reviews
                 setReviews(data.data.slice(0, 5) || []);
             } catch (error) {
-                console.error('Failed to fetch reviews', error);
+                
             } finally {
                 setLoading(false);
             }

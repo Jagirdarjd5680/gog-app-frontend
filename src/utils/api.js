@@ -116,26 +116,24 @@ export const fixUrl = (url) => {
     // Handle relative /uploads path
     if (url.startsWith('/uploads')) {
         const result = `${endpoint}${url}`;
-        console.log(`🔗 fixUrl (relative): ${url} -> ${result}`);
         return result;
     }
 
     // Handle raw filenames (e.g. from legacy or specific fields)
     if (url.match(/^(video-|image-|audio-|raw-)/) && !url.includes('://')) {
         const result = `${endpoint}/uploads/${url}`;
-        console.log(`🔗 fixUrl (raw): ${url} -> ${result}`);
         return result;
     }
     
     // If it's already a full URL but needs protocol fix or host fix
     if (url.startsWith('http://localhost:5000')) {
         const result = url.replace('http://localhost:5000', endpoint);
-        console.log(`🔗 fixUrl: ${url} -> ${result}`);
+        
         return result;
     }
 
     const finalUrl = url;
-    console.log(`🔗 fixUrl: ${url} -> ${finalUrl}`);
+    
     return finalUrl;
 };
 

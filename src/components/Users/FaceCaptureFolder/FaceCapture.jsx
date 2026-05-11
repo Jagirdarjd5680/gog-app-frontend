@@ -10,10 +10,10 @@ import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import * as faceapi from 'face-api.js';
-import api from '../../utils/api';
+import api from '../../../utils/api';
 import { toast } from 'react-toastify';
 
-const FaceCapture = ({ studentId, onCaptureSuccess }) => {
+const FaceCapture = ({ userId, onComplete }) => {
     const webcamRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -155,16 +155,16 @@ const FaceCapture = ({ studentId, onCaptureSuccess }) => {
         if (capturedImages.length === 0) return;
         setLoading(true);
         try {
-            const response = await api.put(`/users/${studentId}/biometric-face`, {
+            const response = await api.put(`/users/${userId}/biometric-face`, {
                 imagesBase64: capturedImages
             });
             if (response.data.success) {
                 toast.success('Face ID Registered');
-                if (onCaptureSuccess) onCaptureSuccess(response.data.data);
+                if (onComplete) onComplete(response.data.data);
                 resetCapture();
             }
         } catch (error) {
-            toast.error("Upload failed");
+            toast.error(error.response?.data?.message || "Upload failed");
         } finally {
             setLoading(false);
         }

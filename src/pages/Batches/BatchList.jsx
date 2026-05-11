@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Box, Typography, Button, IconButton, Tooltip, Chip, Stack } from '@mui/material';
+import { 
+    Box, Typography, Button, IconButton, Tooltip, Chip, Stack, 
+    Grid, Card, CardContent, CardActionArea, Avatar, TextField, InputAdornment, Divider
+} from '@mui/material';
 import DataTable from '../../components/Common/DataTable';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FolderIcon from '@mui/icons-material/Folder';
 import PeopleIcon from '@mui/icons-material/People';
+import SchoolIcon from '@mui/icons-material/School';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SearchIcon from '@mui/icons-material/Search';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import { format } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -24,24 +31,17 @@ const BatchList = () => {
     const [selectedBatch, setSelectedBatch] = useState(null);
     const [materialsOpen, setMaterialsOpen] = useState(false);
     const [materialsBatch, setMaterialsBatch] = useState(null);
+    
+    // Course-wise management states
+    const [view, setView] = useState('courses'); // 'courses' or 'batches'
+    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchBatches();
     }, []);
 
-    // Sync modal state with URL
-    useEffect(() => {
-        const batchId = searchParams.get('batchId');
-        if (batchId && batches.length > 0) {
-            const batch = batches.find(b => b._id === batchId);
-            if (batch) {
-                setMaterialsBatch(batch);
-                setMaterialsOpen(true);
-            }
-        } else if (!batchId && materialsOpen) {
-            setMaterialsOpen(false);
-        }
-    }, [searchParams, batches, materialsOpen]);
+
 
     const fetchBatches = async () => {
         setLoading(true);
@@ -55,6 +55,64 @@ const BatchList = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Group batches by course
+    const courseGroups = useMemo(() => {
+        const groups = {};
+        batches.forEach(batch => {
+            const courseId = batch.course?._id || 'unassigned';
+            if (!groups[courseId]) {
+                groups[courseId] = {
+                    course: batch.course || { title: 'Unassigned Batches', _id: 'unassigned' },
+                    batches: [],
+                    studentCount: 0
+                };
+            }
+            groups[courseId].batches.push(batch);
+            groups[courseId].studentCount += (batch.studentCount || 0);
+        });
+        
+        // Convert to array and filter by search
+        return Object.values(groups).filter(group => 
+            group.course.title.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [batches, searchQuery]);
+
+    // Sync modal state and view with URL
+    useEffect(() => {
+        const batchId = searchParams.get('batchId');
+        const courseId = searchParams.get('courseId');
+
+        if (batchId && batches.length > 0) {
+            const batch = batches.find(b => b._id === batchId);
+            if (batch) {
+                setMaterialsBatch(batch);
+                setMaterialsOpen(true);
+            }
+        } else if (!batchId && materialsOpen) {
+            setMaterialsOpen(false);
+        }
+
+        if (courseId && view === 'courses' && courseGroups.length > 0) {
+            const group = courseGroups.find(g => g.course._id === courseId);
+            if (group) {
+                setSelectedCourse(group);
+                setView('batches');
+            }
+        }
+    }, [searchParams, batches, courseGroups, view, materialsOpen]);
+
+    const handleCourseClick = (courseGroup) => {
+        setSelectedCourse(courseGroup);
+        setView('batches');
+        setSearchParams({ courseId: courseGroup.course._id });
+    };
+
+    const handleBack = () => {
+        setView('courses');
+        setSelectedCourse(null);
+        setSearchParams({});
     };
 
     const handleEdit = (batch) => {
@@ -95,12 +153,6 @@ const BatchList = () => {
 
     const columnDefs = [
         { field: 'name', headerName: 'Batch Name', flex: 1.2 },
-        {
-            field: 'course',
-            headerName: 'Course',
-            flex: 1,
-            valueGetter: (params) => params.data.course?.title || 'N/A'
-        },
         {
             field: 'teacher',
             headerName: 'Primary Teacher',
@@ -180,6 +232,20 @@ const BatchList = () => {
                             <FolderIcon fontSize="small" />
                         </IconButton>
                     </Tooltip>
+                    <Tooltip title="Assignment Submissions">
+                        <IconButton
+                            size="small"
+                            onClick={() => navigate(`/assignments/submissions?batchId=${params.data._id}`)}
+                            sx={{
+                                color: '#2196F3',
+                                bgcolor: 'rgba(33,150,243,0.1)',
+                                '&:hover': { bgcolor: 'rgba(33,150,243,0.2)' },
+                                borderRadius: 1.5
+                            }}
+                        >
+                            <AssignmentIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Edit Batch">
                         <IconButton size="small" color="primary" onClick={() => handleEdit(params.data)}>
                             <EditIcon fontSize="small" />
@@ -197,25 +263,135 @@ const BatchList = () => {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'flex-start' }}>
                 <Box>
-                    <Typography variant="h4" fontWeight={700}>
-                        Batch Management
-                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        {view === 'batches' && (
+                            <IconButton onClick={handleBack} size="small" sx={{ mb: 0.5 }}>
+                                <ArrowBackIcon />
+                            </IconButton>
+                        )}
+                        <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '-0.5px' }}>
+                            {view === 'courses' ? 'Batch Management' : selectedCourse.course.title}
+                        </Typography>
+                    </Stack>
                     <Typography variant="body2" color="text.secondary">
-                        Manage your student cohorts, timings and batch materials
+                        {view === 'courses' 
+                            ? 'Organize and manage student cohorts by course' 
+                            : `Manage batches for ${selectedCourse.course.title}`}
                     </Typography>
                 </Box>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
-                    Create Batch
-                </Button>
+                <Stack direction="row" spacing={2}>
+                    {view === 'courses' && (
+                        <TextField
+                            size="small"
+                            placeholder="Search courses..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon fontSize="small" color="action" />
+                                    </InputAdornment>
+                                ),
+                                sx: { borderRadius: 2, bgcolor: 'white' }
+                            }}
+                        />
+                    )}
+                    <Button 
+                        variant="contained" 
+                        startIcon={<AddIcon />} 
+                        onClick={handleCreate}
+                        sx={{ borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
+                    >
+                        Create Batch
+                    </Button>
+                </Stack>
             </Box>
 
-            <DataTable
-                rowData={batches}
-                columnDefs={columnDefs}
-                loading={loading}
-            />
+            {view === 'courses' ? (
+                <Grid container spacing={2}>
+                    {courseGroups.map((group) => (
+                        <Grid item xs={12} sm={6} md={3} key={group.course._id}>
+                            <Card 
+                                sx={{ 
+                                    borderRadius: 2, 
+                                    transition: 'all 0.2s ease',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    '&:hover': { 
+                                        transform: 'translateY(-3px)',
+                                        boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+                                        borderColor: 'primary.main'
+                                    }
+                                }}
+                            >
+                                <CardActionArea onClick={() => handleCourseClick(group)}>
+                                    <CardContent sx={{ p: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1.5 }}>
+                                            <Avatar 
+                                                sx={{ 
+                                                    bgcolor: 'primary.soft', 
+                                                    color: 'primary.main',
+                                                    width: 36, height: 36,
+                                                    borderRadius: 1.5
+                                                }}
+                                            >
+                                                <SchoolIcon sx={{ fontSize: 20 }} />
+                                            </Avatar>
+                                            <Box sx={{ minWidth: 0 }}>
+                                                <Typography variant="subtitle1" fontWeight={700} noWrap sx={{ letterSpacing: '-0.3px' }}>
+                                                    {group.course.title}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mt: -0.5 }}>
+                                                    {group.batches.length} {group.batches.length === 1 ? 'Batch' : 'Batches'}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                <PeopleIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                                <Typography variant="caption" fontWeight={700} color="text.primary">
+                                                    {group.studentCount}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Students
+                                                </Typography>
+                                            </Box>
+                                            <Typography variant="caption" color="primary.main" fontWeight={700}>
+                                                View Details →
+                                            </Typography>
+                                        </Stack>
+                                    </CardContent>
+                                </CardActionArea>
+                            </Card>
+                        </Grid>
+                    ))}
+                    {courseGroups.length === 0 && (
+                        <Grid item xs={12}>
+                            <Box sx={{ py: 10, textAlign: 'center', bgcolor: 'grey.50', borderRadius: 4, border: '2px dashed', borderColor: 'grey.300' }}>
+                                <Typography color="text.secondary">No courses found matching your search.</Typography>
+                            </Box>
+                        </Grid>
+                    )}
+                </Grid>
+            ) : (
+                <Box sx={{ 
+                    bgcolor: 'white', 
+                    borderRadius: 4, 
+                    p: 1, 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                    border: '1px solid',
+                    borderColor: 'divider'
+                }}>
+                    <DataTable
+                        rowData={selectedCourse.batches}
+                        columnDefs={columnDefs}
+                        loading={loading}
+                    />
+                </Box>
+            )}
 
             {modalOpen && (
                 <BatchFormModal

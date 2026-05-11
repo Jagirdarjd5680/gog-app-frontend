@@ -53,7 +53,7 @@ const BulkQuestionEdit = () => {
                 }
             } catch (error) {
                 toast.error('Failed to load questions');
-                console.error(error);
+                
             } finally {
                 setLoading(false);
             }

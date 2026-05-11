@@ -5,7 +5,7 @@ import {
     Button, TextField, MenuItem, Breadcrumbs, Link, Tooltip, Chip,
     Stack, Grid, CircularProgress, Menu, InputAdornment, Divider,
     Alert, LinearProgress, Drawer, List, ListItemButton, ListItemIcon,
-    ListItemText, Collapse, Checkbox
+    ListItemText, Collapse, Checkbox, FormControl, InputLabel, Select
 } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
@@ -36,6 +36,7 @@ import api, { fixUrl } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import MediaPickerModal from '../Media/MediaPickerModal';
+import VideoPreview from '../Common/VideoPreview';
 
 // File type icon + color map
 const FILE_TYPE_CONFIG = {
@@ -142,6 +143,12 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
     const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     const [previewItem, setPreviewItem] = useState(null);
+    const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [selectedModule, setSelectedModule] = useState('');
+    const [selectedLecture, setSelectedLecture] = useState('');
+    const [courseModules, setCourseModules] = useState([]);
+    const [courseLectures, setCourseLectures] = useState([]);
 
     // Filter Menu
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -154,7 +161,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                 setAllItems(res.data.data);
             }
         } catch (error) {
-            console.error('Failed to fetch items:', error);
+            
         }
     }, [batch?._id]);
 
@@ -189,8 +196,31 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                 }
             });
             fetchMaterials(parentId);
+            fetchCourseCurriculum();
         }
     }, [open, batch?._id]); // Only run on open or batch change
+
+    const fetchCourseCurriculum = async () => {
+        if (!batch?.course?._id && !batch?.course) return;
+        try {
+            const courseId = typeof batch.course === 'object' ? batch.course._id : batch.course;
+            const res = await api.get(`/courses/${courseId}`);
+            if (res.data.success) {
+                setCourseModules(res.data.data.modules || []);
+            }
+        } catch (error) {
+            
+        }
+    };
+
+    useEffect(() => {
+        if (selectedModule) {
+            const module = courseModules.find(m => m._id === selectedModule || m.id === selectedModule);
+            setCourseLectures(module?.videos || []);
+        } else {
+            setCourseLectures([]);
+        }
+    }, [selectedModule, courseModules]);
 
     // Breadcrumb sync when items load or parent changes
     useEffect(() => {
@@ -282,7 +312,9 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                 name: newLinkName.trim(),
                 type: 'link',
                 url: newLinkUrl.trim(),
-                parent: currentParent || null
+                parent: currentParent || null,
+                moduleId: selectedModule,
+                lectureId: selectedLecture
             });
             toast.success('Link added');
             setNewLinkName('');
@@ -310,44 +342,54 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         }
     };
 
-    const handleFileUpload = async (e) => {
-        const files = e.target.files;
-        if (!files?.length) return;
+    const handleFileUploadClick = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        setSelectedFiles(files);
+        setUploadModalOpen(true);
+        e.target.value = ''; // Reset for next selection
+    };
+
+    const handleUploadSubmit = async () => {
+        if (!selectedModule) {
+            toast.error('Please select a module');
+            return;
+        }
+
         setUploading(true);
+        setUploadModalOpen(false);
         setUploadProgress(0);
         let successCount = 0;
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
             const formData = new FormData();
             formData.append('file', file);
             formData.append('batch', batch._id);
+            formData.append('course', typeof batch.course === 'object' ? batch.course._id : batch.course);
+            formData.append('moduleId', selectedModule);
+            if (selectedLecture) formData.append('lectureId', selectedLecture);
             if (currentParent) formData.append('parent', currentParent);
 
             try {
-                console.log(`📤 Starting upload for: ${file.name} (${file.size} bytes)`);
                 const response = await api.post('/batch-materials/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                     timeout: 60000, // 60 seconds timeout
                     onUploadProgress: (p) => {
                         const prog = Math.round((p.loaded * 100) / p.total);
                         setUploadProgress(prog);
-                        console.log(`⏳ Uploading ${file.name}: ${prog}%`);
+                        
                     }
                 });
-                console.log(`✅ Upload success for: ${file.name}`, response.data);
+                
                 successCount++;
             } catch (error) {
-                console.error(`❌ Upload failed for: ${file.name}`);
-                console.error('Error Details:', {
-                    message: error.message,
-                    response: error.response?.data,
-                    status: error.response?.status
-                });
+                
+                
                 const errorMsg = error.response?.data?.message || 'Upload failed';
                 toast.error(`${file.name}: ${errorMsg}`);
             }
-            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
+            setUploadProgress(Math.round(((i + 1) / selectedFiles.length) * 100));
         }
 
         if (successCount > 0) {
@@ -357,7 +399,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
         setUploadProgress(0);
         fetchMaterials(currentParent);
         fetchAllItems();
-        e.target.value = '';
+        setSelectedFiles([]);
     };
 
     const handleDeleteItem = async (item) => {
@@ -413,7 +455,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
             window.URL.revokeObjectURL(blobUrl);
             toast.success('Download complete');
         } catch (error) {
-            console.error('Download failed:', error);
+            
             toast.error('Failed to download file');
         } finally {
             setDownloading(false);
@@ -423,11 +465,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
 
     useEffect(() => {
         if (previewItem) {
-            console.log('🖼️ Preview Item Updated:', {
-                name: previewItem.name,
-                url: previewItem.url,
-                resolvedUrl: fixUrl(previewItem.url)
-            });
+            
         }
     }, [previewItem]);
 
@@ -490,13 +528,7 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
     };
 
     const handleItemClick = (item) => {
-        console.log('🔍 Item Clicked:', {
-            id: item._id,
-            name: item.name,
-            type: item.type,
-            url: item.url,
-            fixedUrl: item.url ? fixUrl(item.url) : 'N/A'
-        });
+        
 
         if (item.type === 'folder') {
             navigateToFolder(item);
@@ -807,10 +839,12 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                 textTransform: 'none',
                                 fontWeight: 700
                             }}
-                            component="label"
+                            onClick={() => {
+                                setSelectedFiles([]);
+                                setUploadModalOpen(true);
+                            }}
                         >
                             Upload Files
-                            <input type="file" multiple hidden onChange={handleFileUpload} />
                         </Button>
                         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                             <Button
@@ -910,6 +944,8 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                                         height="100%" 
                                         style={{ border: 'none' }}
                                     />
+                                ) : (previewItem.type === 'link' && (previewItem.url?.includes('youtube.com') || previewItem.url?.includes('youtu.be'))) ? (
+                                    <VideoPreview url={previewItem.url} height="100%" />
                                 ) : previewItem.type === 'video' ? (
                                     <video controls style={{ width: '100%', height: '100%' }}>
                                         <source src={fixUrl(previewItem?.url)} />
@@ -1113,31 +1149,63 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    <TextField
-                        autoFocus
-                        fullWidth
-                        label="Link Name / Title"
-                        value={newLinkName}
-                        onChange={(e) => setNewLinkName(e.target.value)}
-                        margin="dense"
-                        sx={{ mt: 1 }}
-                    />
-                    <TextField
-                        fullWidth
-                        label="URL"
-                        value={newLinkUrl}
-                        onChange={(e) => setNewLinkUrl(e.target.value)}
-                        margin="dense"
-                        placeholder="https://"
-                        InputProps={{
-                            startAdornment: <InputAdornment position="start"><LinkIcon sx={{ fontSize: 18 }} /></InputAdornment>
-                        }}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
-                    />
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField
+                            autoFocus
+                            fullWidth
+                            label="Link Name / Title"
+                            value={newLinkName}
+                            onChange={(e) => setNewLinkName(e.target.value)}
+                            size="small"
+                        />
+                        <TextField
+                            fullWidth
+                            label="URL (https://...)"
+                            value={newLinkUrl}
+                            onChange={(e) => setNewLinkUrl(e.target.value)}
+                            size="small"
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start"><LinkIcon sx={{ fontSize: 18 }} /></InputAdornment>
+                            }}
+                        />
+
+                        <Divider sx={{ my: 1 }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>LINK PLACEMENT</Typography>
+                        </Divider>
+
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Module (Required)</InputLabel>
+                            <Select
+                                value={selectedModule}
+                                label="Module (Required)"
+                                onChange={(e) => setSelectedModule(e.target.value)}
+                            >
+                                <MenuItem value=""><em>Select Module</em></MenuItem>
+                                {courseModules.map(m => (
+                                    <MenuItem key={m._id || m.id} value={m._id || m.id}>{m.title}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Lecture (Optional)</InputLabel>
+                            <Select
+                                value={selectedLecture}
+                                label="Lecture (Optional)"
+                                onChange={(e) => setSelectedLecture(e.target.value)}
+                                disabled={!selectedModule}
+                            >
+                                <MenuItem value=""><em>Select Lecture</em></MenuItem>
+                                {courseLectures.map(l => (
+                                    <MenuItem key={l._id || l.id} value={l._id || l.id}>{l.title}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Stack>
                 </DialogContent>
                 <Box sx={{ px: 3, pb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                     <Button onClick={() => setLinkDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" color="secondary" onClick={handleAddLink} disabled={!newLinkName.trim() || !newLinkUrl.trim()}>
+                    <Button variant="contained" color="secondary" onClick={handleAddLink} disabled={!newLinkName.trim() || !newLinkUrl.trim() || !selectedModule}>
                         Add Link
                     </Button>
                 </Box>
@@ -1148,6 +1216,80 @@ const BatchMaterialsModal = ({ open, onClose, batch }) => {
                 onClose={() => setMediaPickerOpen(false)}
                 onSelect={handleMediaSelect}
             />
+
+            {/* Upload Configuration Dialog */}
+            <Dialog open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} maxWidth="xs" fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 700 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <UploadFileIcon color="primary" />
+                        Configure Upload
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Please select the module/lecture and the files you want to upload.
+                    </Typography>
+                    
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Module (Required)</InputLabel>
+                            <Select
+                                value={selectedModule}
+                                label="Module (Required)"
+                                onChange={(e) => setSelectedModule(e.target.value)}
+                            >
+                                <MenuItem value=""><em>Select Module</em></MenuItem>
+                                {courseModules.map(m => (
+                                    <MenuItem key={m._id || m.id} value={m._id || m.id}>{m.title}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth size="small">
+                            <InputLabel>Lecture (Optional)</InputLabel>
+                            <Select
+                                value={selectedLecture}
+                                label="Lecture (Optional)"
+                                onChange={(e) => setSelectedLecture(e.target.value)}
+                                disabled={!selectedModule}
+                            >
+                                <MenuItem value=""><em>Select Lecture</em></MenuItem>
+                                {courseLectures.map(l => (
+                                    <MenuItem key={l._id || l.id} value={l._id || l.id}>{l.title}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <Button
+                            variant="outlined"
+                            component="label"
+                            fullWidth
+                            startIcon={<UploadFileIcon />}
+                        >
+                            Select Files
+                            <input 
+                                type="file" 
+                                multiple 
+                                hidden 
+                                onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))} 
+                            />
+                        </Button>
+                        
+                        {selectedFiles.length > 0 && (
+                            <Typography variant="caption" color="primary" sx={{ textAlign: 'center' }}>
+                                {selectedFiles.length} file(s) selected
+                            </Typography>
+                        )}
+                    </Stack>
+                </DialogContent>
+                <Box sx={{ px: 3, pb: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button onClick={() => setUploadModalOpen(false)}>Cancel</Button>
+                    <Button variant="contained" onClick={handleUploadSubmit} disabled={!selectedModule || selectedFiles.length === 0}>
+                        Start Upload
+                    </Button>
+                </Box>
+            </Dialog>
         </Drawer>
     );
 };

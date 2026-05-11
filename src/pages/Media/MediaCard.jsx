@@ -1,6 +1,7 @@
 import {
     Box,
     Typography,
+    Button,
     Card,
     CardMedia,
     CardContent,
@@ -49,7 +50,8 @@ const MediaCard = ({
     isSelected,
     onToggleSelection,
     onDelete,
-    onCopy
+    onCopy,
+    onSelect
 }) => {
     const theme = useTheme();
 
@@ -179,6 +181,16 @@ const MediaCard = ({
             <Divider sx={{ opacity: 0.5 }} />
             <CardActions sx={{ justifyContent: 'space-between', px: 2, py: 1.5, bgcolor: 'background.paper' }}>
                 <Box sx={{ display: 'flex', gap: 1 }}>
+                    {onSelect && (
+                        <Button 
+                            variant="contained" 
+                            size="small" 
+                            onClick={() => onSelect(file)}
+                            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Select
+                        </Button>
+                    )}
                     <Tooltip title="Copy Public Link">
                         <IconButton
                             size="small"

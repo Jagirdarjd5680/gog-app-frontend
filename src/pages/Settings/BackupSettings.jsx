@@ -38,7 +38,7 @@ const BackupSettings = () => {
             
             toast.success('Backup downloaded successfully');
         } catch (error) {
-            console.error('Export error:', error);
+            
             toast.error('Failed to export backup');
         } finally {
             setLoading(false);
@@ -64,7 +64,7 @@ const BackupSettings = () => {
                     }
                 }
             } catch (error) {
-                console.error('Import error:', error);
+                
                 toast.error('Invalid backup file or restoration failed');
             } finally {
                 setRestoring(false);

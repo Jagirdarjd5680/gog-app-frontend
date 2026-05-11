@@ -16,6 +16,7 @@ import {
     FormControlLabel,
     IconButton,
     Tooltip,
+    Collapse,
     useMediaQuery,
     useTheme as useMuiTheme,
 } from '@mui/material';
@@ -48,6 +49,18 @@ import CampaignIcon from '@mui/icons-material/Campaign';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
+import EventIcon from '@mui/icons-material/Event';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import WorkIcon from '@mui/icons-material/Work';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import HistoryIcon from '@mui/icons-material/History';
+import FlameIcon from '@mui/icons-material/Whatshot';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -66,45 +79,151 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
     const muiTheme = useMuiTheme();
     const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
     const [searchQuery, setSearchQuery] = useState('');
+    const [openSubMenus, setOpenSubMenus] = useState({});
+
+    const toggleSubMenu = (menuText) => {
+        setOpenSubMenus(prev => ({
+            ...prev,
+            [menuText]: !prev[menuText]
+        }));
+    };
 
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/', roles: ['admin', 'teacher', 'student'] },
-        { text: user?.role === 'admin' ? 'Message Management' : 'Admin Support', icon: <ChatIcon />, path: '/chat', roles: ['admin', 'teacher', 'student'] },
-        { text: 'Users', icon: <PeopleIcon />, path: '/users', roles: ['admin'] },
-        { text: 'Batches', icon: <GroupsIcon />, path: '/batches', roles: ['admin', 'teacher'] },
-        { text: 'Courses', icon: <SchoolIcon />, path: '/courses', roles: ['admin', 'teacher'] },
-        { text: 'Media Library', icon: <PermMediaIcon />, path: '/media-library', roles: ['admin', 'teacher'] },
-        { text: 'Live Classes', icon: <VideoCallIcon />, path: '/live-classes', roles: ['admin', 'teacher'] },
-        { text: 'Assignments', icon: <AssignmentIcon />, path: '/assignments', roles: ['admin', 'teacher'] },
-        { text: 'Payments', icon: <PaymentIcon />, path: '/payments', roles: ['admin'] },
-        { text: 'Booking', icon: <EventSeatIcon />, path: '/booking', roles: ['admin'] },
-        { text: 'Fee Records', icon: <PaymentIcon />, path: '/fee-records', roles: ['admin'] },
-        { text: 'Notifications', icon: <NotificationsIcon />, path: '/notifications', roles: ['admin', 'teacher'] },
-        { text: 'Leave Management', icon: <EventBusyIcon />, path: '/leaves', roles: ['admin', 'teacher', 'student'] },
-        { text: 'Exam Management', icon: <QuizIcon />, path: '/exam-management', roles: ['admin', 'teacher'] },
-        { text: 'Exam Results', icon: <AssignmentTurnedInIcon />, path: '/exam-results', roles: ['admin', 'teacher'] },
-        { text: 'Question Bank', icon: <LibraryBooksIcon />, path: '/question-bank', roles: ['admin', 'teacher'] },
-        { text: 'Categories', icon: <CategoryIcon />, path: '/categories', roles: ['admin'] },
-        { text: 'Coupons', icon: <LocalOfferIcon />, path: '/coupons', roles: ['admin', 'teacher'] },
-        { text: 'Reports', icon: <AssessmentIcon />, path: '/reports', roles: ['admin'] },
-        { text: 'Blog Management', icon: <ArticleIcon />, path: '/blogs', roles: ['admin', 'teacher'] },
-        { text: 'App Banners', icon: <ViewCarouselIcon />, path: '/banners', roles: ['admin'] },
-        { text: 'News Ticker', icon: <CampaignIcon />, path: '/news-ticker', roles: ['admin'] },
-        { text: 'App Reviews', icon: <StarIcon />, path: '/app-reviews', roles: ['admin'] },
-        { text: 'Free Materials', icon: <AutoAwesomeIcon />, path: '/free-materials', roles: ['admin', 'teacher'] },
+        
+        // --- ADMIN / TEACHER GROUPS ---
+        {
+            text: 'User Management',
+            icon: <PeopleIcon />,
+            roles: ['admin'],
+            children: [
+                { text: 'All Users', path: '/users', icon: <PeopleIcon /> },
+                { text: 'Tutors', path: '/tutors', icon: <SupportAgentIcon /> },
+                { text: 'Leave Requests', path: '/leave-requests', icon: <ExitToAppIcon /> },
+                { text: 'Referral Payouts', path: '/withdrawal-requests', icon: <MonetizationOnIcon /> },
+                { text: 'Referral Requests', path: '/referral-joining-requests', icon: <GroupsIcon /> },
+            ]
+        },
+        
+        {
+            text: 'LMS Management',
+            icon: <SchoolIcon />,
+            roles: ['admin', 'teacher'],
+            children: [
+                { text: 'Courses', path: '/courses', icon: <SchoolIcon /> },
+                { text: 'Batches', path: '/batches', icon: <GroupsIcon /> },
+                { text: 'Categories', path: '/categories', icon: <CategoryIcon /> },
+                { text: 'Media Library', path: '/media-library', icon: <PermMediaIcon /> },
+                { text: 'Live Classes', path: '/live-classes', icon: <VideoCallIcon /> },
+                { text: 'Assignments', path: '/assignments', icon: <AssignmentIcon /> },
+            ]
+        },
+
+        {
+            text: 'Exams & Results',
+            icon: <QuizIcon />,
+            roles: ['admin', 'teacher'],
+            children: [
+                { text: 'Exam Management', path: '/exam-management', icon: <QuizIcon /> },
+                { text: 'Exam Results', path: '/exam-results', icon: <AssignmentTurnedInIcon /> },
+                { text: 'Question Bank', path: '/question-bank', icon: <LibraryBooksIcon /> },
+                { text: 'Passed Students', path: '/passed-students', icon: <SchoolIcon /> },
+            ]
+        },
+
+        {
+            text: 'Financials',
+            icon: <MonetizationOnIcon />,
+            roles: ['admin'],
+            children: [
+                { text: 'Payments', path: '/payments', icon: <PaymentIcon /> },
+                { text: 'Fee Records', path: '/fee-records', icon: <PaymentIcon /> },
+                { text: 'Tutor Payouts', path: '/tutor-withdrawals', icon: <PaymentIcon /> },
+            ]
+        },
+
+        {
+            text: 'Marketing & Comms',
+            icon: <CampaignIcon />,
+            roles: ['admin', 'teacher'],
+            children: [
+                { text: 'Coupons', path: '/coupons', icon: <LocalOfferIcon /> },
+                { text: 'Notifications', path: '/notifications', icon: <NotificationsIcon /> },
+                { text: 'Blog Management', path: '/blogs', icon: <ArticleIcon /> },
+                { text: 'App Banners', path: '/banners', icon: <ViewCarouselIcon /> },
+                { text: 'News Ticker', path: '/news-ticker', icon: <CampaignIcon /> },
+                { text: 'App Reviews', path: '/app-reviews', icon: <StarIcon /> },
+                { text: 'Free Materials', path: '/free-materials', icon: <AutoAwesomeIcon /> },
+                { text: 'Event Management', path: '/events', icon: <CampaignIcon /> },
+            ]
+        },
+
+        {
+            text: 'Administration',
+            icon: <SettingsIcon />,
+            roles: ['admin'],
+            children: [
+                { text: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+                { text: 'Booking', path: '/booking', icon: <EventSeatIcon /> },
+                { text: 'Reports', path: '/reports', icon: <AssessmentIcon /> },
+                { text: 'Timetable Manager', path: '/timetable', icon: <EventIcon /> },
+            ]
+        },
+
+        {
+            text: 'Support Hub',
+            icon: <ChatIcon />,
+            roles: ['admin', 'teacher', 'student'],
+            children: [
+                { text: user?.role === 'admin' ? 'Message Management' : 'Admin Support', path: '/chat', icon: <ChatIcon />, roles: ['admin', 'teacher', 'student'] },
+                { text: 'Tutor Chats', path: '/tutor-chats', icon: <ChatIcon />, roles: ['admin'] },
+                { text: 'Support Tickets', path: '/support-tickets', icon: <SupportAgentIcon />, roles: ['admin', 'student'] },
+                { text: 'Tutor Help', path: '/tutor-support', icon: <SupportAgentIcon />, roles: ['admin', 'teacher', 'student'] },
+                { text: 'Placements', path: '/placements', icon: <WorkIcon />, roles: ['admin', 'teacher', 'student'] },
+            ]
+        },
+
+        // --- STUDENT SPECIFIC ---
+        { text: 'Personal Info', icon: <PeopleIcon />, path: '/profile', roles: ['student'] },
+        { text: 'Timetable', icon: <EventIcon />, path: '/timetable', roles: ['student'] },
+        { text: 'Refer & Earn', icon: <CardGiftcardIcon />, path: '/referrals', roles: ['student'] },
+        { text: 'My Rewards', icon: <ReceiptLongIcon />, path: '/my-rewards', roles: ['student'] },
+        { text: 'Leaderboard', icon: <EmojiEventsIcon />, path: '/leaderboard', roles: ['admin', 'teacher', 'student'] },
+        { text: 'Leave Management', icon: <EventBusyIcon />, path: '/leaves', roles: ['student'] },
+        { text: 'My Routine', icon: <HistoryIcon />, path: '/my-routine', roles: ['student'] },
+        { text: 'Study Streaks', icon: <FlameIcon />, path: '/streaks', roles: ['student'] },
+
+        // --- TUTOR PANEL ---
+        { text: 'Tutor Dashboard', icon: <DashboardIcon />, path: '/tutor/dashboard', roles: ['tutor'] },
+        { text: 'Live Requests', icon: <SupportAgentIcon />, path: '/tutor/requests', roles: ['tutor'] },
+        { text: 'Earnings & Payouts', icon: <MonetizationOnIcon />, path: '/tutor/withdrawals', roles: ['tutor'] },
     ];
 
-    const filteredMenuItems = menuItems.filter(item => {
-        const matchesRole = item.roles.includes(user?.role);
-        
-        // Custom condition for Student Leave Management
-        if (user?.role === 'student' && item.path === '/leaves') {
-            if (user?.registrationStatus !== 'approved') return false;
-        }
+    const filterMenuItems = (items) => {
+        return items.reduce((acc, item) => {
+            const matchesRole = item.roles ? item.roles.includes(user?.role) : true;
+            
+            if (item.children) {
+                const filteredChildren = filterMenuItems(item.children);
+                if (filteredChildren.length > 0) {
+                    acc.push({ ...item, children: filteredChildren });
+                }
+            } else {
+                // Custom condition for Student Leave Management
+                if (user?.role === 'student' && item.path === '/leaves') {
+                    if (user?.registrationStatus !== 'approved') return acc;
+                }
 
-        const matchesSearch = item.text.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesRole && matchesSearch;
-    });
+                const matchesSearch = item.text.toLowerCase().includes(searchQuery.toLowerCase());
+                if (matchesRole && matchesSearch) {
+                    acc.push(item);
+                }
+            }
+            return acc;
+        }, []);
+    };
+
+    const filteredMenuItems = filterMenuItems(menuItems);
 
     const handleNavigation = (path) => {
         navigate(path);
@@ -145,7 +264,6 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
             }}
         >
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                {/* Header with Logo */}
                 {/* Header with Logo */}
                 <Box sx={{
                     p: 2,
@@ -233,50 +351,107 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                 }}>
                     <List sx={{ pt: 2, px: 1 }}>
                         {filteredMenuItems.map((item) => (
-                            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-                                <Tooltip title={collapsed ? item.text : ''} placement="right">
-                                    <ListItemButton
-                                        onClick={() => handleNavigation(item.path)}
-                                        selected={location.pathname === item.path}
-                                        sx={{
-                                            borderRadius: 2,
-                                            justifyContent: collapsed ? 'center' : 'flex-start',
-                                            px: collapsed ? 1 : 2,
-                                            color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
-                                            '&.Mui-selected': {
-                                                backgroundColor: darkMode ? 'primary.main' : (settings?.theme?.activeMenuBg || 'primary.main'),
-                                                color: '#fff',
-                                                '&:hover': {
-                                                    backgroundColor: darkMode ? 'primary.dark' : (settings?.theme?.activeMenuBg || 'primary.dark'),
-                                                },
-                                                '& .MuiListItemIcon-root': {
-                                                    color: '#fff',
-                                                },
-                                            },
-                                            '&:hover': {
-                                                backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
-                                                color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
-                                                '& .MuiListItemIcon-root': {
-                                                    color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
-                                                },
-                                            }
-                                        }}
-                                    >
-                                        <ListItemIcon
+                            <React.Fragment key={item.text}>
+                                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                    <Tooltip title={collapsed ? item.text : ''} placement="right">
+                                        <ListItemButton
+                                            onClick={() => item.children ? toggleSubMenu(item.text) : handleNavigation(item.path)}
+                                            selected={location.pathname === item.path}
                                             sx={{
-                                                color: location.pathname === item.path
-                                                    ? '#fff'
-                                                    : (darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')),
-                                                minWidth: collapsed ? 0 : 40,
-                                                justifyContent: 'center',
+                                                borderRadius: 2,
+                                                justifyContent: collapsed ? 'center' : 'flex-start',
+                                                px: collapsed ? 1 : 2,
+                                                color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                                '&.Mui-selected': {
+                                                    backgroundColor: darkMode ? 'primary.main' : (settings?.theme?.activeMenuBg || 'primary.main'),
+                                                    color: '#fff',
+                                                    '&:hover': {
+                                                        backgroundColor: darkMode ? 'primary.dark' : (settings?.theme?.activeMenuBg || 'primary.dark'),
+                                                    },
+                                                    '& .MuiListItemIcon-root': {
+                                                        color: '#fff',
+                                                    },
+                                                },
+                                                '&:hover': {
+                                                    backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
+                                                    color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                    '& .MuiListItemIcon-root': {
+                                                        color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                    },
+                                                }
                                             }}
                                         >
-                                            {item.icon}
-                                        </ListItemIcon>
-                                        {!collapsed && <ListItemText primary={item.text} />}
-                                    </ListItemButton>
-                                </Tooltip>
-                            </ListItem>
+                                            <ListItemIcon
+                                                sx={{
+                                                    color: location.pathname === item.path
+                                                        ? '#fff'
+                                                        : (darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')),
+                                                    minWidth: collapsed ? 0 : 40,
+                                                    justifyContent: 'center',
+                                                }}
+                                            >
+                                                {item.icon}
+                                            </ListItemIcon>
+                                            {!collapsed && <ListItemText primary={item.text} />}
+                                            {!collapsed && item.children && (openSubMenus[item.text] ? <ExpandLess /> : <ExpandMore />)}
+                                        </ListItemButton>
+                                    </Tooltip>
+                                </ListItem>
+
+                                {item.children && (
+                                    <Collapse in={openSubMenus[item.text] && !collapsed} timeout="auto" unmountOnExit>
+                                        <List component="div" disablePadding sx={{ pl: collapsed ? 0 : 2 }}>
+                                            {item.children.map((child) => (
+                                                <ListItem key={child.text} disablePadding sx={{ mb: 0.5 }}>
+                                                    <Tooltip title={collapsed ? child.text : ''} placement="right">
+                                                        <ListItemButton
+                                                            onClick={() => handleNavigation(child.path)}
+                                                            selected={location.pathname === child.path}
+                                                            sx={{
+                                                                borderRadius: 2,
+                                                                justifyContent: collapsed ? 'center' : 'flex-start',
+                                                                px: collapsed ? 1 : 2,
+                                                                pl: collapsed ? 1 : 4,
+                                                                color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                                                '&.Mui-selected': {
+                                                                    backgroundColor: darkMode ? 'primary.main' : (settings?.theme?.activeMenuBg || 'primary.main'),
+                                                                    color: '#fff',
+                                                                    '&:hover': {
+                                                                        backgroundColor: darkMode ? 'primary.dark' : (settings?.theme?.activeMenuBg || 'primary.dark'),
+                                                                    },
+                                                                    '& .MuiListItemIcon-root': {
+                                                                        color: '#fff',
+                                                                    },
+                                                                },
+                                                                '&:hover': {
+                                                                    backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
+                                                                    color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                                    '& .MuiListItemIcon-root': {
+                                                                        color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                                    },
+                                                                }
+                                                            }}
+                                                        >
+                                                            <ListItemIcon
+                                                                sx={{
+                                                                    color: location.pathname === child.path
+                                                                        ? '#fff'
+                                                                        : (darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')),
+                                                                    minWidth: collapsed ? 0 : 30,
+                                                                    justifyContent: 'center',
+                                                                }}
+                                                            >
+                                                                {React.cloneElement(child.icon, { sx: { fontSize: 18 } })}
+                                                            </ListItemIcon>
+                                                            {!collapsed && <ListItemText primary={child.text} primaryTypographyProps={{ variant: 'body2' }} />}
+                                                        </ListItemButton>
+                                                    </Tooltip>
+                                                </ListItem>
+                                            ))}
+                                        </List>
+                                    </Collapse>
+                                )}
+                            </React.Fragment>
                         ))}
 
                         {/* Divider before bottom actions */}

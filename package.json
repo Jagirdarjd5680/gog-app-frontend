@@ -34,19 +34,23 @@
     "date-fns": "^3.0.6",
     "face-api.js": "^0.22.2",
     "formik": "^2.4.5",
+    "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^1.14.0",
     "papaparse": "^5.5.3",
     "paytm-blink-checkout-react": "^0.0.4",
     "razorpay-checkout": "^1.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-google-recaptcha-v3": "^1.11.0",
+    "react-hot-toast": "^2.6.0",
     "react-modal": "^3.16.1",
     "react-quill": "^2.0.0",
     "react-quill-new": "^3.8.3",
     "react-razorpay": "^3.0.1",
     "react-router-dom": "^6.20.1",
+    "react-to-print": "^3.3.0",
     "react-toastify": "^9.1.3",
     "react-webcam": "^7.2.0",
     "recharts": "^2.15.4",
@@ -55,10 +59,14 @@
     "yup": "^1.3.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.5.0",
     "eslint": "^8.55.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.2.4",
     "vite": "^5.0.8"
   }
 }

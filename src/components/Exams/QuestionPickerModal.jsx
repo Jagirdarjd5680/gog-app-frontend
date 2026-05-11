@@ -30,7 +30,7 @@ const QuestionPickerModal = ({ open, onClose, onSelect, selectedIds = [] }) => {
 
     useEffect(() => {
         if (open) {
-            console.log('🔍 QuestionPickerModal Opened', { selectedIds });
+            
             fetchQuestions();
             setTempSelected(selectedIds);
         }
@@ -46,17 +46,17 @@ const QuestionPickerModal = ({ open, onClose, onSelect, selectedIds = [] }) => {
                 setQuestions(response.data || []); // Fallback for legacy
             }
         } catch (error) {
-            console.error('Error fetching questions:', error);
+            
         } finally {
             setLoading(false);
         }
     };
 
     const handleSelectionChanged = useCallback((event) => {
-        console.log('🎯 handleSelectionChanged triggered', event);
+        
         if (event?.api?.getSelectedRows) {
             const selectedRows = event.api.getSelectedRows();
-            console.log('✅ Selected Rows found:', selectedRows);
+            
             const selectedIds = selectedRows.map(r => r._id);
             
             // Only update if IDs actually changed to prevent loops
@@ -66,12 +66,12 @@ const QuestionPickerModal = ({ open, onClose, onSelect, selectedIds = [] }) => {
                 return isSame ? prev : selectedIds;
             });
         } else {
-            console.warn('⚠️ event.api.getSelectedRows is missing!');
+            
         }
     }, []);
 
     const handleConfirm = () => {
-        console.log('🚀 Confirming Selection:', tempSelected);
+        
         onSelect(tempSelected);
         onClose();
     };

@@ -90,7 +90,7 @@ const Login = () => {
             try {
                 recaptchaToken = await executeRecaptcha('login');
             } catch (err) {
-                console.warn('reCAPTCHA skipped:', err.message);
+                
             }
         }
 

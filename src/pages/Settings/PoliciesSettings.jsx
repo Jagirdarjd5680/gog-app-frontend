@@ -22,7 +22,8 @@ const PoliciesSettings = ({ settings, onSave, isSaving }) => {
     });
 
     const [policies, setPolicies] = useState({
-        privacyPolicy: settings?.policies?.privacyPolicy || ''
+        privacyPolicy: settings?.policies?.privacyPolicy || '',
+        termsAndConditions: settings?.policies?.termsAndConditions || ''
     });
 
     const handleCompanyChange = (e) => {
@@ -95,16 +96,30 @@ const PoliciesSettings = ({ settings, onSave, isSaving }) => {
 
             <Divider sx={{ my: 4 }} />
 
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                Privacy Policy
-            </Typography>
-            <Box sx={{ mb: 4, '.ql-container': { height: '300px', fontSize: '16px' } }}>
+            <Box sx={{ mb: 4, '.ql-container': { height: '200px', fontSize: '16px' } }}>
                 <ReactQuill
                     theme="snow"
                     value={policies.privacyPolicy}
                     onChange={handlePolicyChange}
                 />
             </Box>
+
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+                PDF Terms & Conditions (One point per line)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                These points will appear at the bottom of the Fee Receipt PDF. Use a new line for each point.
+            </Typography>
+            <TextField
+                fullWidth
+                multiline
+                rows={6}
+                variant="outlined"
+                value={policies.termsAndConditions || ''}
+                onChange={(e) => setPolicies(prev => ({ ...prev, termsAndConditions: e.target.value }))}
+                placeholder="1. Deposit is non-refundable.&#10;2. Price may change on current exchange rate."
+                sx={{ mb: 4 }}
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button

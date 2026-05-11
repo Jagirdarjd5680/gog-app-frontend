@@ -44,7 +44,7 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
             setItems(data || []);
             setSelected([]);
         } catch (error) {
-            console.error('Fetch deleted items error:', error);
+            
             toast.error('Failed to load recycle bin items');
         } finally {
             setLoading(false);
@@ -76,7 +76,7 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
             fetchDeletedItems();
             if (onRestore) onRestore();
         } catch (error) {
-            console.error('Restore error:', error);
+            
             toast.error('Failed to restore items');
         }
     };
@@ -98,7 +98,7 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
             toast.success('Items permanently deleted');
             fetchDeletedItems();
         } catch (error) {
-            console.error('Permanent delete error:', error);
+            
             toast.error('Failed to delete items permanently');
         }
     };

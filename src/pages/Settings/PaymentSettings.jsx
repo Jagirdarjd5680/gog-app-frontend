@@ -224,7 +224,7 @@ const PaymentSettings = ({ settings, onSave, isSaving }) => {
             }
         } catch (error) {
             toast.error('Payment wizard failed to open');
-            console.error(error);
+            
         } finally {
             setTestLoading(false);
         }

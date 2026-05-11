@@ -68,7 +68,7 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                 setCourses(response.data.data);
             }
         } catch (error) {
-            console.error('Fetch Courses Error:', error);
+            
         } finally {
             setLoadingCourses(false);
         }
@@ -137,7 +137,7 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                 toast.success('Meet link generated successfully!');
             }
         } catch (error) {
-            console.error(error);
+            
             toast.error('Failed to generate Meet link. You might need to re-login to Google.');
             localStorage.removeItem('googleMeetTokens'); // Clear invalid tokens
         } finally {

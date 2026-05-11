@@ -19,14 +19,15 @@ import {
     Divider
 } from '@mui/material';
 import { format } from 'date-fns';
-import api from '../../utils/api';
+import api from '../../../utils/api';
 import SyncIcon from '@mui/icons-material/Sync';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PaymentIcon from '@mui/icons-material/Payment';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { useTheme } from '../../context/ThemeContext';
-import PaymentDetailsModal from '../../pages/Payments/PaymentDetailsModal';
+import PaymentHistoryTable from './PaymentHistoryTable';
+import { useTheme } from '../../../context/ThemeContext';
+import PaymentDetailsModal from '../../../pages/Payments/PaymentDetailsModal';
 
 const STATUS_CONFIG = {
     paid: { color: 'success', label: 'Paid' },
@@ -56,13 +57,13 @@ const UserFeeHistory = ({ userId, user: userData }) => {
                 setFeeRecords(response.data.data);
             }
         } catch (error) {
-            console.error('Failed to fetch fee records:', error);
+            
         } finally {
             setLoading(false);
         }
     };
 
-    const handleViewReceipt = (record, payment) => {
+    const handleViewReceipt = (record, payment, index) => {
         // Map individual payment to the structure expected by PaymentDetailsModal
         const mappedPayment = {
             ...payment,
@@ -72,7 +73,9 @@ const UserFeeHistory = ({ userId, user: userData }) => {
             createdAt: payment.paidAt,
             paymentMethod: payment.method === 'admin' ? 'offline' : payment.method,
             transactionId: payment.transactionRef || 'N/A',
-            orderId: payment.orderId || 'N/A'
+            orderId: payment.orderId || 'N/A',
+            paymentIndex: index,
+            courseId: record.course?._id
         };
         setSelectedPayment(mappedPayment);
         setIsReceiptOpen(true);
@@ -167,65 +170,12 @@ const UserFeeHistory = ({ userId, user: userData }) => {
                                         <PaymentIcon sx={{ fontSize: 18 }} />
                                         Payment History
                                     </Typography>
-                                    {record.payments && record.payments.length > 0 ? (
-                                        <Table size="small">
-                                                <TableHead>
-                                                    <TableRow sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
-                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>DATE</TableCell>
-                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>AMOUNT</TableCell>
-                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>METHOD</TableCell>
-                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>REF/NOTE</TableCell>
-                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textAlign: 'center' }}>RECEIPT</TableCell>
-                                                    </TableRow>
-                                                </TableHead>
-                                                <TableBody>
-                                                    {record.payments.map((payment, idx) => (
-                                                        <TableRow key={idx}>
-                                                            <TableCell sx={{ fontSize: '0.8rem' }}>
-                                                                {payment.paidAt ? format(new Date(payment.paidAt), 'dd MMM yyyy') : '—'}
-                                                            </TableCell>
-                                                            <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'success.main' }}>
-                                                                ₹{payment.amount?.toLocaleString()}
-                                                            </TableCell>
-                                                            <TableCell sx={{ fontSize: '0.8rem' }}>
-                                                                <Chip 
-                                                                    label={payment.method === 'admin' ? 'OFFLINE' : payment.method?.replace('_', ' ').toUpperCase()} 
-                                                                    size="small" 
-                                                                    sx={{ 
-                                                                        height: 18, 
-                                                                        fontSize: '0.65rem', 
-                                                                        fontWeight: 700,
-                                                                        bgcolor: payment.method === 'admin' ? 'info.lighter' : 'grey.100',
-                                                                        color: payment.method === 'admin' ? 'info.main' : 'text.primary'
-                                                                    }} 
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
-                                                                {payment.transactionRef || payment.note || '—'}
-                                                            </TableCell>
-                                                            <TableCell sx={{ textAlign: 'center' }}>
-                                                                <Button
-                                                                    size="small"
-                                                                    startIcon={<VisibilityIcon sx={{ fontSize: '14px !important' }} />}
-                                                                    onClick={() => handleViewReceipt(record, payment)}
-                                                                    sx={{ 
-                                                                        fontSize: '0.7rem', 
-                                                                        py: 0, 
-                                                                        height: 24, 
-                                                                        borderRadius: 1,
-                                                                        textTransform: 'none'
-                                                                    }}
-                                                                >
-                                                                    Receipt
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                        </Table>
-                                    ) : (
-                                        <Alert severity="info" sx={{ py: 0, borderRadius: 2 }}>No payments recorded yet.</Alert>
-                                    )}
+                                    <PaymentHistoryTable 
+                                        payments={record.payments} 
+                                        isDark={isDark} 
+                                        handleViewReceipt={handleViewReceipt} 
+                                        record={record} 
+                                    />
                                 </Box>
                             </AccordionDetails>
                         </Accordion>

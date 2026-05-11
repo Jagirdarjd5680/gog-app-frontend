@@ -61,7 +61,7 @@ const UserSelector = ({ open, onClose, onSelect, onSuccess, initialMode = MODES.
                 setUsers(response.data.data);
             }
         } catch (error) {
-            console.error('Fetch Users Error:', error);
+            
         } finally {
             setLoading(false);
         }

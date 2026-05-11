@@ -42,7 +42,7 @@ const BatchAttendance = () => {
                 ]);
                 setModelsLoaded(true);
             } catch (err) {
-                console.error("Error loading face models:", err);
+                
             }
         };
         loadModels();
@@ -72,7 +72,7 @@ const BatchAttendance = () => {
                 setStats(prev => ({ ...prev, present: response.data.data.length }));
             }
         } catch (error) {
-            console.error('Attendance fetch error:', error);
+            
         }
     };
 
@@ -85,7 +85,11 @@ const BatchAttendance = () => {
         // Visual detection in browser
         if (modelsLoaded && canvasRef.current && webcamRef.current.video) {
             const video = webcamRef.current.video;
-            const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+            // Use a larger inputSize for better distance detection, and lower scoreThreshold for glasses/tilak
+            const detections = await faceapi.detectAllFaces(
+                video, 
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 })
+            ).withFaceLandmarks();
 
             const displaySize = { width: video.videoWidth, height: video.videoHeight };
             faceapi.matchDimensions(canvasRef.current, displaySize);
@@ -145,11 +149,8 @@ const BatchAttendance = () => {
         
         // Skip AJAX if liveness score is too low (potential photo)
         if (livenessStatus.score < 30) {
-            console.log(`🟡 [Frontend] Liveness check pending... Score: ${livenessStatus.score}/100. Need 30 to send.`);
             return;
         }
-
-        console.log(`🟢 [Frontend] Liveness passed! (Score: ${livenessStatus.score}). Sending request to Backend... 🚀`);
 
         try {
             setIsProcessing(true);
@@ -159,16 +160,21 @@ const BatchAttendance = () => {
                 imageBase64: imageSrc
             });
 
-            console.log(`✅ [Frontend] Response received from Backend:`, response.data);
+            
 
             if (response.data.success) {
                 const newAttendance = response.data.data;
-                const student = response.data.student;
+                const student = response.data.student || (newAttendance && newAttendance.student);
+
+                if (!student) {
+                    
+                    return setScanStatus({ type: 'error', message: 'Verification error' });
+                }
 
                 setScanStatus({ type: 'success', message: `Matched: ${student.name}` });
 
                 // Check if already in list to avoid duplicates in UI
-                const isAlreadyPresent = presentStudents.some(p => p.student._id === student._id);
+                const isAlreadyPresent = presentStudents.some(p => p.student?._id === student._id);
                 if (!isAlreadyPresent) {
                     setPresentStudents(prev => [
                         { ...newAttendance, student },
@@ -193,7 +199,7 @@ const BatchAttendance = () => {
             }
 
             if (error.response?.status !== 404 && error.response?.status !== 400) {
-                console.error('Verification error:', error);
+                
             }
         } finally {
             setIsProcessing(false);
@@ -232,7 +238,7 @@ const BatchAttendance = () => {
                             ref={webcamRef}
                             screenshotFormat="image/jpeg"
                             videoConstraints={{ facingMode: "user" }}
-                            onUserMediaError={(err) => console.error("Webcam Error:", err)}
+                            onUserMediaError={(err) => {}}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
                         />
                         <canvas

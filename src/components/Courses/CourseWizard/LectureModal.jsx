@@ -29,13 +29,6 @@ import FolderZipIcon from '@mui/icons-material/FolderZip';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import api from '../../../utils/api';
-import VideoCallIcon from '@mui/icons-material/VideoCall';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import Chip from '@mui/material/Chip';
 import QuestionPickerModal from '../../Exams/QuestionPickerModal';
 import ReactQuill from 'react-quill-new';
@@ -58,15 +51,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
         meetTitle: '',
         meetScheduledAt: '',
         meetEndsAt: '',
-        // Assignment creation fields
-        assignmentDesc: '',
-        assignmentType: 'file_upload',
-        maxMb: 10,
-        allowedFormats: '.pdf,.zip,.jpg,.png',
-        selectedQuestions: [],
-        attachments: []
     });
-    const [assignments, setAssignments] = useState([]);
     const [exams, setExams] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
     const [questionPickerOpen, setQuestionPickerOpen] = useState(false);
@@ -87,17 +72,11 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     meetTitle: initialData.meetTitle || '',
                     meetScheduledAt: initialData.meetScheduledAt ? initialData.meetScheduledAt.slice(0, 16) : '',
                     meetEndsAt: initialData.meetEndsAt ? initialData.meetEndsAt.slice(0, 16) : '',
-                    assignmentDesc: initialData.assignmentDesc || '',
-                    assignmentType: initialData.assignmentType || 'file_upload',
-                    maxMb: initialData.maxMb || 10,
-                    allowedFormats: initialData.allowedFormats || '.pdf,.zip,.jpg,.png',
-                    selectedQuestions: initialData.selectedQuestions || []
                 });
             } else {
                 setVideoForm({ 
                     title: '', type: 'video', videoUrl: '', duration: '', isFree: false, resourceId: '', resourceModel: '', 
                     meetLink: '', meetTitle: '', meetScheduledAt: '', meetEndsAt: '',
-                    assignmentDesc: '', assignmentType: 'file_upload', maxMb: 10, allowedFormats: '.pdf,.zip,.jpg,.png', selectedQuestions: []
                 });
             }
             setSelectedFile(null);
@@ -105,26 +84,17 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
             setUploading(false);
             
             // Pre-fetch if needed
-            if (initialData?.type === 'assignment') fetchAssignments();
             if (initialData?.type === 'exam') fetchExams();
         }
     }, [open, initialData]);
 
-    const fetchAssignments = async () => {
-        try {
-            const { data } = await api.get(`/assignments?limit=100${courseId ? `&course=${courseId}` : ''}`);
-            setAssignments(data.data || []);
-        } catch (error) {
-            console.error('Error fetching assignments:', error);
-        }
-    };
 
     const fetchExams = async () => {
         try {
             const { data } = await api.get(`/exams?limit=100${courseId ? `&course=${courseId}` : ''}`);
             setExams(data.data || []);
         } catch (error) {
-            console.error('Error fetching exams:', error);
+            
         }
     };
 
@@ -132,16 +102,15 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
         setVideoForm({ 
             ...videoForm, 
             type, 
-            videoUrl: '', 
+            videoUrl: type === 'none' ? 'none' : '', 
             resourceId: '', 
-            resourceModel: type === 'assignment' ? 'Assignment' : type === 'exam' ? 'Exam' : '',
-            // Reset assignment fields if switching to assignment
+            resourceModel: type === 'exam' ? 'Exam' : '',
+            // Reset assignment fields
             assignmentType: 'file_upload',
             assignmentDesc: '',
             maxMb: 10,
             selectedQuestions: []
         });
-        if (type === 'assignment') fetchAssignments();
         if (type === 'exam') fetchExams();
     };
 
@@ -184,7 +153,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                 toast.success('Meet link generated successfully!');
             }
         } catch (error) {
-            console.error(error);
+            
             toast.error('Failed to generate Meet link. You might need to re-connect Google.');
             localStorage.removeItem('googleMeetTokens');
         } finally {
@@ -216,7 +185,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     return;
                 }
             } catch (error) {
-                console.error('Upload Error:', error);
+                
                 toast.error('Upload failed');
                 setUploading(false);
                 return;
@@ -226,33 +195,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
         let finalResourceId = videoForm.resourceId;
         let finalResourceModel = videoForm.resourceModel;
 
-        // Instant Assignment Creation
-        if (videoForm.type === 'assignment' && !initialData) {
-            try {
-                setUploading(true);
-                const assRes = await api.post('/assignments', {
-                    title: videoForm.title,
-                    description: videoForm.assignmentDesc || 'No description provided',
-                    assignmentType: videoForm.assignmentType,
-                    deadline: videoForm.meetScheduledAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                    totalMarks: 100,
-                    questions: videoForm.selectedQuestions,
-                    maxMb: videoForm.maxMb,
-                    allowedFormats: videoForm.allowedFormats,
-                    attachments: videoForm.attachments
-                });
-                
-                if (assRes.data.success) {
-                    finalResourceId = assRes.data.data._id;
-                    finalResourceModel = 'Assignment';
-                    toast.success('Assignment created successfully');
-                }
-            } catch (error) {
-                toast.error('Failed to create assignment');
-                setUploading(false);
-                return;
-            }
-        }
 
         const saveData = { 
             ...videoForm, 
@@ -273,9 +215,9 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
             case 'pdf': return <PictureAsPdfIcon color="error" />;
             case 'audio': return <AudiotrackIcon color="warning" />;
             case 'zip': return <FolderZipIcon color="primary" />;
-            case 'assignment': return <AssignmentIcon color="secondary" />;
             case 'exam': return <ReceiptLongIcon color="error" />;
             case 'google_meet': return <VideoCallIcon sx={{ color: '#1A73E8' }} />;
+            case 'none': return <LibraryBooksIcon sx={{ color: '#64748b' }} />;
             default: return <OndemandVideoIcon color="success" />;
         }
     };
@@ -327,159 +269,11 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             <MenuItem value="pdf">📄 PDF Document</MenuItem>
                             <MenuItem value="audio">🎧 Audio Lesson</MenuItem>
                             <MenuItem value="zip">📦 Resource Pack (ZIP)</MenuItem>
-                            <MenuItem value="assignment">📝 Student Assignment</MenuItem>
                             <MenuItem value="exam">🏆 Quiz/Exam</MenuItem>
                             <MenuItem value="google_meet">📹 Google Meet</MenuItem>
+                            <MenuItem value="none">📖 Informational (No File)</MenuItem>
                         </TextField>
                     </Grid>
-                    {/* Instant Assignment Creation UI */}
-                    {videoForm.type === 'assignment' && (
-                        <>
-                            <Grid item xs={12}>
-                                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                                    Assignment Description
-                                </Typography>
-                                <Box sx={{ 
-                                    '.ql-editor': { minHeight: '120px' },
-                                    '.ql-toolbar': { borderRadius: '12px 12px 0 0' },
-                                    '.ql-container': { borderRadius: '0 0 12px 12px', bgcolor: 'white' }
-                                }}>
-                                    <ReactQuill
-                                        theme="snow"
-                                        value={videoForm.assignmentDesc}
-                                        onChange={(content) => setVideoForm({ ...videoForm, assignmentDesc: content })}
-                                        placeholder="Enter assignment details and instructions..."
-                                    />
-                                </Box>
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                                <TextField
-                                    fullWidth
-                                    select
-                                    label="Assignment Type"
-                                    value={videoForm.assignmentType}
-                                    onChange={(e) => setVideoForm({ ...videoForm, assignmentType: e.target.value })}
-                                    InputProps={{ sx: { borderRadius: '12px' } }}
-                                >
-                                    <MenuItem value="file_upload">📁 File Upload</MenuItem>
-                                    <MenuItem value="quiz">📝 Quiz (Questions)</MenuItem>
-                                    <MenuItem value="text_answer">✍️ Text Answer</MenuItem>
-                                </TextField>
-                            </Grid>
-                            {videoForm.assignmentType === 'file_upload' && (
-                                <Grid item xs={12}>
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} sm={6}>
-                                            <TextField
-                                                fullWidth
-                                                type="number"
-                                                label="Max File Size (MB)"
-                                                value={videoForm.maxMb}
-                                                onChange={(e) => setVideoForm({ ...videoForm, maxMb: e.target.value })}
-                                                InputProps={{ sx: { borderRadius: '12px' } }}
-                                                helperText="Limit for student upload"
-                                            />
-                                        </Grid>
-                                        <Grid item xs={12} sm={6}>
-                                            <TextField
-                                                fullWidth
-                                                label="Allowed Formats"
-                                                placeholder=".pdf, .zip, .jpg"
-                                                value={videoForm.allowedFormats}
-                                                onChange={(e) => setVideoForm({ ...videoForm, allowedFormats: e.target.value })}
-                                                InputProps={{ sx: { borderRadius: '12px' } }}
-                                                helperText="Comma separated (e.g. .pdf, .zip)"
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Grid>
-                            )}
-
-                            <Grid item xs={12}>
-                                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                                    Reference Attachments (Question Papers/Guides)
-                                </Typography>
-                                <Box sx={{ p: 2, border: '1px dashed #e2e8f0', borderRadius: '12px', bgcolor: '#f8fafc' }}>
-                                    <Stack spacing={1}>
-                                        {videoForm.attachments?.map((file, idx) => (
-                                            <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, bgcolor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                                <Typography variant="caption" noWrap sx={{ maxWidth: '80%', fontWeight: 600 }}>{file.title}</Typography>
-                                                <IconButton size="small" color="error" onClick={() => {
-                                                    setVideoForm(prev => ({ ...prev, attachments: prev.attachments.filter((_, i) => i !== idx) }));
-                                                }}>
-                                                    <CloseIcon fontSize="inherit" />
-                                                </IconButton>
-                                            </Box>
-                                        ))}
-                                        <Button
-                                            component="label"
-                                            variant="outlined"
-                                            size="small"
-                                            startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
-                                            disabled={uploading}
-                                            sx={{ borderRadius: '8px', textTransform: 'none' }}
-                                        >
-                                            {uploading ? 'Uploading...' : 'Upload Reference File'}
-                                            <input type="file" hidden onChange={async (e) => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                    try {
-                                                        setUploading(true);
-                                                        const res = await uploadFile(file);
-                                                        if (res.success) {
-                                                            setVideoForm(prev => ({ 
-                                                                ...prev, 
-                                                                attachments: [...(prev.attachments || []), { title: file.name, url: res.url }] 
-                                                            }));
-                                                            toast.success('Attachment added');
-                                                        }
-                                                    } catch (err) {
-                                                        toast.error('Upload failed');
-                                                    } finally {
-                                                        setUploading(false);
-                                                    }
-                                                }
-                                            }} />
-                                        </Button>
-                                    </Stack>
-                                </Box>
-                            </Grid>
-                            
-                            {videoForm.assignmentType === 'quiz' && (
-                                <Grid item xs={12}>
-                                    <Button
-                                        fullWidth
-                                        variant="outlined"
-                                        startIcon={<PlaylistAddCheckIcon />}
-                                        onClick={() => setQuestionPickerOpen(true)}
-                                        sx={{ 
-                                            height: '56px', 
-                                            borderRadius: '12px',
-                                            borderStyle: 'dashed',
-                                            color: videoForm.selectedQuestions.length > 0 ? 'success.main' : 'primary.main',
-                                            borderColor: videoForm.selectedQuestions.length > 0 ? 'success.main' : 'primary.main'
-                                        }}
-                                    >
-                                        {videoForm.selectedQuestions.length > 0 
-                                            ? `Questions Selected: ${videoForm.selectedQuestions.length}` 
-                                            : 'Pick Questions for Quiz'}
-                                    </Button>
-                                </Grid>
-                            )}
-
-                            <Grid item xs={12} md={6}>
-                                <TextField
-                                    fullWidth
-                                    label="Assignment Deadline"
-                                    type="datetime-local"
-                                    value={videoForm.meetScheduledAt || ''} // Reusing scheduledAt for deadline
-                                    onChange={(e) => setVideoForm({ ...videoForm, meetScheduledAt: e.target.value })}
-                                    InputLabelProps={{ shrink: true }}
-                                    InputProps={{ sx: { borderRadius: '12px' } }}
-                                />
-                            </Grid>
-                        </>
-                    )}
 
                     {/* Dynamic Selection for Exam */}
                     {videoForm.type === 'exam' && (
@@ -511,9 +305,9 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             fullWidth
                             label="Estimated Duration (m)"
                             type="number"
-                            value={videoForm.duration ? (videoForm.duration / 60).toFixed(1) : ''}
+                            value={videoForm.duration && videoForm.duration > 0 ? (videoForm.duration / 60).toFixed(1) : ''}
                             onChange={(e) => {
-                                const mins = parseFloat(e.target.value) || 0;
+                                const mins = Math.max(0, parseFloat(e.target.value) || 0);
                                 setVideoForm({ ...videoForm, duration: Math.round(mins * 60) });
                             }}
                             InputProps={{ 
@@ -522,7 +316,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             }}
                         />
                     </Grid>
-                    {videoForm.type !== 'assignment' && videoForm.type !== 'exam' && videoForm.type !== 'google_meet' && (
+                    {videoForm.type !== 'assignment' && videoForm.type !== 'exam' && videoForm.type !== 'google_meet' && videoForm.type !== 'none' && (
                         <Grid item xs={12}>
                             <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                                 Lecture Source

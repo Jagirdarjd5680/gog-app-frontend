@@ -76,7 +76,7 @@ const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
             const { data } = await api.get('/courses');
             setCourses(data.data || []);
         } catch (error) {
-            console.error('Error fetching courses:', error);
+            
         }
     };
 
@@ -99,7 +99,7 @@ const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
             }
             onSuccess();
         } catch (error) {
-            console.error('Error saving exam:', error);
+            
             toast.error('Failed to save exam');
         }
     };

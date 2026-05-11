@@ -43,7 +43,7 @@ const QuestionSelector = ({ open, onClose, onSelect, existingQuestionIds = [] })
             const { data } = await api.get('/questions');
             setQuestions(data);
         } catch (error) {
-            console.error('Error fetching questions:', error);
+            
         } finally {
             setLoading(false);
         }

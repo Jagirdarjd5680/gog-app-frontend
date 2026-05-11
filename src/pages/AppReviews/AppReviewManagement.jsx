@@ -19,6 +19,67 @@ import { toast } from 'react-toastify';
 /* ─────────────────── helpers ──────────────────── */
 const statusColor = (s) => s === 'active' ? 'success' : 'warning';
 
+const VideoPreview = ({ url }) => {
+    if (!url) return null;
+
+    try {
+        // YouTube
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            let vidId = '';
+            if (url.includes('v=')) vidId = url.split('v=')[1].split('&')[0];
+            else if (url.includes('shorts/')) vidId = url.split('shorts/')[1].split('?')[0];
+            else if (url.includes('youtu.be/')) vidId = url.split('youtu.be/')[1].split('?')[0];
+
+            return (
+                <Box sx={{ mt: 2, borderRadius: 2, overflow: 'hidden', width: '100%', aspectRatio: '16/9', bgcolor: '#f0f0f0' }}>
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${vidId}`}
+                        title="YouTube Preview"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    ></iframe>
+                </Box>
+            );
+        }
+
+        // Instagram
+        if (url.includes('instagram.com/reel/') || url.includes('instagram.com/p/')) {
+            const embedUrl = url.split('?')[0].replace(/\/$/, "") + "/embed";
+            return (
+                <Box sx={{ mt: 2, borderRadius: 2, overflow: 'hidden', width: '100%', height: 450, maxWidth: 300, mx: 'auto', bgcolor: '#f0f0f0' }}>
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        src={embedUrl}
+                        title="Instagram Preview"
+                        frameBorder="0"
+                        scrolling="no"
+                        allowtransparency="true"
+                    ></iframe>
+                </Box>
+            );
+        }
+
+        // Direct Video
+        if (url.endsWith('.mp4') || url.endsWith('.mov') || url.endsWith('.webm')) {
+            return (
+                <Box sx={{ mt: 2, borderRadius: 2, overflow: 'hidden', width: '100%', bgcolor: 'black' }}>
+                    <video controls width="100%" src={url}>
+                        Your browser does not support the video tag.
+                    </video>
+                </Box>
+            );
+        }
+    } catch (e) {
+        return <Typography color="error" variant="caption">Invalid URL format for preview</Typography>;
+    }
+
+    return null;
+};
+
 /* ══════════════════════════════════════════════════
    REVIEW FORM MODAL
 ══════════════════════════════════════════════════ */
@@ -30,6 +91,9 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState('');
     const [status, setStatus] = useState('active');
+    const [videoUrl, setVideoUrl] = useState('');
+    const [thumbnail, setThumbnail] = useState('');
+    const [aspectRatio, setAspectRatio] = useState('16:9');
 
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -43,8 +107,12 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
             setRating(review.rating || 5);
             setComment(review.review || '');
             setStatus(review.status || 'active');
+            setVideoUrl(review.videoUrl || '');
+            setThumbnail(review.thumbnail || '');
+            setAspectRatio(review.aspectRatio || '16:9');
         } else {
             setName(''); setProfileImage(''); setRating(5); setComment(''); setStatus('active');
+            setVideoUrl(''); setThumbnail(''); setAspectRatio('16:9');
         }
     }, [open]);
 
@@ -63,6 +131,36 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
         } catch { toast.error('Upload failed'); } finally { setUploading(false); }
     };
 
+    const handleThumbnailUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const { data } = await api.post('/upload', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setThumbnail(data.url);
+            toast.success('Thumbnail uploaded!');
+        } catch { toast.error('Upload failed'); } finally { setUploading(false); }
+    };
+
+    const handleVideoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const { data } = await api.post('/upload', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setVideoUrl(data.url);
+            toast.success('Video uploaded!');
+        } catch { toast.error('Upload failed'); } finally { setUploading(false); }
+    };
+
     const handleSave = async () => {
         if (!name.trim()) return toast.error('Name is required');
         if (!comment.trim()) return toast.error('Review text is required');
@@ -75,6 +173,9 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
                 rating: Number(rating),
                 review: comment.trim(),
                 status,
+                videoUrl: videoUrl.trim(),
+                thumbnail: thumbnail.trim(),
+                aspectRatio,
             };
             if (isEdit) {
                 await api.put(`/app-reviews/${review._id}`, payload);
@@ -171,6 +272,77 @@ const ReviewFormModal = ({ open, onClose, review, onSuccess }) => {
                                 <MenuItem value="inactive">Inactive</MenuItem>
                             </Select>
                         </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                        <Divider sx={{ my: 1 }} />
+                        <Typography variant="subtitle2" fontWeight={700} color="primary" mb={2}>
+                            Video Details (Success Story)
+                        </Typography>
+                        <TextField
+                            label="Video URL (YT, Instagram Reels, Direct)"
+                            fullWidth
+                            size="small"
+                            value={videoUrl}
+                            onChange={e => setVideoUrl(e.target.value)}
+                            placeholder="YT Shorts, Instagram Reel, or MP4 URL"
+                            sx={{ mb: 1 }}
+                        />
+                        <Button
+                            variant="outlined"
+                            component="label"
+                            size="small"
+                            disabled={uploading}
+                            startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
+                            sx={{ mb: 2 }}
+                        >
+                            {uploading ? 'Uploading Video…' : 'Upload Video File'}
+                            <input type="file" accept="video/*" hidden onChange={handleVideoUpload} />
+                        </Button>
+
+                        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                            <InputLabel>Video Aspect Ratio</InputLabel>
+                            <Select
+                                value={aspectRatio}
+                                label="Video Aspect Ratio"
+                                onChange={e => setAspectRatio(e.target.value)}
+                            >
+                                <MenuItem value="16:9">16:9 (Horizontal/YT)</MenuItem>
+                                <MenuItem value="9:16">9:16 (Vertical/Reel)</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <VideoPreview url={videoUrl} />
+                        
+                        <Typography variant="subtitle2" fontWeight={700} mb={1}>
+                            Video Thumbnail
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                            {thumbnail && (
+                                <Box component="img" src={fixUrl(thumbnail)} sx={{ width: 100, height: 60, borderRadius: 1, objectFit: 'cover' }} />
+                            )}
+                            <Box sx={{ flex: 1 }}>
+                                <TextField
+                                    label="Thumbnail URL"
+                                    fullWidth
+                                    size="small"
+                                    value={thumbnail}
+                                    onChange={e => setThumbnail(e.target.value)}
+                                    placeholder="https://..."
+                                    sx={{ mb: 1 }}
+                                />
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    size="small"
+                                    disabled={uploading}
+                                    startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
+                                >
+                                    {uploading ? 'Uploading…' : 'Upload Thumbnail'}
+                                    <input type="file" accept="image/*" hidden onChange={handleThumbnailUpload} />
+                                </Button>
+                            </Box>
+                        </Box>
                     </Grid>
                 </Grid>
             </DialogContent>

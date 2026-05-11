@@ -82,7 +82,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                     toast.success('Image uploaded successfully');
                 }
             } catch (error) {
-                console.error('Upload Error:', error);
+                
                 toast.error('Failed to upload image');
                 setFieldValue('thumbnailPreview', '');
             } finally {
@@ -636,7 +636,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                                 toast.success('Video uploaded successfully');
                                                             }
                                                         } catch (error) {
-                                                            console.error('Upload error:', error);
+                                                            
                                                             toast.error('Upload failed');
                                                         } finally {
                                                             setUploading(false);

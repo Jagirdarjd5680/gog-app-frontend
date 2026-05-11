@@ -77,7 +77,7 @@ const PaymentDashboard = () => {
                 setStats(response.data.data);
             }
         } catch (error) {
-            console.error(error);
+            
         }
     };
 

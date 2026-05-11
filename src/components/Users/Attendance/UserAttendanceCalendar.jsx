@@ -17,7 +17,7 @@ import {
     isBefore,
     getDay
 } from 'date-fns';
-import api from '../../utils/api';
+import api from '../../../utils/api';
 
 const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -33,7 +33,7 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
                     setAttendanceData(response.data.data);
                 }
             } catch (error) {
-                console.error("Failed to fetch attendance", error);
+                
             } finally {
                 setLoading(false);
             }

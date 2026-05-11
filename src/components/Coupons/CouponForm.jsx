@@ -78,7 +78,7 @@ const CouponForm = ({ open, onClose, initialData, onSuccess }) => {
             // Check if data.data exists (pagination) or directly array
             setCourses(Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []));
         } catch (error) {
-            console.error('Error fetching courses:', error);
+            
         }
     };
 
@@ -96,7 +96,7 @@ const CouponForm = ({ open, onClose, initialData, onSuccess }) => {
             }
             setUsers(userList);
         } catch (error) {
-            console.error('Error fetching users:', error);
+            
         }
     };
 
@@ -135,7 +135,7 @@ const CouponForm = ({ open, onClose, initialData, onSuccess }) => {
             }
             onSuccess();
         } catch (error) {
-            console.error('Error saving coupon:', error);
+            
             const msg = error.response?.data?.msg || 'Failed to save coupon';
             toast.error(msg);
         } finally {

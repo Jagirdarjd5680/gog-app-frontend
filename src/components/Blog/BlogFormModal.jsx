@@ -36,7 +36,7 @@ const BlogFormModal = ({ open, onClose, blog, onSuccess }) => {
                 const { data } = await api.get('/categories');
                 setCategories(data.data || []);
             } catch (error) {
-                console.error("Failed to fetch categories", error);
+                
             }
         };
         if (open) fetchCategories();

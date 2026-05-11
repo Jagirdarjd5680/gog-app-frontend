@@ -43,7 +43,8 @@ import StorageIcon from '@mui/icons-material/Storage';
 import GridViewIcon from '@mui/icons-material/GridView';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 
-const MediaLibrary = () => {
+const MediaLibrary = ({ onSelect }) => {
+    const isPicker = !!onSelect;
     const theme = useTheme();
     const [loading, setLoading] = useState(true);
     const [files, setFiles] = useState([]);
@@ -95,7 +96,7 @@ const MediaLibrary = () => {
                 setTotalCount(response.data.total || 0);
             }
         } catch (error) {
-            console.error('Fetch Files Error:', error);
+            
             toast.error('Failed to load media files');
         } finally {
             setLoading(false);
@@ -109,7 +110,7 @@ const MediaLibrary = () => {
                 setTeachers(response.data.data);
             }
         } catch (error) {
-            console.error('Fetch Teachers Error:', error);
+            
         }
     };
 
@@ -120,7 +121,7 @@ const MediaLibrary = () => {
                 setStats(response.data);
             }
         } catch (error) {
-            console.error('Fetch Stats Error:', error);
+            
         }
     };
 
@@ -173,7 +174,7 @@ const MediaLibrary = () => {
                 fetchStats();
             }
         } catch (error) {
-            console.error('Bulk Delete Error:', error);
+            
             toast.error('Failed to delete selected files');
         } finally {
             setBulkDeleting(false);
@@ -191,7 +192,7 @@ const MediaLibrary = () => {
                 setDeleteDialogOpen(false);
             }
         } catch (error) {
-            console.error('Delete Error:', error);
+            
             toast.error('Failed to delete file');
         } finally {
             setDeleting(false);
@@ -217,7 +218,7 @@ const MediaLibrary = () => {
                 toast.error(result.message || 'Upload failed');
             }
         } catch (error) {
-            console.error('Upload error:', error);
+            
             toast.error('An error occurred during upload');
         } finally {
             setUploading(false);
@@ -248,7 +249,7 @@ const MediaLibrary = () => {
                 fetchFiles();
             }
         } catch (error) {
-            console.error('Import Error:', error);
+            
             toast.error(error.response?.data?.message || 'Failed to import URL');
         } finally {
             setImportingUrl(false);
@@ -588,6 +589,7 @@ const MediaLibrary = () => {
                                                 setDeleteDialogOpen(true);
                                             }}
                                             onCopy={copyToClipboard}
+                                            onSelect={onSelect}
                                         />
                                     </Grid>
                                 ))}
@@ -649,6 +651,16 @@ const MediaLibrary = () => {
                                                 {new Date(file.createdAt).toLocaleDateString()}
                                             </Typography>
                                             <Box sx={{ width: 100, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                                {onSelect && (
+                                                    <Button 
+                                                        variant="contained" 
+                                                        size="small" 
+                                                        onClick={() => onSelect(file)}
+                                                        sx={{ borderRadius: 1, textTransform: 'none', fontWeight: 700, minWidth: 'unset', px: 1 }}
+                                                    >
+                                                        Select
+                                                    </Button>
+                                                )}
                                                 <Tooltip title="Copy Link">
                                                     <IconButton size="small" onClick={() => copyToClipboard(file.url)}>
                                                         <LinkIcon fontSize="inherit" />

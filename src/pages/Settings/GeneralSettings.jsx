@@ -147,7 +147,7 @@ const GeneralSettings = ({ settings, onSave, isSaving }) => {
                             />
                         </Grid>
 
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={3}>
                             <Typography variant="subtitle2" gutterBottom>Small Icon</Typography>
                             <Stack direction="row" spacing={2} alignItems="center">
                                 <Avatar variant="rounded" src={formData.siteIcon} sx={{ width: 64, height: 64, bgcolor: 'action.hover' }} />
@@ -162,6 +162,87 @@ const GeneralSettings = ({ settings, onSave, isSaving }) => {
                                 label="URL"
                                 name="siteIcon"
                                 value={formData.siteIcon || ''}
+                                onChange={handleChange}
+                                sx={{ mt: 1 }}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={3}>
+                            <Typography variant="subtitle2" gutterBottom color="primary.main" fontWeight={700}>PDF Receipt Logo</Typography>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Avatar variant="rounded" src={formData.pdfLogo} sx={{ width: 64, height: 64, bgcolor: 'action.hover' }} />
+                                <Button variant="outlined" color="primary" component="label" size="small" startIcon={<CloudUploadIcon />}>
+                                    Upload
+                                    <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e, 'pdfLogo')} />
+                                </Button>
+                            </Stack>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                label="PDF Logo URL"
+                                name="pdfLogo"
+                                value={formData.pdfLogo || ''}
+                                onChange={handleChange}
+                                sx={{ mt: 1 }}
+                                placeholder="http://..."
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={3}>
+                            <Typography variant="subtitle2" gutterBottom color="primary.main" fontWeight={700}>PDF Cert. Signature</Typography>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Avatar variant="rounded" src={formData.pdfCertificateSignature} sx={{ width: 64, height: 64, bgcolor: 'action.hover' }} />
+                                <Button variant="outlined" color="primary" component="label" size="small" startIcon={<CloudUploadIcon />}>
+                                    Upload
+                                    <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e, 'pdfCertificateSignature')} />
+                                </Button>
+                            </Stack>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                label="Signature URL"
+                                name="pdfCertificateSignature"
+                                value={formData.pdfCertificateSignature || ''}
+                                onChange={handleChange}
+                                sx={{ mt: 1 }}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={3}>
+                            <Typography variant="subtitle2" gutterBottom color="primary.main" fontWeight={700}>PDF Cert. Seal</Typography>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Avatar variant="rounded" src={formData.pdfCertificateSeal} sx={{ width: 64, height: 64, bgcolor: 'action.hover' }} />
+                                <Button variant="outlined" color="primary" component="label" size="small" startIcon={<CloudUploadIcon />}>
+                                    Upload
+                                    <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e, 'pdfCertificateSeal')} />
+                                </Button>
+                            </Stack>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                label="Seal URL"
+                                name="pdfCertificateSeal"
+                                value={formData.pdfCertificateSeal || ''}
+                                onChange={handleChange}
+                                sx={{ mt: 1 }}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={3}>
+                            <Typography variant="subtitle2" gutterBottom color="primary.main" fontWeight={700}>PDF Cert. Badge</Typography>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Avatar variant="rounded" src={formData.pdfCertificateBadge} sx={{ width: 64, height: 64, bgcolor: 'action.hover' }} />
+                                <Button variant="outlined" color="primary" component="label" size="small" startIcon={<CloudUploadIcon />}>
+                                    Upload
+                                    <input type="file" hidden accept="image/*" onChange={(e) => handleFileUpload(e, 'pdfCertificateBadge')} />
+                                </Button>
+                            </Stack>
+                            <TextField
+                                fullWidth
+                                size="small"
+                                label="Badge URL"
+                                name="pdfCertificateBadge"
+                                value={formData.pdfCertificateBadge || ''}
                                 onChange={handleChange}
                                 sx={{ mt: 1 }}
                             />

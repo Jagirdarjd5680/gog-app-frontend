@@ -18,14 +18,19 @@ const VideoPreview = ({ url, file, height = 200 }) => {
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
             isYoutube = true;
             let videoId = '';
-            if (url.includes('v=')) {
-                videoId = url.split('v=')[1]?.split('&')[0];
-            } else if (url.includes('youtu.be/')) {
-                videoId = url.split('youtu.be/')[1]?.split('?')[0];
+            if (url.includes('list=')) {
+                const listId = url.split('list=')[1]?.split('&')[0];
+                videoSrc = `https://www.youtube.com/embed?listType=playlist&list=${listId}&modestbranding=1&rel=0&controls=1&disablekb=1`;
             } else {
-                videoId = url.split('/').pop()?.split('?')[0];
+                if (url.includes('v=')) {
+                    videoId = url.split('v=')[1]?.split('&')[0];
+                } else if (url.includes('youtu.be/')) {
+                    videoId = url.split('youtu.be/')[1]?.split('?')[0];
+                } else {
+                    videoId = url.split('/').pop()?.split('?')[0];
+                }
+                videoSrc = `https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&controls=1&disablekb=1`;
             }
-            videoSrc = `https://www.youtube.com/embed/${videoId}`;
         }
     }
 

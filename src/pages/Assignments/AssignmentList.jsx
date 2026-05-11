@@ -85,7 +85,7 @@ const AssignmentList = () => {
             // Then fetch for full data (including population if any)
             fetchAssignments();
         } catch (error) {
-            console.error('Error adding questions:', error);
+            
             toast.error('Failed to add questions');
         }
     };

@@ -17,21 +17,25 @@ import CloseIcon from '@mui/icons-material/Close';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
-import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import api from '../../../utils/api';
 import { toast } from 'react-toastify';
+import { CourseWizardSkeleton } from '../../Common/ModalSkeletons';
 
 import BasicInfoStep from './BasicInfoStep';
 import CurriculumStep from './CurriculumStep';
+import AssignmentStep from './AssignmentStep';
 import ReviewStep from './ReviewStep';
 
 const steps = [
     { label: 'Basic Details', icon: <InfoOutlinedIcon />, description: 'Course title, price, and media' },
     { label: 'Curriculum', icon: <MenuBookOutlinedIcon />, description: 'Topics, lectures, and resources' },
+    { label: 'Assignments', icon: <AssignmentOutlinedIcon />, description: 'Add and link assignments' },
     { label: 'Final Review', icon: <VisibilityOutlinedIcon />, description: 'Preview and publish course' }
 ];
 
@@ -49,11 +53,13 @@ const validationSchema = [
             })
         )
     }),
+    Yup.object().shape({}),
     Yup.object().shape({})
 ];
 
 const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
     const [activeStep, setActiveStep] = useState(0);
+    const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState([]);
     const [initialValues, setInitialValues] = useState({
         title: '',
@@ -90,7 +96,7 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                 const { data } = await api.get('/categories');
                 setCategories(data.data || []);
             } catch (error) {
-                console.error("Failed to fetch categories", error);
+                
             }
         };
         fetchCategories();
@@ -131,6 +137,7 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
     }, [open, courseId]);
 
     const fetchCourseDetails = async () => {
+        setLoading(true);
         try {
             const { data } = await api.get(`/courses/${courseId}`);
             const courseData = data.data;
@@ -171,14 +178,52 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                 allowOtherBatchMaterials: courseData.allowOtherBatchMaterials || false,
             });
         } catch (error) {
-            console.error('Error fetching course:', error);
             toast.error('Failed to load course details');
             onClose();
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleNext = () => setActiveStep((prev) => prev + 1);
     const handleBack = () => setActiveStep((prev) => prev - 1);
+
+    const handleSaveDraft = async (values) => {
+        try {
+            setLoading(true);
+            const cleanModules = values.modules.map(mod => {
+                const { id, ...moduleData } = mod;
+                return {
+                    ...moduleData,
+                    videos: (moduleData.videos || []).map(vid => {
+                        const { id: vId, ...videoData } = vid;
+                        if (!videoData.resourceId) delete videoData.resourceId;
+                        if (!videoData.resourceModel) delete videoData.resourceModel;
+                        return videoData;
+                    })
+                };
+            });
+
+            const payload = {
+                ...values,
+                isPublished: false, // Explicitly set to false for draft
+                modules: cleanModules
+            };
+            delete payload.thumbnailPreview;
+
+            if (isEditMode) {
+                await api.put(`/courses/${courseId}`, payload);
+            } else {
+                await api.post('/courses', payload);
+            }
+            toast.success('Draft saved successfully');
+            onSuccess();
+        } catch (error) {
+            toast.error('Failed to save draft');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSubmit = async (values, { setSubmitting }) => {
         if (activeStep !== steps.length - 1) {
@@ -204,6 +249,7 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
 
             const payload = {
                 ...values,
+                isPublished: true, // Mark as published when launching
                 price: Number(values.price) || 0,
                 originalPrice: Number(values.originalPrice) || 0,
                 durationValue: Number(values.durationValue) || 0,
@@ -301,9 +347,10 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                     variant="outlined" 
                                     startIcon={<SaveOutlinedIcon />}
                                     sx={{ borderRadius: '10px', textTransform: 'none', px: 3 }}
-                                    onClick={() => toast.info('Draft auto-saved!')}
+                                    onClick={() => handleSaveDraft(values)}
+                                    disabled={loading}
                                 >
-                                    Save Draft
+                                    {loading ? <CircularProgress size={20} /> : 'Save Draft'}
                                 </Button>
                                 <IconButton onClick={onClose} sx={{ bgcolor: 'rgba(0,0,0,0.05)' }}>
                                     <CloseIcon />
@@ -360,29 +407,40 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
 
                             {/* Main Content */}
                             <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 5 } }}>
-                                <Box sx={{ maxWidth: 1100, mx: 'auto' }} className="animate-slide-up">
-                                    {activeStep === 0 && (
-                                        <BasicInfoStep
-                                            values={values}
-                                            errors={errors}
-                                            touched={touched}
-                                            handleChange={handleChange}
-                                            setFieldValue={setFieldValue}
-                                            categories={categories}
-                                            courseId={courseId}
-                                        />
-                                    )}
-                                    {activeStep === 1 && (
-                                        <CurriculumStep
-                                            values={values}
-                                            setFieldValue={setFieldValue}
-                                            courseId={courseId}
-                                        />
-                                    )}
-                                    {activeStep === 2 && (
-                                        <ReviewStep values={values} categories={categories} />
-                                    )}
-                                </Box>
+                                {loading ? (
+                                    <CourseWizardSkeleton />
+                                ) : (
+                                    <Box sx={{ maxWidth: 1100, mx: 'auto' }} className="animate-slide-up">
+                                        {activeStep === 0 && (
+                                            <BasicInfoStep
+                                                values={values}
+                                                errors={errors}
+                                                touched={touched}
+                                                handleChange={handleChange}
+                                                setFieldValue={setFieldValue}
+                                                categories={categories}
+                                                courseId={courseId}
+                                            />
+                                        )}
+                                        {activeStep === 1 && (
+                                            <CurriculumStep
+                                                values={values}
+                                                setFieldValue={setFieldValue}
+                                                courseId={courseId}
+                                            />
+                                        )}
+                                        {activeStep === 2 && (
+                                            <AssignmentStep
+                                                values={values}
+                                                setFieldValue={setFieldValue}
+                                                courseId={courseId}
+                                            />
+                                        )}
+                                        {activeStep === 3 && (
+                                            <ReviewStep values={values} categories={categories} courseId={courseId} />
+                                        )}
+                                    </Box>
+                                )}
                             </Box>
                         </Box>
 

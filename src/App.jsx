@@ -1,57 +1,12 @@
-import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useAuth } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import { Box } from '@mui/material';
-import PageLoader from './components/Common/PageLoader';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import { useSettings } from './context/SettingsContext';
-
-// Lazy load Pages
-const Login = lazy(() => import('./pages/Auth/Login'));
-const Register = lazy(() => import('./pages/Auth/Register'));
-const VerifyEmail = lazy(() => import('./pages/Auth/VerifyEmail'));
-const ForgotPassword = lazy(() => import('./pages/Auth/ForgotPassword'));
-const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
-const UserList = lazy(() => import('./pages/Users/UserList'));
-const CourseList = lazy(() => import('./pages/Courses/CourseList'));
-const BatchList = lazy(() => import('./pages/Batches/BatchList'));
-const CategoryList = lazy(() => import('./pages/Courses/CategoryList'));
-const LiveClassList = lazy(() => import('./pages/LiveClasses/LiveClassList'));
-const AssignmentList = lazy(() => import('./pages/Assignments/AssignmentList'));
-const PaymentDashboard = lazy(() => import('./pages/Payments/PaymentDashboard'));
-const NotificationCenter = lazy(() => import('./pages/Notifications/NotificationCenter'));
-const ReportsDashboard = lazy(() => import('./pages/Reports/ReportsDashboard'));
-const ExamList = lazy(() => import('./pages/Exams/ExamList'));
-const ExamResults = lazy(() => import('./pages/Exams/ExamResults'));
-const QuestionBank = lazy(() => import('./pages/Exams/QuestionBank'));
-const BulkQuestionEdit = lazy(() => import('./pages/Exams/BulkQuestionEdit'));
-const CouponList = lazy(() => import('./pages/Coupons/CouponList'));
-const MediaLibrary = lazy(() => import('./pages/Media/MediaLibrary'));
-const ChatCenter = lazy(() => import('./pages/Chat/ChatCenter'));
-const SettingsLayout = lazy(() => import('./pages/Settings/SettingsLayout'));
-const MainLayout = lazy(() => import('./components/Layout/MainLayout'));
-const Unauthorized = lazy(() => import('./pages/Unauthorized'));
-const BlogList = lazy(() => import('./pages/Blogs/BlogList'));
-const BannerManagement = lazy(() => import('./pages/Banners/BannerManagement'));
-const AppReviewManagement = lazy(() => import('./pages/AppReviews/AppReviewManagement'));
-const NewsTickerManagement = lazy(() => import('./pages/Banners/NewsTickerManagement'));
-const FreeMaterialList = lazy(() => import('./pages/FreeMaterials/FreeMaterialList'));
-const IndividualResult = lazy(() => import('./pages/Exams/IndividualResult'));
-const FeeRecordsPage = lazy(() => import('./pages/Payments/FeeRecordsPage'));
-const BookingManagement = lazy(() => import('./pages/Booking/BookingManagement'));
-const PublicSeatBooking = lazy(() => import('./pages/Booking/PublicSeatBooking'));
-const StudentProfileForm = lazy(() => import('./pages/Users/StudentProfileForm'));
-const LeaveManagement = lazy(() => import('./pages/Dashboard/LeaveManagement'));
-const AdminLeaveRequests = lazy(() => import('./pages/Users/AdminLeaveRequests'));
-const BatchAttendance = lazy(() => import('./pages/Batches/BatchAttendance'));
-
+import AppRoutes from './AppRoutes';
 
 function App() {
-  const { isAuthenticated, user } = useAuth();
   const { settings } = useSettings();
 
   const googleClientId = settings?.integrations?.googleClientId;
@@ -59,7 +14,6 @@ function App() {
 
   const renderApp = () => (
     <>
-      {/* ... previous content ... */}
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -72,309 +26,12 @@ function App() {
         pauseOnHover
         theme="colored"
       />
-
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/login"
-            element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
-          />
-          <Route
-            path="/register"
-            element={isAuthenticated ? <Navigate to="/" replace /> : <Register />}
-          />
-          <Route
-            path="/verify-email"
-            element={isAuthenticated ? <Navigate to="/" replace /> : <VerifyEmail />}
-          />
-          <Route
-            path="/forgot-password"
-            element={isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />}
-          />
-          <Route path="/seat-booking" element={<PublicSeatBooking />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
-
-          {/* Protected Routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-
-            {/* Admin & Teacher Routes */}
-            <Route
-              path="users"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <UserList />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="leave-requests"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminLeaveRequests />
-                </ProtectedRoute>
-              }
-            />
-
-
-            <Route
-              path="batches"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <BatchList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="batches/:batchId/attendance"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <BatchAttendance />
-                </ProtectedRoute>
-              }
-            />
-
-
-            <Route
-              path="courses"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <CourseList />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="live-classes"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <LiveClassList />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="assignments"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <AssignmentList />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="payments"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <PaymentDashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="leaves"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
-                  {user?.role === 'student' ? <LeaveManagement /> : <AdminLeaveRequests />}
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="notifications"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <NotificationCenter />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="reports"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <ReportsDashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="exam-management"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <ExamList />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="exam-results/*"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <Routes>
-                    <Route index element={<ExamResults />} />
-                    <Route path=":examId" element={<ExamResults />} />
-                    <Route path="details/:resultId" element={<IndividualResult />} />
-                  </Routes>
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="question-bank"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <QuestionBank />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="categories"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <CategoryList />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="coupons"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <CouponList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="media-library"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <MediaLibrary />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <SettingsLayout />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="chat"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}>
-                  <ChatCenter />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="blogs"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <BlogList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="banners"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <BannerManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="news-ticker"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <NewsTickerManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="app-reviews"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AppReviewManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="free-materials"
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                  <FreeMaterialList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="fee-records"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <FeeRecordsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="booking"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <BookingManagement />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Student Specific Routes */}
-            <Route
-              path="profile"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentProfileForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="leaves"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <LeaveManagement />
-                </ProtectedRoute>
-              }
-            />
-
-          </Route>
-
-          <Route
-            path="question-bank/bulk-edit/:editId"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'teacher']}>
-                <BulkQuestionEdit />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <AppRoutes />
     </>
   );
 
   let content = renderApp();
 
-  // Wrap with reCAPTCHA ONLY if a real key is configured
   if (recaptchaKey) {
     content = (
       <GoogleReCaptchaProvider reCaptchaKey={recaptchaKey}>
@@ -383,7 +40,6 @@ function App() {
     );
   }
 
-  // Wrap with Google OAuth ONLY if a real client ID is configured
   if (googleClientId) {
     content = (
       <GoogleOAuthProvider clientId={googleClientId}>

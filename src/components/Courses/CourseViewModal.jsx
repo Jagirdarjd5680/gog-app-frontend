@@ -23,7 +23,15 @@ import {
     InputAdornment,
     Stack,
     Tooltip,
-    Paper
+    Paper,
+    Tabs,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -50,8 +58,9 @@ import { toast } from 'react-toastify';
 
 const CourseViewModal = ({ open, onClose, course }) => {
     const [loading, setLoading] = useState(false);
-    const [fullCourseData, setFullCourseData] = useState(null);
+    const [activeVideoUrl, setActiveVideoUrl] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [tabIndex, setTabIndex] = useState(0);
 
     React.useEffect(() => {
         if (open && course?._id) {
@@ -66,7 +75,7 @@ const CourseViewModal = ({ open, onClose, course }) => {
                 setFullCourseData(response.data.data);
             }
         } catch (error) {
-            console.error('Error fetching course details:', error);
+            
         }
     };
 
@@ -126,8 +135,14 @@ const CourseViewModal = ({ open, onClose, course }) => {
         }
     };
 
-    const handleOpenResource = (url, download = false) => {
+    const handleOpenResource = (url, type, download = false) => {
         if (!url) return;
+        
+        if (type === 'video' && !download) {
+            setActiveVideoUrl(url);
+            return;
+        }
+
         let targetUrl = url;
         if (download) {
             if (url.includes('cloudinary.com') && (url.includes('/image/upload/') || url.includes('/video/upload/')) && !url.toLowerCase().endsWith('.pdf')) {
@@ -166,11 +181,12 @@ const CourseViewModal = ({ open, onClose, course }) => {
             open={open}
             onClose={onClose}
             fullWidth
-            maxWidth="lg"
+            maxWidth="xl"
             PaperProps={{ 
                 sx: { 
                     borderRadius: 3,
-                    bgcolor: '#ffffff'
+                    bgcolor: '#ffffff',
+                    minHeight: '80vh'
                 } 
             }}
         >
@@ -200,195 +216,208 @@ const CourseViewModal = ({ open, onClose, course }) => {
             </DialogTitle>
             <Divider />
 
-            <DialogContent sx={{ p: 4 }}>
-                <Grid container spacing={4}>
+            <DialogContent sx={{ p: 2 }}>
+                <Grid container spacing={2}>
                     {/* Left Column: Info & Curriculum */}
-                    <Grid item xs={12} md={7.5}>
-                        <Box sx={{ mb: 4 }}>
+                    <Grid item xs={12} md={8}>
+                        <Box sx={{ mb: 2 }}>
                             <Typography variant="h5" fontWeight={900} gutterBottom>{course.title}</Typography>
-                            <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+                            <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
                                 <Chip label={course.category?.name || 'Uncategorized'} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
                                 <Chip label={course.level} color="primary" size="small" sx={{ textTransform: 'capitalize', fontWeight: 600 }} />
                                 <Chip label={course.price === 0 ? 'FREE' : `₹${course.price}`} color={course.price === 0 ? "success" : "default"} size="small" sx={{ fontWeight: 900 }} />
                                 <Chip label={`${stats.videos} Videos`} size="small" color="info" variant="outlined" sx={{ fontWeight: 600 }} />
-                                <Chip label={`${course.examCount || 0} Exams`} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(233, 30, 99, 0.08)', color: '#e91e63' }} />
-                                <Chip label={`${course.assignmentCount || 0} Assignments`} size="small" sx={{ fontWeight: 600, bgcolor: 'rgba(103, 58, 183, 0.08)', color: '#673ab7' }} />
                             </Box>
 
-                            <Box sx={{ display: 'flex', gap: 3, mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <VisibilityIcon fontSize="small" color="success" />
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Students</Typography>
-                                        <Typography variant="subtitle2" fontWeight={800}>{course.enrolledStudents?.length || 0}</Typography>
-                                    </Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <StarIcon fontSize="small" sx={{ color: '#FFB400' }} />
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Rating</Typography>
-                                        <Typography variant="subtitle2" fontWeight={800}>{course.rating || 0}</Typography>
-                                    </Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <TimerIcon fontSize="small" color="primary" />
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Validity</Typography>
-                                        <Typography variant="subtitle2" fontWeight={800}>{course.durationValue === 0 ? 'Unlimited' : `${course.durationValue} ${course.durationUnit[0]}`}</Typography>
-                                    </Box>
-                                </Box>
-                            </Box>
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
+                                <Table size="small">
+                                    <TableBody>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)', width: '25%' }}>Students Enrolled</TableCell>
+                                            <TableCell>{course.enrolledStudents?.length || 0}</TableCell>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)', width: '25%' }}>Rating</TableCell>
+                                            <TableCell>{course.rating || 0}</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Course Validity</TableCell>
+                                            <TableCell>{course.durationValue === 0 ? 'Unlimited' : `${course.durationValue} ${course.durationUnit}`}</TableCell>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Exams & Assignments</TableCell>
+                                            <TableCell>{(course.examCount || 0) + (course.assignmentCount || 0)}</TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
 
                             <Box 
                                 sx={{ 
                                     color: 'text.secondary',
-                                    fontSize: '0.95rem',
-                                    lineHeight: 1.6,
-                                    mb: 4,
+                                    fontSize: '0.85rem',
+                                    lineHeight: 1.5,
+                                    mb: 2,
                                     width: '100%',
                                     overflowWrap: 'break-word',
-                                    '& p': { mb: 1.5 },
-                                    '& ul, & ol': { mb: 1.5, pl: 3 },
+                                    '& p': { mb: 1 },
+                                    '& ul, & ol': { mb: 1, pl: 3 },
                                     '& li': { mb: 0.5 },
                                     '& strong': { fontWeight: 700, color: 'text.primary' },
-                                    '& hr': { my: 2, border: 0, borderTop: '1px solid #eee' },
+                                    '& hr': { my: 1, border: 0, borderTop: '1px solid #eee' },
                                     '& img': { maxWidth: '100%', height: 'auto', borderRadius: 1 }
                                 }}
                                 dangerouslySetInnerHTML={{ __html: course.description || 'No description provided.' }}
                             />
                         </Box>
 
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="subtitle1" fontWeight={900}>Curriculum</Typography>
-                            <TextField
-                                placeholder="Search..."
-                                size="small"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
-                                    sx: { borderRadius: 2, bgcolor: 'white', maxWidth: 180 }
-                                }}
-                            />
-                        </Box>
+                        <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)}>
+                                    <Tab label="Curriculum" sx={{ textTransform: 'none', fontWeight: 600 }} />
+                                    <Tab label={`Assignments & Exams (${(fullCourseData?.assignments?.length || 0) + (fullCourseData?.exams?.length || 0)})`} sx={{ textTransform: 'none', fontWeight: 600 }} />
+                                </Tabs>
+                            </Box>
 
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                            {filteredModules.length > 0 ? (
-                                filteredModules.map((module, index) => (
-                                    <Accordion key={index} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #eee', '&:before': { display: 'none' } }}>
-                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'action.hover' }}>
-                                            <Typography variant="subtitle2" fontWeight={800}>{module.title}</Typography>
-                                            <Typography variant="caption" sx={{ ml: 'auto', mr: 2, opacity: 0.7 }}>{module.videos?.length || 0} items</Typography>
-                                        </AccordionSummary>
-                                        <AccordionDetails sx={{ p: 0 }}>
-                                            <List disablePadding>
-                                                {module.videos && module.videos.map((vid, vIdx) => (
-                                                    <ListItem
-                                                        key={vIdx}
-                                                        divider={vIdx < module.videos.length - 1}
-                                                        sx={{ py: 1.5, px: 2, '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}
-                                                        secondaryAction={
-                                                            <Stack direction="row" spacing={0.5}>
-                                                                <Tooltip title="View">
-                                                                    <IconButton size="small" color="primary" onClick={() => handleOpenResource(vid.url || vid.videoUrl)}>
-                                                                        <VisibilityIcon sx={{ fontSize: 18 }} />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                                <Tooltip title="Copy Link">
-                                                                    <IconButton size="small" onClick={() => handleCopyLink(vid.url || vid.videoUrl)}>
-                                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                                <Tooltip title="Download">
-                                                                    <IconButton size="small" color="info" onClick={() => handleOpenResource(vid.url || vid.videoUrl, true)}>
-                                                                        <DownloadIcon sx={{ fontSize: 18 }} />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            </Stack>
-                                                        }
-                                                    >
-                                                        <ListItemIcon sx={{ minWidth: 40 }}>{getResourceIcon(vid.type)}</ListItemIcon>
-                                                        <ListItemText
-                                                            primary={vid.title}
-                                                            secondary={`${vid.type?.toUpperCase()} ${vid.duration ? `• ${vid.duration} min/MB` : ''}`}
-                                                            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
-                                                            secondaryTypographyProps={{ variant: 'caption' }}
-                                                        />
-                                                    </ListItem>
-                                                ))}
-                                            </List>
-                                        </AccordionDetails>
-                                    </Accordion>
-                                ))
-                            ) : (
-                                <Box sx={{ p: 4, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 2 }}>
-                                    <Typography color="text.secondary">No materials match your search.</Typography>
-                                </Box>
-                            )}
-
-                            {/* Exams & Assignments Section */}
-                            {(fullCourseData?.exams?.length > 0 || fullCourseData?.assignments?.length > 0) && (
-                                <Box sx={{ mt: 4 }}>
-                                    <Typography variant="subtitle1" fontWeight={900} sx={{ mb: 2 }}>Assigned Resources</Typography>
-                                    
-                                    {fullCourseData.exams?.length > 0 && (
-                                        <Box sx={{ mb: 2 }}>
-                                            <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>Exams ({fullCourseData.exams.length})</Typography>
-                                            <Stack spacing={1}>
-                                                {fullCourseData.exams.map((exam) => (
-                                                    <Paper key={exam._id} variant="outlined" sx={{ p: 1.5, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'rgba(233,30,99,0.02)' }}>
-                                                        <Box sx={{ p: 1, bgcolor: 'rgba(233,30,99,0.1)', color: '#e91e63', borderRadius: 1.5, display: 'flex' }}>
-                                                            <ReceiptLongIcon fontSize="small" />
-                                                        </Box>
-                                                        <Box>
-                                                            <Typography variant="body2" fontWeight={700}>{exam.title}</Typography>
-                                                            <Typography variant="caption" color="text.secondary">{exam.duration} Min • {exam.totalMarks} Marks</Typography>
-                                                        </Box>
-                                                    </Paper>
-                                                ))}
-                                            </Stack>
+                            <CardContent sx={{ p: 2 }}>
+                                {tabIndex === 0 && (
+                                    <Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                                            <TextField
+                                                placeholder="Search Curriculum..."
+                                                size="small"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                InputProps={{
+                                                    startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+                                                    sx: { borderRadius: 2, bgcolor: 'white', maxWidth: 220 }
+                                                }}
+                                            />
                                         </Box>
-                                    )}
-
-                                    {fullCourseData.assignments?.length > 0 && (
-                                        <Box>
-                                            <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mb: 1, display: 'block' }}>Assignments ({fullCourseData.assignments.length})</Typography>
-                                            <Stack spacing={2}>
-                                                {fullCourseData.assignments.map((ass) => (
-                                                    <Paper key={ass._id} variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(103,58,183,0.02)' }}>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
-                                                            <Box sx={{ p: 1, bgcolor: 'rgba(103,58,183,0.1)', color: '#673ab7', borderRadius: 1.5, display: 'flex' }}>
-                                                                <DescriptionIcon fontSize="small" />
-                                                            </Box>
-                                                            <Box>
-                                                                <Typography variant="body2" fontWeight={700}>{ass.title}</Typography>
-                                                                <Typography variant="caption" color="text.secondary">Total Marks: {ass.totalMarks}</Typography>
-                                                            </Box>
-                                                        </Box>
-                                                        {ass.description && (
-                                                            <Box 
-                                                                sx={{ 
-                                                                    fontSize: '0.85rem', 
-                                                                    color: 'text.secondary',
-                                                                    pl: 5.5,
-                                                                    '& p': { m: 0 },
-                                                                    '& ul, & ol': { m: 0, pl: 2 }
-                                                                }}
-                                                                dangerouslySetInnerHTML={{ __html: ass.description }}
-                                                            />
-                                                        )}
-                                                    </Paper>
-                                                ))}
-                                            </Stack>
+                                        
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                            {filteredModules.length > 0 ? (
+                                                filteredModules.map((module, index) => (
+                                                    <Accordion key={index} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #eee', '&:before': { display: 'none' } }}>
+                                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'action.hover' }}>
+                                                            <Typography variant="subtitle2" fontWeight={800}>{module.title}</Typography>
+                                                            <Typography variant="caption" sx={{ ml: 'auto', mr: 2, opacity: 0.7 }}>{module.videos?.length || 0} items</Typography>
+                                                        </AccordionSummary>
+                                                        <AccordionDetails sx={{ p: 0 }}>
+                                                            <List disablePadding>
+                                                                {module.videos && module.videos.map((vid, vIdx) => (
+                                                                    <ListItem
+                                                                        key={vIdx}
+                                                                        divider={vIdx < module.videos.length - 1}
+                                                                        sx={{ py: 1, px: 2, '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}
+                                                                        secondaryAction={
+                                                                            <Stack direction="row" spacing={0.5}>
+                                                                                <Tooltip title="View">
+                                                                                    <IconButton size="small" color="primary" onClick={() => handleOpenResource(vid.url || vid.videoUrl, vid.type)}>
+                                                                                        <VisibilityIcon sx={{ fontSize: 18 }} />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                                <Tooltip title="Copy Link">
+                                                                                    <IconButton size="small" onClick={() => handleCopyLink(vid.url || vid.videoUrl)}>
+                                                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                                <Tooltip title="Download">
+                                                                                    <IconButton size="small" color="info" onClick={() => handleOpenResource(vid.url || vid.videoUrl, true)}>
+                                                                                        <DownloadIcon sx={{ fontSize: 18 }} />
+                                                                                    </IconButton>
+                                                                                </Tooltip>
+                                                                            </Stack>
+                                                                        }
+                                                                    >
+                                                                        <ListItemIcon sx={{ minWidth: 40 }}>{getResourceIcon(vid.type)}</ListItemIcon>
+                                                                        <ListItemText
+                                                                            primary={vid.title}
+                                                                            secondary={`${vid.type?.toUpperCase()} ${vid.duration ? `• ${vid.duration} min/MB` : ''}`}
+                                                                            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                                                                            secondaryTypographyProps={{ variant: 'caption' }}
+                                                                        />
+                                                                    </ListItem>
+                                                                ))}
+                                                            </List>
+                                                        </AccordionDetails>
+                                                    </Accordion>
+                                                ))
+                                            ) : (
+                                                <Box sx={{ p: 4, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 2 }}>
+                                                    <Typography color="text.secondary">No materials match your search.</Typography>
+                                                </Box>
+                                            )}
                                         </Box>
-                                    )}
-                                </Box>
-                            )}
-                        </Box>
+                                    </Box>
+                                )}
+
+                                {tabIndex === 1 && (
+                                    <Box>
+                                        {fullCourseData?.exams?.length > 0 && (
+                                            <Box sx={{ mb: 3 }}>
+                                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <ReceiptLongIcon fontSize="small" color="error" /> Exams
+                                                </Typography>
+                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                                    <Table size="small">
+                                                        <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                                                            <TableRow>
+                                                                <TableCell sx={{ fontWeight: 600 }}>Title</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600 }}>Total Marks</TableCell>
+                                                            </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                            {fullCourseData.exams.map(exam => (
+                                                                <TableRow key={exam._id}>
+                                                                    <TableCell>{exam.title}</TableCell>
+                                                                    <TableCell>{exam.duration} Min</TableCell>
+                                                                    <TableCell>{exam.totalMarks}</TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </TableContainer>
+                                            </Box>
+                                        )}
+
+                                        {fullCourseData?.assignments?.length > 0 && (
+                                            <Box>
+                                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <DescriptionIcon fontSize="small" color="secondary" /> Assignments
+                                                </Typography>
+                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                                    <Table size="small">
+                                                        <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                                                            <TableRow>
+                                                                <TableCell sx={{ fontWeight: 600 }}>Title</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600 }}>Total Marks</TableCell>
+                                                            </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                            {fullCourseData.assignments.map(ass => (
+                                                                <TableRow key={ass._id}>
+                                                                    <TableCell>{ass.title}</TableCell>
+                                                                    <TableCell sx={{ textTransform: 'capitalize' }}>{ass.assignmentType?.replace('_', ' ')}</TableCell>
+                                                                    <TableCell>{ass.totalMarks}</TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </TableContainer>
+                                            </Box>
+                                        )}
+
+                                        {(!fullCourseData?.assignments?.length && !fullCourseData?.exams?.length) && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3, fontStyle: 'italic' }}>
+                                                No exams or assignments allocated to this course.
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                )}
+                            </CardContent>
+                        </Card>
                     </Grid>
 
-                    {/* Right Column: Visuals */}
-                    <Grid item xs={12} md={4.5}>
+                    <Grid item xs={12} md={4}>
                         <Box sx={{ position: 'sticky', top: 20 }}>
                             <Typography variant="caption" fontWeight={900} color="text.secondary" gutterBottom sx={{ mb: 1, display: 'block', textTransform: 'uppercase' }}>Course Media assets</Typography>
                             <Card variant="outlined" sx={{ mb: 3, borderRadius: 2, border: '1px solid #eee' }}>
@@ -424,6 +453,24 @@ const CourseViewModal = ({ open, onClose, course }) => {
                     </Grid>
                 </Grid>
             </DialogContent>
+            
+            <Dialog 
+                open={!!activeVideoUrl} 
+                onClose={() => setActiveVideoUrl(null)}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3, bgcolor: '#000', overflow: 'hidden' } }}
+            >
+                <Box sx={{ position: 'relative' }}>
+                    <IconButton 
+                        onClick={() => setActiveVideoUrl(null)} 
+                        sx={{ position: 'absolute', right: 8, top: 8, zIndex: 10, color: 'white', bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' } }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                    <VideoPreview url={activeVideoUrl} height={500} />
+                </Box>
+            </Dialog>
         </Dialog>
     );
 };

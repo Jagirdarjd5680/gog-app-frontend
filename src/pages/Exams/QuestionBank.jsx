@@ -71,7 +71,7 @@ const QuestionBank = () => {
             setQuestions(data);
             setSelectedQuestions([]); // Clear selection on fetch
         } catch (error) {
-            console.error('Error fetching questions:', error);
+            
         } finally {
             setLoading(false);
         }
@@ -261,7 +261,7 @@ const QuestionBank = () => {
             const { data } = await api.get('/questions/bin/count');
             setBinCount(data.count);
         } catch (error) {
-            console.error('Bin count error:', error);
+            
         }
     };
 
@@ -288,7 +288,7 @@ const QuestionBank = () => {
             fetchQuestions();
             fetchBinCount();
         } catch (error) {
-            console.error(error);
+            
             toast.error('Failed to delete');
         }
         setQuestionToDelete(null);

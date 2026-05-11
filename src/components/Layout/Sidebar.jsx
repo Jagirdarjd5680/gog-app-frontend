@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import SchoolIcon from '@mui/icons-material/School';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import AssignmentIcon from '@mui/icons-material/Assignment';
@@ -34,6 +35,17 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import EventIcon from '@mui/icons-material/Event';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import WorkIcon from '@mui/icons-material/Work';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import HistoryIcon from '@mui/icons-material/History';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import PostAddIcon from '@mui/icons-material/PostAdd';
+import FlameIcon from '@mui/icons-material/Whatshot';
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -56,6 +68,7 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'Personal Info', icon: <AccountCircleIcon />, path: '/profile', roles: ['student'] },
         { text: user?.role === 'admin' ? 'Message Management' : 'Admin Support', icon: <ChatIcon />, path: '/chat', roles: ['admin', 'teacher', 'student'] },
         { text: 'Users', icon: <PeopleIcon />, path: '/users', roles: ['admin'] },
+        { text: 'Tutors', icon: <SupportAgentIcon />, path: '/tutors', roles: ['admin'] },
         { text: 'Leave Requests', icon: <ExitToAppIcon />, path: '/leave-requests', roles: ['admin'] },
         { text: 'My Leaves', icon: <ExitToAppIcon />, path: '/leaves', roles: ['student'] },
         { text: 'Courses', icon: <SchoolIcon />, path: '/courses', roles: ['admin', 'teacher'] },
@@ -76,6 +89,26 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'App Reviews', icon: <StarIcon />, path: '/app-reviews', roles: ['admin'] },
         { text: 'Free Materials', icon: <AutoAwesomeIcon />, path: '/free-materials', roles: ['admin', 'teacher'] },
         { text: 'Settings', icon: <SettingsIcon />, path: '/settings', roles: ['admin'] },
+        
+        // --- NEW FEATURES ---
+        { text: 'Timetable Manager', icon: <EventIcon />, path: '/timetable', roles: ['admin', 'teacher'] },
+        { text: 'My Routine', icon: <HistoryIcon />, path: '/my-routine', roles: ['student'] },
+        { text: 'Referrals', icon: <CardGiftcardIcon />, path: '/referrals', roles: ['student'] },
+        { text: 'Referral Payouts', icon: <MonetizationOnIcon />, path: '/withdrawal-requests', roles: ['admin'] },
+        { text: 'Tutor Payouts', icon: <PaymentIcon />, path: '/tutor-withdrawals', roles: ['admin'] },
+        { text: 'Tutor Chats', icon: <ChatIcon />, path: '/tutor-chats', roles: ['admin'] },
+        { text: 'My Rewards', icon: <ReceiptLongIcon />, path: '/my-rewards', roles: ['student'] },
+        { text: 'Tutor Help', icon: <SupportAgentIcon />, path: '/tutor-support', roles: ['admin', 'teacher', 'student'] },
+        { text: 'Leaderboard', icon: <EmojiEventsIcon />, path: '/leaderboard', roles: ['admin', 'teacher', 'student'] },
+        { text: 'Placements', icon: <WorkIcon />, path: '/placements', roles: ['admin', 'teacher', 'student'] },
+        { text: 'Support Tickets', icon: <SupportAgentIcon />, path: '/support-tickets', roles: ['admin', 'student'] },
+        { text: 'Live Support', icon: <SupportAgentIcon />, path: '/tutor-support', roles: ['student'] },
+        { text: 'Study Streaks', icon: <FlameIcon />, path: '/streaks', roles: ['student'] },
+        
+        // --- TUTOR PANEL ---
+        { text: 'Tutor Dashboard', icon: <DashboardIcon />, path: '/tutor/dashboard', roles: ['tutor', 'admin'] },
+        { text: 'Live Requests', icon: <SupportAgentIcon />, path: '/tutor/requests', roles: ['tutor', 'admin'] },
+        { text: 'Earnings & Payouts', icon: <MonetizationOnIcon />, path: '/tutor/withdrawals', roles: ['tutor', 'admin'] },
     ];
 
     const filteredMenuItems = menuItems.filter(item => {

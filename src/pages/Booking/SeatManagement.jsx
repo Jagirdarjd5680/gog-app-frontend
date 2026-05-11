@@ -78,7 +78,7 @@ const SeatManagement = () => {
                 setAllStudents(res.data.data);
             }
         } catch (error) {
-            console.error('Error fetching students:', error);
+            
         }
     };
 

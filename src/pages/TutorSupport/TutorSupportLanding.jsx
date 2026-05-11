@@ -1,0 +1,126 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, Typography, Grid, Card, CardContent, 
+  Button, Avatar, Chip, Container, Paper,
+  Stack, Divider
+} from '@mui/material';
+import { Support as SupportIcon, Timer as TimerIcon } from '@mui/icons-material';
+import axios from '../../utils/api';
+import { toast } from 'react-toastify';
+import CreditHistory from './CreditHistory';
+
+const TutorSupportLanding = () => {
+  const [tutors, setTutors] = useState([]);
+  const [credits, setCredits] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [tutorsRes, creditRes] = await Promise.all([
+        axios.get('/tutors'),
+        axios.get('/credits/history')
+      ]);
+      setTutors(tutorsRes.data.data.filter(t => t.isActive));
+      setCredits(creditRes.data.balance);
+    } catch (error) {
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleRequestHelp = async (tutorId) => {
+    try {
+      const { data } = await axios.post('/support-sessions/request', {
+        tutorId,
+        category: 'Live Support'
+      });
+      if (data.success) {
+        toast.info('Support request sent! Waiting for tutor...');
+        // In a real app, we would redirect to a waiting room or show a socket notification
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Request failed');
+    }
+  };
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={8}>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>Find a Tutor for Help</Typography>
+          <Typography variant="body1" color="text.secondary" mb={4}>
+            Get instant help from our professional tutors in various categories.
+          </Typography>
+
+          <Grid container spacing={3}>
+            {tutors.map((tutor) => (
+              <Grid item xs={12} sm={6} key={tutor._id}>
+                <Card sx={{ borderRadius: 4, boxShadow: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Avatar src={tutor.profileImage} sx={{ width: 60, height: 60, mr: 2 }} />
+                      <Box>
+                        <Typography variant="h6" fontWeight="bold">{tutor.name}</Typography>
+                        <Chip 
+                          label={tutor.status} 
+                          color={tutor.status === 'online' ? 'success' : 'default'} 
+                          size="small" 
+                        />
+                      </Box>
+                    </Box>
+                    
+                    <Typography variant="body2" color="text.secondary" mb={2} noWrap>
+                      {tutor.description || 'Expert tutor ready to help you.'}
+                    </Typography>
+
+                    <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
+                      {tutor.skills.map(skill => (
+                        <Chip key={skill} label={skill} size="small" variant="outlined" />
+                      ))}
+                    </Stack>
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="h6" color="primary">₹{tutor.charges.perConversation}</Typography>
+                        <Typography variant="caption">per session</Typography>
+                      </Box>
+                      <Button 
+                        variant="contained" 
+                        disabled={tutor.status !== 'online'}
+                        onClick={() => handleRequestHelp(tutor._id)}
+                      >
+                        Request Help
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'primary.main', color: 'white', mb: 3 }}>
+            <Typography variant="h6">Your Support Credits</Typography>
+            <Typography variant="h3" fontWeight="bold">₹{credits}</Typography>
+            <Button variant="contained" sx={{ mt: 2, bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: '#eee' } }}>
+              Recharge Credits
+            </Button>
+          </Paper>
+
+          <CreditHistory />
+        </Grid>
+      </Grid>
+    </Container>
+  );
+};
+
+export default TutorSupportLanding;

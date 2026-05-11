@@ -1,9 +1,12 @@
+import React, { useState, useEffect } from 'react';
 import { 
     Box, Typography, Card, CardContent, Divider, Grid, 
     Accordion, AccordionSummary, AccordionDetails, 
-    List, ListItem, ListItemIcon, ListItemText 
+    List, ListItem, ListItemIcon, ListItemText,
+    Table, TableBody, TableCell, TableContainer, TableRow, Paper,
+    Tabs, Tab, CircularProgress, Stack
 } from '@mui/material';
-import AssignmentIcon from '@mui/icons-material/Assignment'; // Added this import
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import VideoPreview from '../../Common/VideoPreview';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
@@ -11,9 +14,35 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import FolderZipIcon from '@mui/icons-material/FolderZip';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import api from '../../../utils/api';
 
-const ReviewStep = ({ values, categories = [] }) => {
+const ReviewStep = ({ values, categories = [], courseId }) => {
     const categoryName = categories.find(c => c._id === values.category)?.name || values.category || 'N/A';
+    const [tabIndex, setTabIndex] = useState(0);
+    const [assignments, setAssignments] = useState([]);
+    const [loadingAssignments, setLoadingAssignments] = useState(false);
+
+    useEffect(() => {
+        if (courseId && tabIndex === 1) {
+            fetchAssignments();
+        }
+    }, [courseId, tabIndex]);
+
+    const fetchAssignments = async () => {
+        setLoadingAssignments(true);
+        try {
+            const { data } = await api.get(`/assignments?course=${courseId}&limit=100`);
+            setAssignments(data.data || []);
+        } catch (error) {
+            console.error('Failed to load assignments');
+        } finally {
+            setLoadingAssignments(false);
+        }
+    };
+
+    const handleTabChange = (event, newValue) => {
+        setTabIndex(newValue);
+    };
 
     return (
         <Box sx={{ p: 1 }}>
@@ -37,89 +66,144 @@ const ReviewStep = ({ values, categories = [] }) => {
                                     '& p': { mb: 1.5 },
                                     '& ul, & ol': { mb: 1.5, pl: 2 },
                                     '& li': { mb: 0.5 },
-                                    '& strong': { fontWeight: 700, color: 'text.primary' }
+                                    '& strong': { fontWeight: 700, color: 'text.primary' },
+                                    mb: 2
                                 }}
                                 dangerouslySetInnerHTML={{ __html: values.description || 'No description provided.' }}
                             />
 
-                            <Grid container spacing={1}>
-                                <Grid item xs={4}>
-                                    <Typography variant="caption" color="text.secondary">Category</Typography>
-                                    <Typography variant="body2">{categoryName}</Typography>
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <Typography variant="caption" color="text.secondary">Level</Typography>
-                                    <Typography variant="body2" sx={{ textTransform: 'capitalize' }}>{values.level}</Typography>
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <Typography variant="caption" color="text.secondary">Price</Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {values.price > 0 ? `₹${values.price}` : 'Free'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="caption" color="text.secondary">Course Duration</Typography>
-                                    <Typography variant="body2">
-                                        {values.durationValue || 0} {values.durationUnit}
-                                        {values.durationValue === 0 && ' (Lifetime)'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="caption" color="text.secondary">Reading Duration</Typography>
-                                    <Typography variant="body2">
-                                        {values.readingDurationValue || 0} {values.readingDurationUnit}
-                                    </Typography>
-                                </Grid>
-                            </Grid>
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                <Table size="small">
+                                    <TableBody>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)', width: '30%' }}>Category</TableCell>
+                                            <TableCell>{categoryName}</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Level</TableCell>
+                                            <TableCell sx={{ textTransform: 'capitalize' }}>{values.level}</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Price</TableCell>
+                                            <TableCell sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                                {values.price > 0 ? `₹${values.price}` : 'Free'}
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Course Duration</TableCell>
+                                            <TableCell>
+                                                {values.durationValue || 0} {values.durationUnit}
+                                                {values.durationValue === 0 && ' (Lifetime)'}
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Reading Duration</TableCell>
+                                            <TableCell>
+                                                {values.readingDurationValue || 0} {values.readingDurationUnit}
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
                         </CardContent>
                     </Card>
 
-                    {/* Curriculum Summary */}
-                    <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                        Curriculum Structure
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {values.modules.length > 0 ? (
-                            values.modules.map((module, index) => (
-                                <Accordion key={index} variant="outlined" sx={{ borderRadius: 1, '&:before': { display: 'none' } }}>
-                                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
-                                        <Typography variant="subtitle2" fontWeight={600}>
-                                            {index + 1}. {module.title}
+                    <Card variant="outlined" sx={{ borderRadius: 1 }}>
+                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                            <Tabs value={tabIndex} onChange={handleTabChange} aria-label="course contents tabs">
+                                <Tab label="Curriculum Structure" sx={{ textTransform: 'none', fontWeight: 600 }} />
+                                <Tab label="Assignments" sx={{ textTransform: 'none', fontWeight: 600 }} />
+                            </Tabs>
+                        </Box>
+
+                        <CardContent>
+                            {tabIndex === 0 && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {values.modules.length > 0 ? (
+                                        values.modules.map((module, index) => (
+                                            <Accordion key={index} variant="outlined" sx={{ borderRadius: 1, '&:before': { display: 'none' } }}>
+                                                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                                                    <Typography variant="subtitle2" fontWeight={600}>
+                                                        {index + 1}. {module.title}
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ ml: 'auto', mr: 2, color: 'text.secondary' }}>
+                                                        {module.videos?.length || 0} items
+                                                    </Typography>
+                                                </AccordionSummary>
+                                                <AccordionDetails sx={{ p: 0 }}>
+                                                    <List disablePadding>
+                                                        {module.videos && module.videos.map((item, idx) => (
+                                                            <ListItem key={idx} divider={idx < module.videos.length - 1} sx={{ py: 0.5 }}>
+                                                                <ListItemIcon sx={{ minWidth: 32 }}>
+                                                                    {item.type === 'video' ? <PlayCircleOutlineIcon fontSize="small" color="primary" /> :
+                                                                     item.type === 'pdf' ? <DescriptionIcon fontSize="small" color="error" /> :
+                                                                     item.type === 'audio' ? <AudiotrackIcon fontSize="small" color="warning" /> :
+                                                                     item.type === 'exam' ? <ReceiptLongIcon fontSize="small" color="error" /> :
+                                                                     item.type === 'assignment' ? <AssignmentIcon fontSize="small" color="secondary" /> :
+                                                                     <FolderZipIcon fontSize="small" color="info" />}
+                                                                </ListItemIcon>
+                                                                <ListItemText 
+                                                                    primary={item.title} 
+                                                                    primaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
+                                                                    secondary={item.type.toUpperCase()}
+                                                                    secondaryTypographyProps={{ variant: 'caption', sx: { fontSize: '0.6rem' } }}
+                                                                />
+                                                            </ListItem>
+                                                        ))}
+                                                    </List>
+                                                </AccordionDetails>
+                                            </Accordion>
+                                        ))
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                            No topics added yet.
                                         </Typography>
-                                        <Typography variant="caption" sx={{ ml: 'auto', mr: 2, color: 'text.secondary' }}>
-                                            {module.videos?.length || 0} items
+                                    )}
+                                </Box>
+                            )}
+
+                            {tabIndex === 1 && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    {!courseId ? (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                            Save the course to view assignments.
                                         </Typography>
-                                    </AccordionSummary>
-                                    <AccordionDetails sx={{ p: 0 }}>
-                                        <List disablePadding>
-                                            {module.videos && module.videos.map((item, idx) => (
-                                                <ListItem key={idx} divider={idx < module.videos.length - 1} sx={{ py: 0.5 }}>
-                                                    <ListItemIcon sx={{ minWidth: 32 }}>
-                                                        {item.type === 'video' ? <PlayCircleOutlineIcon fontSize="small" color="primary" /> :
-                                                         item.type === 'pdf' ? <DescriptionIcon fontSize="small" color="error" /> :
-                                                         item.type === 'audio' ? <AudiotrackIcon fontSize="small" color="warning" /> :
-                                                         item.type === 'exam' ? <ReceiptLongIcon fontSize="small" color="error" /> :
-                                                         item.type === 'assignment' ? <AssignmentIcon fontSize="small" color="secondary" /> :
-                                                         <FolderZipIcon fontSize="small" color="info" />}
-                                                    </ListItemIcon>
-                                                    <ListItemText 
-                                                        primary={item.title} 
-                                                        primaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
-                                                        secondary={item.type.toUpperCase()}
-                                                        secondaryTypographyProps={{ variant: 'caption', sx: { fontSize: '0.6rem' } }}
-                                                    />
-                                                </ListItem>
-                                            ))}
-                                        </List>
-                                    </AccordionDetails>
-                                </Accordion>
-                            ))
-                        ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                No topics added yet.
-                            </Typography>
-                        )}
-                    </Box>
+                                    ) : loadingAssignments ? (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                                            <CircularProgress size={24} />
+                                        </Box>
+                                    ) : assignments.length > 0 ? (
+                                        assignments.map((assignment, index) => (
+                                            <Card key={assignment._id || index} variant="outlined" sx={{ borderRadius: 2 }}>
+                                                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                    <Stack direction="row" spacing={2} alignItems="center">
+                                                        <Box sx={{ width: 40, height: 40, borderRadius: '8px', bgcolor: 'primary.light', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <AssignmentIcon fontSize="small" />
+                                                        </Box>
+                                                        <Box sx={{ flexGrow: 1 }}>
+                                                            <Typography variant="subtitle2" fontWeight={700}>{assignment.title}</Typography>
+                                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Marks: {assignment.totalMarks}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    • Type: {assignment.assignmentType.replace('_', ' ').toUpperCase()}
+                                                                </Typography>
+                                                            </Stack>
+                                                        </Box>
+                                                    </Stack>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                            No assignments added yet.
+                                        </Typography>
+                                    )}
+                                </Box>
+                            )}
+                        </CardContent>
+                    </Card>
                 </Grid>
 
                 {/* Media Preview */}

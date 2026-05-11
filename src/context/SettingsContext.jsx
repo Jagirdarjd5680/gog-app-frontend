@@ -25,7 +25,7 @@ export const SettingsProvider = ({ children }) => {
                 const publicRes = await api.get('/settings/public');
                 setSettings(publicRes.data);
             } catch (innerError) {
-                console.error('Failed to fetch settings:', innerError);
+                
             }
         } finally {
             setLoading(false);

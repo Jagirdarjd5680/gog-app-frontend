@@ -47,7 +47,7 @@ const ReviewModal = ({ open, onClose, courseId, courseTitle, onSuccess }) => {
             const { data } = await api.get(`/reviews/${courseId}`);
             setReviews(data);
         } catch (error) {
-            console.error('Error fetching reviews:', error);
+            
             // toast.error('Failed to load reviews');
         } finally {
             setLoading(false);
@@ -73,7 +73,7 @@ const ReviewModal = ({ open, onClose, courseId, courseTitle, onSuccess }) => {
             toast.success('Review submitted successfully');
             if (onSuccess) onSuccess();
         } catch (error) {
-            console.error('Error submitting review:', error);
+            
             toast.error(error.response?.data?.msg || 'Failed to submit review');
         } finally {
             setSubmitting(false);

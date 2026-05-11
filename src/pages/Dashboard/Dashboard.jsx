@@ -24,13 +24,18 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format, subDays } from 'date-fns';
 import AppReviewSection from '../../components/Dashboard/AppReviewSection';
+import { useAuth } from '../../context/AuthContext';
+import StudentDashboard from '../../components/Dashboard/StudentDashboard';
+import RecentSubmissionsWidget from '../../components/Dashboard/RecentSubmissionsWidget';
 
 const Dashboard = () => {
+    const { user } = useAuth();
     const [stats, setStats] = useState({
         totalStudents: 0,
         totalTeachers: 0,
         totalCourses: 0,
         totalRevenue: 0,
+        pendingWithdrawals: 0,
         revenueTrend: [],
         enrollmentTrend: []
     });
@@ -62,25 +67,41 @@ const Dashboard = () => {
                 endDate = format(new Date(), 'yyyy-MM-dd');
             }
 
-            const [reportRes, coursesRes] = await Promise.all([
-                api.get(`/reports/dashboard?startDate=${startDate}&endDate=${endDate}`),
-                api.get('/courses?limit=100')
-            ]);
-
+            // Primary report data
+            const reportRes = await api.get(`/reports/dashboard?startDate=${startDate}&endDate=${endDate}`);
+            
             if (reportRes.data.success) {
                 const dashData = reportRes.data.data;
 
-                // Build real enrollment trend from enrolledStudents in courses
-                if (dashData.enrollmentTrend?.length === 0 && coursesRes.data?.data) {
-                    const courses = coursesRes.data.data || [];
-                    const totalEnrolled = courses.reduce((sum, c) => sum + (c.enrolledStudents?.length || 0), 0);
-                    dashData.totalStudents = dashData.totalStudents || totalEnrolled;
+                // Secondary data - handled separately to prevent failure cascade
+                try {
+                    const coursesRes = await api.get('/courses?limit=100');
+                    if (dashData.enrollmentTrend?.length === 0 && coursesRes.data?.data) {
+                        const courses = coursesRes.data.data || [];
+                        const totalEnrolled = courses.reduce((sum, c) => sum + (c.enrolledStudents?.length || 0), 0);
+                        dashData.totalStudents = dashData.totalStudents || totalEnrolled;
+                    }
+                } catch (e) {
+                    console.error('Courses fetch failed:', e.message);
+                }
+
+                // Fetch withdrawals only for admin
+                if (user?.role === 'admin') {
+                    try {
+                        const withdrawalRes = await api.get('/withdrawals/all?status=pending');
+                        if (withdrawalRes.data.success) {
+                            dashData.pendingWithdrawals = withdrawalRes.data.data?.length || 0;
+                        }
+                    } catch (e) {
+                        console.error('Withdrawals fetch failed:', e.message);
+                    }
                 }
 
                 setStats(dashData);
             }
         } catch (error) {
-            console.error(error);
+            console.error('Error fetching dashboard stats:', error);
+            toast.error(error.response?.data?.message || 'Failed to fetch dashboard statistics');
         } finally {
             setLoading(false);
         }
@@ -88,6 +109,10 @@ const Dashboard = () => {
 
 
 
+
+    if (user?.role === 'student') {
+        return <StudentDashboard />;
+    }
 
     return (
         <Box>
@@ -180,6 +205,15 @@ const Dashboard = () => {
                         </Grid>
                         <Grid item xs={12} sm={6} md={3}>
                             <MetricsCard
+                                title="Pending Payouts"
+                                value={stats.pendingWithdrawals}
+                                icon={<AttachMoneyIcon sx={{ fontSize: 32 }} />}
+                                color="error"
+                                onClick={() => window.location.href='/tutors'}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6} md={3}>
+                            <MetricsCard
                                 title="Total Revenue"
                                 value={`₹${stats.totalRevenue?.toLocaleString()}`}
                                 icon={<AttachMoneyIcon sx={{ fontSize: 32 }} />}
@@ -208,12 +242,19 @@ const Dashboard = () => {
                 </Grid>
             </Grid>
 
-            {/* Activity Log & App Reviews */}
+            {/* Activity Log, Recent Submissions & App Reviews */}
             <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
-                    <ActivityLog activities={stats.recentActivities || []} />
+                <Grid item xs={12} lg={8}>
+                    <Grid container spacing={3}>
+                        <Grid item xs={12}>
+                            <ActivityLog activities={stats.recentActivities || []} />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <RecentSubmissionsWidget />
+                        </Grid>
+                    </Grid>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} lg={4}>
                     <AppReviewSection />
                 </Grid>
             </Grid>

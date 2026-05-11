@@ -203,7 +203,7 @@ const ReportsDashboard = () => {
                                 toast.success('Report downloaded successfully');
                             } catch (error) {
                                 toast.error('Failed to export report');
-                                console.error('Export error:', error);
+                                
                             }
                         }}
                     >

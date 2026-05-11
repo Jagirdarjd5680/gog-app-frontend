@@ -13,13 +13,15 @@ import { toast } from 'react-toastify';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import MediaPickerModal from '../Media/MediaPickerModal';
+import QuestionPickerModal from '../Exams/QuestionPickerModal';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 
 const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
     const fileInputRef = useRef(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
 
-    const isEdit = Boolean(assignment);
+    const isEdit = Boolean(assignment?._id);
     const [courses, setCourses] = useState([]);
     const [formData, setFormData] = useState({
         title: assignment?.title || '',
@@ -27,15 +29,23 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
         thumbnail: assignment?.thumbnail || '',
         course: assignment?.course?._id || assignment?.course || '',
         deadline: assignment?.deadline ? new Date(assignment.deadline).toISOString().slice(0, 16) : '',
+        deadlineType: assignment?.deadlineDays > 0 ? 'relative' : 'fixed',
+        deadlineDays: assignment?.deadlineDays || 0,
         totalMarks: assignment?.totalMarks || 100,
         isPublished: assignment?.isPublished || false,
         assignmentType: assignment?.assignmentType || 'file_upload',
         maxMb: assignment?.maxMb || 10,
         allowedFormats: assignment?.allowedFormats || '.pdf,.zip,.jpg,.png',
-        attachments: assignment?.attachments || []
+        attachments: assignment?.attachments || [],
+        moduleId: assignment?.moduleId?._id || assignment?.moduleId || '',
+        lectureId: assignment?.lectureId?._id || assignment?.lectureId || '',
+        questions: assignment?.questions || []
     });
+    const [questionPickerOpen, setQuestionPickerOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
+    const [modules, setModules] = useState([]);
+    const [lectures, setLectures] = useState([]);
 
     useEffect(() => {
         const fetchCourses = async () => {
@@ -43,11 +53,40 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                 const { data } = await api.get('/courses?limit=100');
                 setCourses(data.data || []);
             } catch (error) {
-                console.error('Failed to fetch courses:', error);
+                
             }
         };
         fetchCourses();
     }, []);
+
+    useEffect(() => {
+        if (formData.course) {
+            const course = courses.find(c => c._id === formData.course);
+            if (course) {
+                setModules(course.modules || []);
+                // If moduleId is already set (edit mode), set lectures
+                if (formData.moduleId) {
+                    const module = course.modules.find(m => m._id === formData.moduleId || m.id === formData.moduleId);
+                    setLectures(module?.videos || []);
+                }
+            } else if (isEdit && assignment?.course?._id === formData.course) {
+                // Handle case where course is in assignment but not in small courses list
+                setModules(assignment.course.modules || []);
+            }
+        } else {
+            setModules([]);
+            setLectures([]);
+        }
+    }, [formData.course, courses, assignment]);
+
+    useEffect(() => {
+        if (formData.moduleId && modules.length > 0) {
+            const module = modules.find(m => m._id === formData.moduleId || m.id === formData.moduleId);
+            setLectures(module?.videos || []);
+        } else {
+            setLectures([]);
+        }
+    }, [formData.moduleId, modules]);
 
     const handleChange = (e) => {
         const { name, value, checked, type } = e.target;
@@ -68,7 +107,7 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                     toast.success('Image uploaded successfully');
                 }
             } catch (error) {
-                console.error('Upload Error:', error);
+                
                 toast.error('Failed to upload image');
             } finally {
                 setUploadingImage(false);
@@ -111,16 +150,30 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        e.stopPropagation();
         
-        if (!formData.title || !formData.deadline) {
-            toast.error('Please fill required fields (Title, Deadline)');
+        if (!formData.title) {
+            toast.error('Please fill assignment title');
+            return;
+        }
+
+        if (formData.deadlineType === 'fixed' && !formData.deadline) {
+            toast.error('Please select a deadline date');
+            return;
+        }
+
+        if (formData.deadlineType === 'relative' && formData.deadlineDays <= 0) {
+            toast.error('Please enter valid deadline days');
             return;
         }
 
         setLoading(true);
         try {
             const payload = {
-                ...formData
+                ...formData,
+                deadline: formData.deadlineType === 'fixed' ? formData.deadline : undefined,
+                deadlineDays: formData.deadlineType === 'relative' ? formData.deadlineDays : 0,
+                questions: formData.assignmentType === 'quiz' ? formData.questions : []
             };
             
             if (isEdit) {
@@ -173,6 +226,7 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                                     value={formData.course}
                                     label="Course (Optional)"
                                     onChange={handleChange}
+                                    disabled={Boolean(formData.course)}
                                     sx={{ borderRadius: 1 }}
                                 >
                                     <MenuItem value=""><em>Select Course</em></MenuItem>
@@ -181,6 +235,57 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                                             {course.title}
                                         </MenuItem>
                                     ))}
+                                    {formData.course && !courses.find(c => c._id === formData.course) && (
+                                        <MenuItem value={formData.course}>Selected Course</MenuItem>
+                                    )}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Module (Required for Auto-Unlock)</InputLabel>
+                                <Select
+                                    name="moduleId"
+                                    value={formData.moduleId}
+                                    label="Module (Required for Auto-Unlock)"
+                                    onChange={handleChange}
+                                    disabled={!formData.course}
+                                    sx={{ borderRadius: 1 }}
+                                >
+                                    <MenuItem value=""><em>Select Module</em></MenuItem>
+                                    {modules.map(mod => (
+                                        <MenuItem key={mod._id || mod.id} value={mod._id || mod.id}>
+                                            {mod.title}
+                                        </MenuItem>
+                                    ))}
+                                    {formData.moduleId && !modules.find(m => (m._id || m.id) === formData.moduleId) && (
+                                        <MenuItem value={formData.moduleId}>Selected Module</MenuItem>
+                                    )}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Lecture (Optional)</InputLabel>
+                                <Select
+                                    name="lectureId"
+                                    value={formData.lectureId}
+                                    label="Lecture (Optional)"
+                                    onChange={handleChange}
+                                    disabled={!formData.moduleId}
+                                    sx={{ borderRadius: 1 }}
+                                >
+                                    <MenuItem value=""><em>Select Lecture</em></MenuItem>
+                                    {lectures.map(lec => (
+                                        <MenuItem key={lec._id || lec.id} value={lec._id || lec.id}>
+                                            {lec.title}
+                                        </MenuItem>
+                                    ))}
+                                    {formData.lectureId && !lectures.find(l => (l._id || l.id) === formData.lectureId) && (
+                                        <MenuItem value={formData.lectureId}>Selected Lecture</MenuItem>
+                                    )}
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -300,31 +405,55 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                             </FormControl>
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                name="maxMb"
-                                label="Max File Size (MB)"
-                                value={formData.maxMb}
-                                onChange={handleChange}
-                                disabled={formData.assignmentType !== 'file_upload'}
-                                InputProps={{ sx: { borderRadius: 1 } }}
-                            />
-                        </Grid>
+                        {formData.assignmentType === 'quiz' && (
+                            <Grid item xs={12}>
+                                <Button
+                                    fullWidth
+                                    variant="outlined"
+                                    startIcon={<PlaylistAddCheckIcon />}
+                                    onClick={() => setQuestionPickerOpen(true)}
+                                    sx={{ 
+                                        height: '56px', 
+                                        borderRadius: '12px',
+                                        borderStyle: 'dashed',
+                                        color: formData.questions?.length > 0 ? 'success.main' : 'primary.main',
+                                        borderColor: formData.questions?.length > 0 ? 'success.main' : 'primary.main'
+                                    }}
+                                >
+                                    {formData.questions?.length > 0 
+                                        ? `Questions Selected: ${formData.questions.length}` 
+                                        : 'Pick Questions for Quiz'}
+                                </Button>
+                            </Grid>
+                        )}
 
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                name="allowedFormats"
-                                label="Allowed Formats (comma separated)"
-                                placeholder=".pdf,.zip,.jpg"
-                                value={formData.allowedFormats}
-                                onChange={handleChange}
-                                disabled={formData.assignmentType !== 'file_upload'}
-                                InputProps={{ sx: { borderRadius: 1 } }}
-                            />
-                        </Grid>
+                        {formData.assignmentType === 'file_upload' && (
+                            <>
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        name="maxMb"
+                                        label="Max File Size (MB)"
+                                        value={formData.maxMb}
+                                        onChange={handleChange}
+                                        InputProps={{ sx: { borderRadius: 1 } }}
+                                    />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <TextField
+                                        fullWidth
+                                        name="allowedFormats"
+                                        label="Allowed Formats (comma separated)"
+                                        placeholder=".pdf,.zip,.jpg"
+                                        value={formData.allowedFormats}
+                                        onChange={handleChange}
+                                        InputProps={{ sx: { borderRadius: 1 } }}
+                                    />
+                                </Grid>
+                            </>
+                        )}
 
                         <Grid item xs={12}>
                             <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Reference Attachments (for students)</Typography>
@@ -380,18 +509,56 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                             </Box>
                         </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                required
-                                type="datetime-local"
-                                name="deadline"
-                                label="Deadline"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.deadline}
-                                onChange={handleChange}
-                                InputProps={{ sx: { borderRadius: 1 } }}
-                            />
+                        <Grid item xs={12}>
+                            <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>Submission Deadline</Typography>
+                                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                                    <Button 
+                                        variant={formData.deadlineType === 'fixed' ? 'contained' : 'outlined'}
+                                        onClick={() => setFormData(prev => ({ ...prev, deadlineType: 'fixed' }))}
+                                        size="small"
+                                        sx={{ borderRadius: 2, textTransform: 'none' }}
+                                    >
+                                        Fixed Date
+                                    </Button>
+                                    <Button 
+                                        variant={formData.deadlineType === 'relative' ? 'contained' : 'outlined'}
+                                        onClick={() => setFormData(prev => ({ ...prev, deadlineType: 'relative' }))}
+                                        size="small"
+                                        sx={{ borderRadius: 2, textTransform: 'none' }}
+                                    >
+                                        Days After Unlock
+                                    </Button>
+                                </Stack>
+
+                                {formData.deadlineType === 'fixed' ? (
+                                    <TextField
+                                        fullWidth
+                                        type="datetime-local"
+                                        name="deadline"
+                                        label="Select Deadline Date"
+                                        InputLabelProps={{ shrink: true }}
+                                        value={formData.deadline}
+                                        onChange={handleChange}
+                                        InputProps={{ sx: { borderRadius: 1, bgcolor: 'white' } }}
+                                    />
+                                ) : (
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        name="deadlineDays"
+                                        label="Number of Days to Submit"
+                                        placeholder="e.g. 7"
+                                        value={formData.deadlineDays}
+                                        onChange={handleChange}
+                                        helperText="Students must submit within these many days after assignment is unlocked for them."
+                                        InputProps={{ 
+                                            sx: { borderRadius: 1, bgcolor: 'white' },
+                                            endAdornment: <InputAdornment position="end">Days</InputAdornment>
+                                        }}
+                                    />
+                                )}
+                            </Box>
                         </Grid>
 
                         <Grid item xs={12} sm={6}>
@@ -436,6 +603,13 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
                 onClose={() => setPickerOpen(false)}
                 onSelect={handleMediaSelect}
                 type="image"
+            />
+
+            <QuestionPickerModal
+                open={questionPickerOpen}
+                onClose={() => setQuestionPickerOpen(false)}
+                onSelect={(ids) => setFormData(prev => ({ ...prev, questions: ids }))}
+                selectedIds={formData.questions}
             />
         </Dialog>
     );

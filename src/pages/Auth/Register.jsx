@@ -82,7 +82,7 @@ const Register = () => {
             try {
                 recaptchaToken = await executeRecaptcha('register');
             } catch (err) {
-                console.warn('reCAPTCHA skipped:', err.message);
+                
             }
         }
 

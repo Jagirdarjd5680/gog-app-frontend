@@ -42,8 +42,13 @@ import SocialMediaSettings from './SocialMediaSettings';
 import ResultSettings from './ResultSettings';
 import AppSettings from './AppSettings';
 import BackupSettings from './BackupSettings';
+import PDFFormatsSettings from './PDFFormatsSettings';
+import PDFSettings from './PDFSettings';
+import AISettings from './AISettings';
 import PoliciesSettings from './PoliciesSettings';
 import PolicyIcon from '@mui/icons-material/Policy';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const SettingsLayout = () => {
     const { mode, isDark } = useTheme();
@@ -51,7 +56,10 @@ const SettingsLayout = () => {
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [settings, setSettings] = useState(null);
-    const [activeTab, setActiveTab] = useState('general');
+    const [activeTab, setActiveTab] = useState(() => {
+        const hash = window.location.hash.replace('#', '');
+        return hash || 'general';
+    });
     const [searchTerm, setSearchTerm] = useState('');
 
     const menuItems = [
@@ -62,9 +70,12 @@ const SettingsLayout = () => {
         { id: 'smtp', label: 'SMTP Security', icon: <MailIcon /> },
         { id: 'payments', label: 'Payments', icon: <PaymentsIcon /> },
         { id: 'integrations', label: 'Integrations', icon: <IntegrationInstructionsIcon /> },
+        { id: 'ai', label: 'AI Integration', icon: <AutoAwesomeIcon /> },
         { id: 'social', label: 'Social Media', icon: <ShareIcon /> },
         { id: 'policies', label: 'Company & Policies', icon: <PolicyIcon /> },
         { id: 'app', label: 'App Settings', icon: <AndroidIcon /> },
+        { id: 'pdf-formats', label: 'PDF Formats', icon: <PictureAsPdfIcon /> },
+        { id: 'pdf-settings', label: 'PDF Settings', icon: <PictureAsPdfIcon /> },
         { id: 'backup', label: 'Backup & Restore', icon: <StorageIcon /> },
     ];
 
@@ -80,7 +91,20 @@ const SettingsLayout = () => {
             }
         };
         fetchSettings();
+
+        // Listen for hash changes (back/forward button)
+        const handleHashChange = () => {
+            const hash = window.location.hash.replace('#', '');
+            if (hash) setActiveTab(hash);
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
+
+    // Update hash when activeTab changes
+    useEffect(() => {
+        window.location.hash = activeTab;
+    }, [activeTab]);
 
     const handleSave = async (data) => {
         setIsSaving(true);
@@ -118,9 +142,12 @@ const SettingsLayout = () => {
             case 'smtp': return <SMTPSettings {...props} />;
             case 'payments': return <PaymentSettings {...props} />;
             case 'integrations': return <IntegrationSettings {...props} />;
+            case 'ai': return <AISettings {...props} />;
             case 'social': return <SocialMediaSettings {...props} />;
             case 'policies': return <PoliciesSettings {...props} />;
             case 'app': return <AppSettings {...props} />;
+            case 'pdf-formats': return <PDFFormatsSettings {...props} />;
+            case 'pdf-settings': return <PDFSettings {...props} />;
             case 'backup': return <BackupSettings />;
             default: return <GeneralSettings {...props} />;
         }
@@ -150,6 +177,7 @@ const SettingsLayout = () => {
                                 placeholder="Filter settings..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                autoComplete="off"
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Paper, useTheme } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import ChatSidebar from './ChatSidebar';
@@ -9,6 +10,8 @@ import socket from '../../utils/socket';
 const ChatCenter = () => {
     const theme = useTheme();
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const urlUserId = searchParams.get('userId');
     const [selectedUser, setSelectedUser] = useState(null);
     const [chatUsers, setChatUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -29,13 +32,20 @@ const ChatCenter = () => {
                     _id: u._id?.toString()
                 }));
                 setChatUsers(normalized);
-                if (user.role !== 'admin' && normalized.length > 0 && !selectedUser) {
+
+                // Admin: Try to select from URL if available
+                if (user.role === 'admin') {
+                    if (urlUserId) {
+                        const userFromUrl = normalized.find(u => u._id === urlUserId);
+                        if (userFromUrl) setSelectedUser(userFromUrl);
+                    }
+                } else if (normalized.length > 0 && !selectedUser) {
                     const admin = normalized.find(u => u.role === 'admin');
                     if (admin) setSelectedUser(admin);
                 }
             }
         } catch (error) {
-            console.error('Fetch Chat Users Error:', error);
+            
         } finally {
             setLoading(false);
         }
@@ -44,6 +54,15 @@ const ChatCenter = () => {
     useEffect(() => {
         fetchChatUsers();
     }, []);
+
+    // Sync selectedUser with URL for admins
+    useEffect(() => {
+        if (user?.role === 'admin' && selectedUser?._id) {
+            if (searchParams.get('userId') !== selectedUser._id) {
+                setSearchParams({ userId: selectedUser._id }, { replace: true });
+            }
+        }
+    }, [selectedUser?._id, user?.role, searchParams, setSearchParams]);
 
     // Connect socket and setup user room — only once when user._id is known
     useEffect(() => {
@@ -139,6 +158,8 @@ const ChatCenter = () => {
                     selectedUser={selectedUser}
                     onSelectUser={(u) => {
                         setSelectedUser(u);
+                        // Update URL search param
+                        setSearchParams({ userId: u._id });
                         // Reset unread count locally
                         setChatUsers(prev => prev.map(item =>
                             item._id === u._id ? { ...item, unreadCount: 0 } : item

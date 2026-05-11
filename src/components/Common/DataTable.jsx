@@ -78,7 +78,7 @@ const DataTable = ({
             
             if (isSame) return;
 
-            console.log('🔄 Syncing initial selection in DataTable', selectedIds);
+            
             const selectionObj = {};
             selectedIds.forEach(id => {
                 selectionObj[id] = true;
@@ -134,7 +134,7 @@ const DataTable = ({
                                 context: {} 
                             });
                         } catch (e) {
-                            console.error('ValueGetter error', e);
+                            
                         }
                     }
 
@@ -143,7 +143,7 @@ const DataTable = ({
                         try {
                             value = col.valueFormatter({ data, value });
                         } catch (e) {
-                            console.error('ValueFormatter error', e);
+                            
                         }
                     }
 
@@ -214,10 +214,7 @@ const DataTable = ({
             if (lastDispatchedRef.current === selectionIds) return;
             lastDispatchedRef.current = selectionIds;
 
-            console.log('📢 DataTable dispatching onSelectionChanged', { 
-                count: selectedRows.length,
-                selectionState: rowSelection 
-            });
+            
             onSelectionChanged({ 
                 api: { 
                     getSelectedNodes: () => table.getSelectedRowModel().rows.map(row => ({ data: row.original })),

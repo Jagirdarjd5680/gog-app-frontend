@@ -35,7 +35,7 @@ const BookingAdmin = () => {
             if (batRes.data.success) setBatches(batRes.data.data);
         } catch (err) {
             toast.error('Failed to load bookings');
-            console.error(err);
+            
         } finally {
             setLoading(false);
         }

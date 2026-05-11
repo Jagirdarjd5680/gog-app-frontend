@@ -43,7 +43,7 @@ const NotificationForm = () => {
                     setUsers(response.data.data);
                 }
             } catch (error) {
-                console.error('Failed to fetch users:', error);
+                
             } finally {
                 setFetchingUsers(false);
             }

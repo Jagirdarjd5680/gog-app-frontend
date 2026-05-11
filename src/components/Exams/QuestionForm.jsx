@@ -148,7 +148,7 @@ const QuestionForm = ({ open, onClose, onSuccess, initialData }) => {
             }
             onSuccess();
         } catch (error) {
-            console.error('Error saving question:', error);
+            
             toast.error('Failed to save question');
         }
     };

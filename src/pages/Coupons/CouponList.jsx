@@ -28,7 +28,7 @@ const CouponList = () => {
             const { data } = await api.get('/coupons');
             setCoupons(data);
         } catch (error) {
-            console.error('Error fetching coupons:', error);
+            
             toast.error('Failed to load coupons');
         } finally {
             setLoading(false);
@@ -62,7 +62,7 @@ const CouponList = () => {
             toast.success('Coupon deleted successfully');
             fetchCoupons();
         } catch (error) {
-            console.error('Error deleting coupon:', error);
+            
             toast.error('Failed to delete coupon');
         }
         setCouponToDelete(null);

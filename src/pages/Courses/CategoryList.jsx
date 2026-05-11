@@ -46,7 +46,7 @@ const CategoryList = () => {
             const { data } = await api.get('/categories');
             setCategories(data.data || []);
         } catch (error) {
-            console.error('Error fetching categories:', error);
+            
             toast.error('Failed to load categories');
         } finally {
             setLoading(false);
@@ -90,7 +90,7 @@ const CategoryList = () => {
             fetchCategories();
             setModalOpen(false);
         } catch (error) {
-            console.error(error);
+            
             toast.error(error.response?.data?.error || 'Failed to save');
         }
     };

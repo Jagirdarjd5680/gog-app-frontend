@@ -6,9 +6,12 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import HistoryIcon from '@mui/icons-material/History';
 import SendIcon from '@mui/icons-material/Send';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import { useAuth } from '../../context/AuthContext';
 
 const NotificationCenter = () => {
-    const [tab, setTab] = useState(0);
+    const { user } = useAuth();
+    const isAdminOrTeacher = user?.role === 'admin' || user?.role === 'teacher';
+    const [tab, setTab] = useState(isAdminOrTeacher ? 0 : 1);
 
     return (
         <Box sx={{ bgcolor: 'action.hover', minHeight: 'calc(100vh - 64px)', py: 6 }}>
@@ -52,12 +55,14 @@ const NotificationCenter = () => {
                             '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
                         }}
                     >
-                        <Tab
-                            icon={<SendIcon sx={{ mr: 1, fontSize: 18 }} />}
-                            iconPosition="start"
-                            label="Send New Notification"
-                            sx={{ fontWeight: 700, py: 2 }}
-                        />
+                        {isAdminOrTeacher && (
+                            <Tab
+                                icon={<SendIcon sx={{ mr: 1, fontSize: 18 }} />}
+                                iconPosition="start"
+                                label="Send New Notification"
+                                sx={{ fontWeight: 700, py: 2 }}
+                            />
+                        )}
                         <Tab
                             icon={<HistoryIcon sx={{ mr: 1, fontSize: 18 }} />}
                             iconPosition="start"
@@ -67,8 +72,8 @@ const NotificationCenter = () => {
                     </Tabs>
                     <Divider />
 
-                    <Box sx={{ p: tab === 0 ? 0 : 3 }}>
-                        {tab === 0 ? (
+                    <Box sx={{ p: (tab === 0 && isAdminOrTeacher) ? 0 : 3 }}>
+                        {(tab === 0 && isAdminOrTeacher) ? (
                             <Box sx={{ p: 4 }}>
                                 <Grid container spacing={4}>
                                     <Grid item xs={12} md={7}>

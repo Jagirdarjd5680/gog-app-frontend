@@ -1,11 +1,7 @@
 import api from './api';
 
 export const uploadFile = async (file, onUploadProgress) => {
-    console.log('🚀 Starting upload:', {
-        name: file.name,
-        size: file.size,
-        type: file.type
-    });
+    
 
     const formData = new FormData();
     formData.append('file', file);
@@ -19,20 +15,16 @@ export const uploadFile = async (file, onUploadProgress) => {
             onUploadProgress: (progressEvent) => {
                 if (onUploadProgress) {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    console.log(`📊 Upload progress: ${percentCompleted}%`);
+                    
                     onUploadProgress(percentCompleted);
                 }
             }
         });
 
-        console.log('✅ Upload completed:', response.data);
+        
         return response.data;
     } catch (error) {
-        console.error('❌ Upload failed:', {
-            message: error.message,
-            response: error.response?.data,
-            file: file.name
-        });
+        
         throw error;
     }
 };

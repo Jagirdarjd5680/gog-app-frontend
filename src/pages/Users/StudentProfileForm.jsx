@@ -53,7 +53,7 @@ const StudentProfileForm = () => {
                     setAvailableCourses(res.data.data);
                 }
             } catch (err) {
-                console.error("Failed to fetch courses");
+                
             }
         };
         fetchCourses();

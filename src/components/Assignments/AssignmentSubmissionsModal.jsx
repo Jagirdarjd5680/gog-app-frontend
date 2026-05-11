@@ -30,7 +30,7 @@ const AssignmentSubmissionsModal = ({ open, onClose, assignmentId }) => {
                 setAssignmentTitle(response.data.data.title);
             }
         } catch (error) {
-            console.error('Error fetching submissions:', error);
+            
         } finally {
             setLoading(false);
         }

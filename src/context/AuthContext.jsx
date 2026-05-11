@@ -36,7 +36,7 @@ const AuthProvider = ({ children }) => {
                         localStorage.setItem('user', JSON.stringify(userData));
                     }
                 } catch (error) {
-                    console.error('Error fetching user profile:', error);
+                    
                     // If 401, clear storage
                     if (error.response?.status === 401) {
                         localStorage.removeItem('token');
@@ -67,7 +67,7 @@ const AuthProvider = ({ children }) => {
         socket.emit('setup', user._id);
 
         const handleForceLogout = (data) => {
-            console.log('📣 Real-time Force Logout Event Received:', data);
+            
             setForceLogoutData(data);
             setCountdown(5);
             
@@ -187,10 +187,10 @@ const AuthProvider = ({ children }) => {
                 localStorage.setItem('token', token);
                 localStorage.setItem('user', JSON.stringify(userData));
                 setUser(userData);
-                console.log('Token refreshed successfully');
+                
             }
         } catch (error) {
-            console.error('Token refresh failed:', error);
+            
             if (error.response?.status === 401) {
                 logout();
             }

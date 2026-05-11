@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -10,7 +11,8 @@ import {
     Divider,
     Chip,
     Stack,
-    IconButton
+    IconButton,
+    CircularProgress
 } from '@mui/material';
 import { format } from 'date-fns';
 import PersonIcon from '@mui/icons-material/Person';
@@ -22,6 +24,8 @@ import PendingIcon from '@mui/icons-material/Pending';
 import HistoryIcon from '@mui/icons-material/History';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CloseIcon from '@mui/icons-material/Close';
+import api from '../../utils/api';
+import { toast } from 'react-toastify';
 
 // PDF Generation Component - Separate logic
 const generateReceiptPDF = (payment) => {
@@ -123,7 +127,7 @@ const generateReceiptPDF = (payment) => {
                 </div>
 
                 <div class="no-print" style="text-align: center; margin-top: 20px;">
-                    <button onclick="window.print()" style="padding: 10px 20px; background: #c40c0c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    <button onclick="window." style="padding: 10px 20px; background: #c40c0c; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
                         Print / Save as PDF
                     </button>
                 </div>
@@ -137,15 +141,11 @@ const generateReceiptPDF = (payment) => {
 };
 
 const PaymentDetailsModal = ({ open, onClose, payment }) => {
+    const [loading, setLoading] = useState(false);
     if (!payment) return null;
 
     // Debug log to check actual data
-    console.log('Payment data received:', {
-        orderId: payment.orderId,
-        transactionId: payment.transactionId,
-        rollNumber: payment.user?.rollNumber,
-        userId: payment.user?._id
-    });
+    
 
     const getStatusChip = (status) => {
         const colors = {
@@ -166,8 +166,39 @@ const PaymentDetailsModal = ({ open, onClose, payment }) => {
         );
     };
 
-    const handleDownloadPDF = () => {
-        generateReceiptPDF(payment);
+    const handleDownloadPDF = async () => {
+        setLoading(true);
+        if (payment.paymentIndex !== undefined && payment.courseId) {
+            try {
+                toast.info('Generating professional PDF...');
+                const response = await api.post('/fee-records/download-receipt', 
+                    { 
+                        userId: payment.user?._id, 
+                        courseId: payment.courseId, 
+                        paymentIndex: payment.paymentIndex 
+                    },
+                    { responseType: 'blob' }
+                );
+                
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `receipt_${payment.user?.rollNumber || 'PAY'}_${Date.now()}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                toast.success('Receipt downloaded successfully');
+            } catch (error) {
+                console.error('PDF Download Error:', error);
+                toast.warn('Falling back to basic receipt...');
+                generateReceiptPDF(payment);
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            generateReceiptPDF(payment);
+            setLoading(false);
+        }
     };
 
     // Fix: Avoid showing "Subscription (null)"
@@ -300,10 +331,11 @@ const PaymentDetailsModal = ({ open, onClose, payment }) => {
                     onClick={handleDownloadPDF}
                     variant="contained"
                     size="small"
-                    startIcon={<PictureAsPdfIcon />}
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PictureAsPdfIcon />}
                     sx={{ textTransform: 'none', bgcolor: 'error.main', '&:hover': { bgcolor: 'error.dark' } }}
                 >
-                    Download PDF
+                    {loading ? 'Generating...' : 'Download PDF'}
                 </Button>
             </DialogActions>
         </Dialog>
