@@ -44,6 +44,7 @@ const StudentProfileForm = lazy(() => import('./pages/Users/StudentProfileForm')
 const LeaveManagement = lazy(() => import('./pages/Dashboard/LeaveManagement'));
 const AdminLeaveRequests = lazy(() => import('./pages/Users/AdminLeaveRequests'));
 const BatchAttendance = lazy(() => import('./pages/Batches/BatchAttendance'));
+const BatchStudents = lazy(() => import('./pages/Batches/BatchStudents'));
 const EventManagement = lazy(() => import('./pages/Events/EventManagement'));
 const PassedStudentManagement = lazy(() => import('./pages/Users/PassedStudentManagement'));
 const PublicEvents = lazy(() => import('./pages/Public/EventsPage'));
@@ -54,9 +55,11 @@ const TimetableStudent = lazy(() => import('./pages/Timetable/TimetableStudent')
 const ReferralDashboard = lazy(() => import('./pages/Referrals/ReferralDashboard'));
 const WithdrawalRequests = lazy(() => import('./pages/Referrals/WithdrawalRequests'));
 const ReferralJoinRequests = lazy(() => import('./pages/Referrals/ReferralJoinRequests'));
+const AdminReferralList = lazy(() => import('./pages/Referrals/AdminReferralList'));
 const MyRewards = lazy(() => import('./pages/Referrals/MyRewards'));
 const Leaderboard = lazy(() => import('./pages/Leaderboard/Leaderboard'));
 const SupportTickets = lazy(() => import('./pages/Tickets/SupportTickets'));
+const ReferralRecordList = lazy(() => import('./pages/Referrals/ReferralRecordList'));
 const ResumeBuilder = lazy(() => import('./pages/Resumes/ResumeBuilder'));
 const TutorManagement = lazy(() => import('./pages/Tutors/TutorManagement'));
 const TutorSupportLanding = lazy(() => import('./pages/TutorSupport/TutorSupportLanding'));
@@ -90,6 +93,7 @@ const AppRoutes = () => {
           <Route path="leave-requests" element={<ProtectedRoute allowedRoles={['admin']}><AdminLeaveRequests /></ProtectedRoute>} />
           <Route path="batches" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><BatchList /></ProtectedRoute>} />
           <Route path="batches/:batchId/attendance" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><BatchAttendance /></ProtectedRoute>} />
+          <Route path="batches/:batchId/students" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><BatchStudents /></ProtectedRoute>} />
           <Route path="courses" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><CourseList /></ProtectedRoute>} />
           <Route path="live-classes" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><LiveClassList /></ProtectedRoute>} />
           <Route path="assignments/submissions" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><BatchSubmissions /></ProtectedRoute>} />
@@ -121,6 +125,8 @@ const AppRoutes = () => {
           <Route path="my-rewards" element={<ProtectedRoute allowedRoles={['student']}><MyRewards /></ProtectedRoute>} />
           <Route path="withdrawal-requests" element={<ProtectedRoute allowedRoles={['admin']}><WithdrawalRequests /></ProtectedRoute>} />
           <Route path="referral-joining-requests" element={<ProtectedRoute allowedRoles={['admin']}><ReferralJoinRequests /></ProtectedRoute>} />
+          <Route path="referral-records" element={<ProtectedRoute allowedRoles={['admin']}><ReferralRecordList /></ProtectedRoute>} />
+          <Route path="all-referrals" element={<ProtectedRoute allowedRoles={['admin']}><AdminReferralList /></ProtectedRoute>} />
           <Route path="leaderboard" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}><Leaderboard /></ProtectedRoute>} />
           <Route path="support-tickets" element={<ProtectedRoute allowedRoles={['admin', 'student']}><SupportTickets /></ProtectedRoute>}><Route path=":ticketId" element={<SupportTickets />} /></Route>
           <Route path="placements" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}><ResumeBuilder /></ProtectedRoute>} />

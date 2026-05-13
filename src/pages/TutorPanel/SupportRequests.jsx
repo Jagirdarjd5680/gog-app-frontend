@@ -192,7 +192,7 @@ const SupportRequests = () => {
         toast.success(`Request ${status}`);
         fetchRequests();
         if (status === 'accepted') {
-          console.log(`✅ [ACTION_SUCCESS] Request ${id} accepted! Navigating to chat... 🚀`);
+          
           navigate(`/tutor/chat/${id}`);
         }
       }

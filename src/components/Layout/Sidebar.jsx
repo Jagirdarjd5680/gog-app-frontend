@@ -94,6 +94,7 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'Timetable Manager', icon: <EventIcon />, path: '/timetable', roles: ['admin', 'teacher'] },
         { text: 'My Routine', icon: <HistoryIcon />, path: '/my-routine', roles: ['student'] },
         { text: 'Referrals', icon: <CardGiftcardIcon />, path: '/referrals', roles: ['student'] },
+        { text: 'All Referrals', icon: <PeopleIcon />, path: '/all-referrals', roles: ['admin'] },
         { text: 'Referral Payouts', icon: <MonetizationOnIcon />, path: '/withdrawal-requests', roles: ['admin'] },
         { text: 'Tutor Payouts', icon: <PaymentIcon />, path: '/tutor-withdrawals', roles: ['admin'] },
         { text: 'Tutor Chats', icon: <ChatIcon />, path: '/tutor-chats', roles: ['admin'] },

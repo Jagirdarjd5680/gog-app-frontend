@@ -16,7 +16,7 @@ import MediaPickerModal from '../Media/MediaPickerModal';
 import QuestionPickerModal from '../Exams/QuestionPickerModal';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 
-const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
+const AssignmentFormModal = ({ open, onClose, assignment, onSuccess, autoCourseId }) => {
     const fileInputRef = useRef(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -27,7 +27,7 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
         title: assignment?.title || '',
         description: assignment?.description || '',
         thumbnail: assignment?.thumbnail || '',
-        course: assignment?.course?._id || assignment?.course || '',
+        course: assignment?.course?._id || assignment?.course || autoCourseId || '',
         deadline: assignment?.deadline ? new Date(assignment.deadline).toISOString().slice(0, 16) : '',
         deadlineType: assignment?.deadlineDays > 0 ? 'relative' : 'fixed',
         deadlineDays: assignment?.deadlineDays || 0,
@@ -41,6 +41,30 @@ const AssignmentFormModal = ({ open, onClose, assignment, onSuccess }) => {
         lectureId: assignment?.lectureId?._id || assignment?.lectureId || '',
         questions: assignment?.questions || []
     });
+
+    // Handle reset/re-init when props change
+    useEffect(() => {
+        if (open) {
+            setFormData({
+                title: assignment?.title || '',
+                description: assignment?.description || '',
+                thumbnail: assignment?.thumbnail || '',
+                course: assignment?.course?._id || assignment?.course || autoCourseId || '',
+                deadline: assignment?.deadline ? new Date(assignment.deadline).toISOString().slice(0, 16) : '',
+                deadlineType: (assignment?.deadlineDays > 0 || assignment?.deadlineDays === 0) ? (assignment.deadlineDays > 0 ? 'relative' : 'fixed') : 'fixed',
+                deadlineDays: assignment?.deadlineDays || 0,
+                totalMarks: assignment?.totalMarks || 100,
+                isPublished: assignment?.isPublished || false,
+                assignmentType: assignment?.assignmentType || 'file_upload',
+                maxMb: assignment?.maxMb || 10,
+                allowedFormats: assignment?.allowedFormats || '.pdf,.zip,.jpg,.png',
+                attachments: assignment?.attachments || [],
+                moduleId: assignment?.moduleId?._id || assignment?.moduleId || '',
+                lectureId: assignment?.lectureId?._id || assignment?.lectureId || '',
+                questions: assignment?.questions || []
+            });
+        }
+    }, [open, assignment, autoCourseId]);
     const [questionPickerOpen, setQuestionPickerOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);

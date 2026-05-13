@@ -21,7 +21,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
-const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
+const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -32,9 +32,13 @@ const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
         passingMarks: 40,
         attemptsPerUser: 1,
         isActive: true,
-        course: ''
+        course: '',
+        moduleId: '',
+        lectureId: ''
     });
     const [courses, setCourses] = useState([]);
+    const [modules, setModules] = useState([]);
+    const [lectures, setLectures] = useState([]);
 
     useEffect(() => {
         if (open) {
@@ -48,12 +52,31 @@ const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
                     return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
                 };
 
+                const cId = initialData.course?._id || initialData.course || '';
                 setFormData({
                     ...initialData,
                     startDate: formatDateTime(initialData.startDate),
                     endDate: formatDateTime(initialData.endDate),
-                    course: initialData.course?._id || initialData.course || ''
+                    course: cId,
+                    moduleId: initialData.moduleId || '',
+                    lectureId: initialData.lectureId || ''
                 });
+
+                if (cId) {
+                    fetchCourseDetails(cId, initialData.moduleId);
+                }
+            } else if (autoCourseId) {
+                setFormData(prev => ({
+                    ...prev,
+                    course: autoCourseId,
+                    title: '',
+                    description: '',
+                    startDate: '',
+                    endDate: '',
+                    moduleId: '',
+                    lectureId: ''
+                }));
+                fetchCourseDetails(autoCourseId);
             } else {
                 setFormData({
                     title: '',
@@ -65,23 +88,69 @@ const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
                     passingMarks: 40,
                     attemptsPerUser: 1,
                     isActive: true,
-                    course: ''
+                    course: '',
+                    moduleId: '',
+                    lectureId: ''
                 });
+                setModules([]);
+                setLectures([]);
             }
         }
-    }, [initialData, open]);
+    }, [initialData, open, autoCourseId]);
 
     const fetchCourses = async () => {
         try {
             const { data } = await api.get('/courses');
-            setCourses(data.data || []);
+            const fetchedCourses = data.data || [];
+            setCourses(fetchedCourses);
+            
+            // If we have an autoCourseId or initialData, and it's not in courses yet, 
+            // the MUI Select might warn. But we fetch courses first now.
         } catch (error) {
             
         }
     };
 
+    const fetchCourseDetails = async (courseId, modId) => {
+        if (!courseId || courseId === 'None') return;
+        try {
+            const { data } = await api.get(`/courses/${courseId}`);
+            if (data.success) {
+                const mods = data.data.modules || [];
+                setModules(mods);
+                if (modId) {
+                    const mod = mods.find(m => m._id === modId);
+                    setLectures(mod?.videos || []);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch course details:', error);
+        }
+    };
+
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'course') {
+            if (value) {
+                fetchCourseDetails(value);
+            } else {
+                setModules([]);
+                setLectures([]);
+                setFormData(prev => ({ ...prev, moduleId: '', lectureId: '' }));
+            }
+        }
+
+        if (name === 'moduleId') {
+            if (value) {
+                const mod = modules.find(m => m._id === value);
+                setLectures(mod?.videos || []);
+            } else {
+                setLectures([]);
+                setFormData(prev => ({ ...prev, lectureId: '' }));
+            }
+        }
     };
 
     const handleSubmit = async () => {
@@ -230,6 +299,49 @@ const ExamForm = ({ open, onClose, onSuccess, initialData }) => {
                             </Select>
                         </FormControl>
                     </Grid>
+
+                    {formData.course && (
+                        <>
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Module (Optional)</InputLabel>
+                                    <Select
+                                        value={formData.moduleId}
+                                        label="Module (Optional)"
+                                        onChange={handleChange}
+                                        name="moduleId"
+                                    >
+                                        <MenuItem value=""><em>Global (No Module)</em></MenuItem>
+                                        {modules.map((mod) => (
+                                            <MenuItem key={mod._id} value={mod._id}>
+                                                {mod.title}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+
+                            <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Lecture (Optional)</InputLabel>
+                                    <Select
+                                        value={formData.lectureId}
+                                        label="Lecture (Optional)"
+                                        onChange={handleChange}
+                                        name="lectureId"
+                                        disabled={!formData.moduleId}
+                                    >
+                                        <MenuItem value=""><em>Module Level (No Lecture)</em></MenuItem>
+                                        {lectures.map((lec) => (
+                                            <MenuItem key={lec._id} value={lec._id}>
+                                                {lec.title}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        </>
+                    )}
                 </Grid>
             </DialogContent>
             <DialogActions>

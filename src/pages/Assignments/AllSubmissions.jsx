@@ -26,7 +26,7 @@ const AllSubmissions = () => {
                 setSubmissions(res.data.data);
             }
         } catch (error) {
-            console.error('Failed to fetch submissions:', error);
+            
         } finally {
             setLoading(false);
         }

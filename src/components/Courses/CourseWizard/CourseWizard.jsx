@@ -14,6 +14,7 @@ import {
     Avatar
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import QuizIcon from '@mui/icons-material/Quiz';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -30,12 +31,14 @@ import { CourseWizardSkeleton } from '../../Common/ModalSkeletons';
 import BasicInfoStep from './BasicInfoStep';
 import CurriculumStep from './CurriculumStep';
 import AssignmentStep from './AssignmentStep';
+import ExamsStep from './ExamsStep';
 import ReviewStep from './ReviewStep';
 
 const steps = [
     { label: 'Basic Details', icon: <InfoOutlinedIcon />, description: 'Course title, price, and media' },
     { label: 'Curriculum', icon: <MenuBookOutlinedIcon />, description: 'Topics, lectures, and resources' },
     { label: 'Assignments', icon: <AssignmentOutlinedIcon />, description: 'Add and link assignments' },
+    { label: 'Exams & Quizzes', icon: <QuizIcon />, description: 'Create and manage course quizzes' },
     { label: 'Final Review', icon: <VisibilityOutlinedIcon />, description: 'Preview and publish course' }
 ];
 
@@ -53,6 +56,7 @@ const validationSchema = [
             })
         )
     }),
+    Yup.object().shape({}),
     Yup.object().shape({}),
     Yup.object().shape({})
 ];
@@ -437,6 +441,13 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                             />
                                         )}
                                         {activeStep === 3 && (
+                                            <ExamsStep
+                                                values={values}
+                                                setFieldValue={setFieldValue}
+                                                courseId={courseId}
+                                            />
+                                        )}
+                                        {activeStep === 4 && (
                                             <ReviewStep values={values} categories={categories} courseId={courseId} />
                                         )}
                                     </Box>

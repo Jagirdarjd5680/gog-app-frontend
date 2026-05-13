@@ -1,8 +1,9 @@
-import { 
-    Box, Typography, Accordion, AccordionSummary, AccordionDetails, 
-    Stack, Chip, TableContainer, Paper, Table, TableHead, TableRow, 
-    TableCell, TableBody, Link, Button, Dialog, DialogTitle, 
-    DialogContent, DialogActions, TextField 
+import React, { useState } from 'react';
+import {
+    Box, Typography, Accordion, AccordionSummary, AccordionDetails,
+    Stack, Chip, TableContainer, Paper, Table, TableHead, TableRow,
+    TableCell, TableBody, Link, Button, Dialog, DialogTitle,
+    DialogContent, DialogActions, TextField
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -10,8 +11,8 @@ import { format } from 'date-fns';
 import { fixUrl } from '../../../utils/api';
 
 const SubmissionsTab = ({ submissions, onGrade }) => {
-    const [gradingSub, setGradingSub] = React.useState(null);
-    const [gradeData, setGradeData] = React.useState({ grade: '', feedback: '' });
+    const [gradingSub, setGradingSub] = useState(null);
+    const [gradeData, setGradeData] = useState({ grade: '', feedback: '' });
 
     const handleOpenGrading = (sub) => {
         setGradingSub(sub);
@@ -67,8 +68,8 @@ const SubmissionsTab = ({ submissions, onGrade }) => {
                                                         <Typography variant="caption" color="text.secondary">{sub.course || 'General'}</Typography>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {sub.submissionDetails?.submittedAt 
-                                                            ? format(new Date(sub.submissionDetails.submittedAt), 'PPp') 
+                                                        {sub.submissionDetails?.submittedAt
+                                                            ? format(new Date(sub.submissionDetails.submittedAt), 'PPp')
                                                             : 'Not Submitted'}
                                                     </TableCell>
                                                     <TableCell>

@@ -62,7 +62,7 @@ const TutorDashboard = () => {
         setRecentMedia(mediaRes.data.success ? mediaRes.data.data : []);
       }
     } catch (error) {
-      console.error(error);
+      
     } finally {
       setLoading(false);
     }

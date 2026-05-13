@@ -65,21 +65,33 @@ const UserList = () => {
         fetchUsers();
         fetchBinCount();
         fetchAllBatches();
-        
+    }, [fetchUsers, fetchBinCount, fetchAllBatches]);
+
+    useEffect(() => {
         const openProfileId = searchParams.get('openProfile');
         const editId = searchParams.get('edit');
         const paymentId = searchParams.get('payment');
+        const searchVal = searchParams.get('search');
 
-        if (openProfileId) { setViewUserId(openProfileId); setViewModalOpen(true); }
-        if (editId) { 
+        if (searchVal !== null && searchVal !== searchTerm) {
+            setSearchTerm(searchVal);
+        }
+
+        if (openProfileId) { 
+            setViewUserId(openProfileId); 
+            setViewModalOpen(true); 
+        }
+        
+        if (editId && users.length > 0) { 
             const user = users.find(u => u._id === editId);
             if (user) { setSelectedUser(user); setModalOpen(true); }
         }
-        if (paymentId) {
+        
+        if (paymentId && users.length > 0) {
             const user = users.find(u => u._id === paymentId);
             if (user) { setSelectedUser(user); setPaymentModalOpen(true); }
         }
-    }, [searchParams, fetchUsers, fetchBinCount, fetchAllBatches, users]);
+    }, [searchParams, users]);
 
     const handleAdd = () => { setSelectedUser(null); setModalOpen(true); };
     const handleEdit = (user) => { setSelectedUser(user); setModalOpen(true); setSearchParams({ edit: user._id }); };

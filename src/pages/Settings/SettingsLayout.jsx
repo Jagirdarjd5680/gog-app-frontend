@@ -46,6 +46,7 @@ import PDFFormatsSettings from './PDFFormatsSettings';
 import PDFSettings from './PDFSettings';
 import AISettings from './AISettings';
 import PoliciesSettings from './PoliciesSettings';
+import StorageSettings from './StorageSettings';
 import PolicyIcon from '@mui/icons-material/Policy';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -76,6 +77,7 @@ const SettingsLayout = () => {
         { id: 'app', label: 'App Settings', icon: <AndroidIcon /> },
         { id: 'pdf-formats', label: 'PDF Formats', icon: <PictureAsPdfIcon /> },
         { id: 'pdf-settings', label: 'PDF Settings', icon: <PictureAsPdfIcon /> },
+        { id: 'storage', label: 'Storage & Management', icon: <StorageIcon /> },
         { id: 'backup', label: 'Backup & Restore', icon: <StorageIcon /> },
     ];
 
@@ -148,6 +150,7 @@ const SettingsLayout = () => {
             case 'app': return <AppSettings {...props} />;
             case 'pdf-formats': return <PDFFormatsSettings {...props} />;
             case 'pdf-settings': return <PDFSettings {...props} />;
+            case 'storage': return <StorageSettings {...props} />;
             case 'backup': return <BackupSettings />;
             default: return <GeneralSettings {...props} />;
         }

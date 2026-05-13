@@ -36,7 +36,7 @@ const Header = ({ onMenuClick }) => {
                 setPendingCount(res.data.data.filter(s => s.status === 'pending').length);
             }
         } catch (error) {
-            console.error('Failed to fetch recent submissions:', error);
+            
         }
     };
 

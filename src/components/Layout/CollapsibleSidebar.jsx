@@ -101,7 +101,8 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                 { text: 'Tutors', path: '/tutors', icon: <SupportAgentIcon /> },
                 { text: 'Leave Requests', path: '/leave-requests', icon: <ExitToAppIcon /> },
                 { text: 'Referral Payouts', path: '/withdrawal-requests', icon: <MonetizationOnIcon /> },
-                { text: 'Referral Requests', path: '/referral-joining-requests', icon: <GroupsIcon /> },
+                { text: 'Referral Join Requests', path: '/referral-joining-requests', icon: <GroupsIcon /> },
+                { text: 'Referral Records', path: '/referral-records', icon: <CardGiftcardIcon /> },
             ]
         },
         

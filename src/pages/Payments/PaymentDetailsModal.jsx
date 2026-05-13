@@ -189,7 +189,7 @@ const PaymentDetailsModal = ({ open, onClose, payment }) => {
                 link.remove();
                 toast.success('Receipt downloaded successfully');
             } catch (error) {
-                console.error('PDF Download Error:', error);
+                
                 toast.warn('Falling back to basic receipt...');
                 generateReceiptPDF(payment);
             } finally {

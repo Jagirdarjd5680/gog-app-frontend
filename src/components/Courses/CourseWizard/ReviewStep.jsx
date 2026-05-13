@@ -14,17 +14,23 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import FolderZipIcon from '@mui/icons-material/FolderZip';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import QuizIcon from '@mui/icons-material/Quiz';
+import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
 import api from '../../../utils/api';
 
 const ReviewStep = ({ values, categories = [], courseId }) => {
     const categoryName = categories.find(c => c._id === values.category)?.name || values.category || 'N/A';
     const [tabIndex, setTabIndex] = useState(0);
     const [assignments, setAssignments] = useState([]);
+    const [exams, setExams] = useState([]);
     const [loadingAssignments, setLoadingAssignments] = useState(false);
+    const [loadingExams, setLoadingExams] = useState(false);
 
     useEffect(() => {
         if (courseId && tabIndex === 1) {
             fetchAssignments();
+        } else if (courseId && tabIndex === 2) {
+            fetchExams();
         }
     }, [courseId, tabIndex]);
 
@@ -34,9 +40,22 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
             const { data } = await api.get(`/assignments?course=${courseId}&limit=100`);
             setAssignments(data.data || []);
         } catch (error) {
-            console.error('Failed to load assignments');
+            
         } finally {
             setLoadingAssignments(false);
+        }
+    };
+
+    const fetchExams = async () => {
+        setLoadingExams(true);
+        try {
+            const { data } = await api.get(`/exams?course=${courseId}`);
+            const list = data.data || data;
+            setExams(Array.isArray(list) ? list : []);
+        } catch (error) {
+            
+        } finally {
+            setLoadingExams(false);
         }
     };
 
@@ -113,6 +132,7 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                             <Tabs value={tabIndex} onChange={handleTabChange} aria-label="course contents tabs">
                                 <Tab label="Curriculum Structure" sx={{ textTransform: 'none', fontWeight: 600 }} />
                                 <Tab label="Assignments" sx={{ textTransform: 'none', fontWeight: 600 }} />
+                                <Tab label="Quizzes" sx={{ textTransform: 'none', fontWeight: 600 }} />
                             </Tabs>
                         </Box>
 
@@ -198,6 +218,48 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                                     ) : (
                                         <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
                                             No assignments added yet.
+                                        </Typography>
+                                    )}
+                                </Box>
+                            )}
+
+                            {tabIndex === 2 && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    {!courseId ? (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                            Save the course to view quizzes.
+                                        </Typography>
+                                    ) : loadingExams ? (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                                            <CircularProgress size={24} />
+                                        </Box>
+                                    ) : exams.length > 0 ? (
+                                        exams.map((exam, index) => (
+                                            <Card key={exam._id || index} variant="outlined" sx={{ borderRadius: 2 }}>
+                                                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                    <Stack direction="row" spacing={2} alignItems="center">
+                                                        <Box sx={{ width: 40, height: 40, borderRadius: '8px', bgcolor: 'warning.light', color: 'warning.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <QuizIcon fontSize="small" />
+                                                        </Box>
+                                                        <Box sx={{ flexGrow: 1 }}>
+                                                            <Typography variant="subtitle2" fontWeight={700}>{exam.title}</Typography>
+                                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                                                    <TimerOutlinedIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                                                                    <Typography variant="caption">{exam.duration} Mins</Typography>
+                                                                </Box>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    • Marks: {exam.totalMarks}
+                                                                </Typography>
+                                                            </Stack>
+                                                        </Box>
+                                                    </Stack>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                            No quizzes added yet.
                                         </Typography>
                                     )}
                                 </Box>

@@ -82,7 +82,7 @@ const Dashboard = () => {
                         dashData.totalStudents = dashData.totalStudents || totalEnrolled;
                     }
                 } catch (e) {
-                    console.error('Courses fetch failed:', e.message);
+                    
                 }
 
                 // Fetch withdrawals only for admin
@@ -93,14 +93,14 @@ const Dashboard = () => {
                             dashData.pendingWithdrawals = withdrawalRes.data.data?.length || 0;
                         }
                     } catch (e) {
-                        console.error('Withdrawals fetch failed:', e.message);
+                        
                     }
                 }
 
                 setStats(dashData);
             }
         } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
+            
             toast.error(error.response?.data?.message || 'Failed to fetch dashboard statistics');
         } finally {
             setLoading(false);

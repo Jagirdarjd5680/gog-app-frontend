@@ -25,7 +25,7 @@ const RecentSubmissionsWidget = () => {
                 setSubmissions(res.data.data);
             }
         } catch (error) {
-            console.error('Failed to fetch recent submissions:', error);
+            
         } finally {
             setLoading(false);
         }

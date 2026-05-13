@@ -55,12 +55,18 @@ import VideoPreview from '../Common/VideoPreview';
 import { fixUrl } from '../../utils/api';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import ExamForm from '../Exams/ExamForm';
+import AssignmentFormModal from '../Assignments/AssignmentFormModal';
+import AddIcon from '@mui/icons-material/Add';
 
 const CourseViewModal = ({ open, onClose, course }) => {
     const [loading, setLoading] = useState(false);
     const [activeVideoUrl, setActiveVideoUrl] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [tabIndex, setTabIndex] = useState(0);
+    const [fullCourseData, setFullCourseData] = useState(null);
+    const [examFormOpen, setExamFormOpen] = useState(false);
+    const [assignmentFormOpen, setAssignmentFormOpen] = useState(false);
 
     React.useEffect(() => {
         if (open && course?._id) {
@@ -350,6 +356,29 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
                                 {tabIndex === 1 && (
                                     <Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1.5 }}>
+                                            <Button 
+                                                variant="contained" 
+                                                size="small" 
+                                                color="secondary" 
+                                                startIcon={<AddIcon />}
+                                                onClick={() => setAssignmentFormOpen(true)}
+                                                sx={{ borderRadius: 2, fontWeight: 700 }}
+                                            >
+                                                Add Assignment
+                                            </Button>
+                                            <Button 
+                                                variant="contained" 
+                                                size="small" 
+                                                color="error" 
+                                                startIcon={<AddIcon />}
+                                                onClick={() => setExamFormOpen(true)}
+                                                sx={{ borderRadius: 2, fontWeight: 700 }}
+                                            >
+                                                Add Exam
+                                            </Button>
+                                        </Box>
+
                                         {fullCourseData?.exams?.length > 0 && (
                                             <Box sx={{ mb: 3 }}>
                                                 <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -471,6 +500,24 @@ const CourseViewModal = ({ open, onClose, course }) => {
                     <VideoPreview url={activeVideoUrl} height={500} />
                 </Box>
             </Dialog>
+
+            {examFormOpen && (
+                <ExamForm 
+                    open={examFormOpen} 
+                    onClose={() => setExamFormOpen(false)} 
+                    onSuccess={() => { setExamFormOpen(false); fetchFullCourseDetails(); }}
+                    autoCourseId={course._id}
+                />
+            )}
+
+            {assignmentFormOpen && (
+                <AssignmentFormModal 
+                    open={assignmentFormOpen} 
+                    onClose={() => setAssignmentFormOpen(false)} 
+                    onSuccess={() => { setAssignmentFormOpen(false); fetchFullCourseDetails(); }}
+                    autoCourseId={course._id}
+                />
+            )}
         </Dialog>
     );
 };

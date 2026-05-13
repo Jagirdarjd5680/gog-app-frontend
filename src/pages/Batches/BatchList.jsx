@@ -204,6 +204,20 @@ const BatchList = () => {
             pinned: 'right',
             cellRenderer: (params) => (
                 <Stack direction="row" spacing={0.5} alignItems="center" sx={{ height: '100%' }}>
+                    <Tooltip title="Batch Students">
+                        <IconButton
+                            size="small"
+                            onClick={() => navigate(`/batches/${params.data._id}/students`)}
+                            sx={{
+                                color: '#9C27B0',
+                                bgcolor: 'rgba(156,39,176,0.1)',
+                                '&:hover': { bgcolor: 'rgba(156,39,176,0.2)' },
+                                borderRadius: 1.5
+                            }}
+                        >
+                            <PeopleIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
                     <Tooltip title="Face ID Attendance">
                         <IconButton
                             size="small"

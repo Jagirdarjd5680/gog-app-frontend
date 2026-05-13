@@ -176,25 +176,25 @@ const SupportChat = () => {
     });
 
     socket.current.on('session_ended', (data) => {
-      console.log('🏁 [SOCKET] Session ended by student! updating state...');
+      
       setSession(data);
     });
   };
 
   const fetchSessionDetails = async () => {
     try {
-      console.log(`📡 [FETCH_SESSION] Loading details for session ${sessionId}...`);
+      
       const { data } = await axios.get(`/tutors/sessions/${sessionId}`);
       if (data.success) {
         setSession(data.data);
-        console.log(`✅ [FETCH_SESSION] Session found! Fetching chat history...`);
+        
         // Load chat history between student and tutor of this session
         const historyRes = await axios.get(`/chat/session-history/${sessionId}`);
         setMessages(historyRes.data.data);
-        console.log(`💬 [CHAT_HISTORY] Loaded ${historyRes.data.data.length} messages. Chat is ready! 🌈`);
+        
       }
     } catch (error) {
-      console.error(`❌ [FETCH_ERROR] Failed to load session:`, error);
+      
       toast.error('Failed to load chat');
     } finally {
       setLoading(false);

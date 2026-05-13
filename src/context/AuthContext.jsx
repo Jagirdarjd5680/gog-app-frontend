@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import socket from '../utils/socket';
+import { toast } from 'react-toastify';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, CircularProgress } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
@@ -87,8 +88,24 @@ const AuthProvider = ({ children }) => {
 
         socket.on('force_logout', handleForceLogout);
 
+        socket.on('realtime_update', (data) => {
+            const { type } = data;
+            let displayMsg = "Data updated";
+            switch(type) {
+                case 'ASSIGNMENT_SUBMITTED': displayMsg = "Assignment submitted successfully!"; break;
+                case 'ASSIGNMENT_GRADED': displayMsg = "🎉 Your assignment has been graded!"; break;
+                case 'EXAM_SUBMITTED': displayMsg = "Exam result saved!"; break;
+                case 'CURRICULUM_UPDATED': displayMsg = "Course curriculum has been updated!"; break;
+                case 'MATERIAL_ADDED': displayMsg = "New material added to the batch!"; break;
+                case 'REVIEW_ADDED': displayMsg = "New review posted!"; break;
+                case 'BATCH_UPDATED': displayMsg = "Batch details updated!"; break;
+            }
+            toast.info(displayMsg);
+        });
+
         return () => {
             socket.off('force_logout', handleForceLogout);
+            socket.off('realtime_update');
             if (timerRef.current) clearInterval(timerRef.current);
         };
     }, [user?._id, user?.role]);
