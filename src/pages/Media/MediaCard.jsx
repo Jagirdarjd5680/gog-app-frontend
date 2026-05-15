@@ -24,6 +24,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AudioFileIcon from '@mui/icons-material/AudioFile';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { format } from 'date-fns';
 import VideoPreview from '../../components/Common/VideoPreview';
 import { fixUrl } from '../../utils/api';
@@ -51,7 +52,8 @@ const MediaCard = ({
     onToggleSelection,
     onDelete,
     onCopy,
-    onSelect
+    onSelect,
+    onPreview
 }) => {
     const theme = useTheme();
 
@@ -61,13 +63,13 @@ const MediaCard = ({
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                borderRadius: 2,
+                borderRadius: 1, // Reduced rounding
                 overflow: 'hidden',
                 border: `1px solid ${theme.palette.divider}`,
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'all 0.2s ease',
                 '&:hover': {
-                    transform: 'translateY(-8px)',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 10px 20px rgba(0,0,0,0.05)',
                     borderColor: 'primary.main'
                 }
             }}
@@ -98,10 +100,10 @@ const MediaCard = ({
                     />
                 </Box>
 
-                {file.type === 'image' ? (
+                {(file.type === 'image' || ['heic', 'heif'].includes(file.format?.toLowerCase())) ? (
                     <CardMedia
                         component="img"
-                        image={fixUrl(file.url)}
+                        image={`${fixUrl(file.url)}${fixUrl(file.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                         alt={file.name}
                         sx={{
                             position: 'absolute',
@@ -210,6 +212,16 @@ const MediaCard = ({
                             sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'success.light', color: 'success.main' } }}
                         >
                             <DownloadIcon fontSize="inherit" />
+                        </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Quick View">
+                        <IconButton
+                            size="small"
+                            onClick={() => onPreview(file)}
+                            sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'info.light', color: 'info.main' } }}
+                        >
+                            <VisibilityIcon fontSize="inherit" />
                         </IconButton>
                     </Tooltip>
                 </Box>

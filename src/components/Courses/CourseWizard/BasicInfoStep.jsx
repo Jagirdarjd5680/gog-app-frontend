@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
     Grid, TextField, MenuItem, FormControl, InputLabel, Select, Box, Typography, Button, Divider,
-    Card, CardContent, InputAdornment, CircularProgress, Switch, FormControlLabel, Stack, Chip,
+    Card, CardContent, InputAdornment, CircularProgress, LinearProgress, Switch, FormControlLabel, Stack, Chip,
     ToggleButtonGroup, ToggleButton, Alert
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -46,6 +46,7 @@ const SectionHeader = ({ icon, title, subtitle }) => (
 const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [], courseId }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState('image');
@@ -73,9 +74,12 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
         if (file) {
             try {
                 setUploading(true);
+                setUploadProgress(0);
                 setFieldValue('thumbnailPreview', URL.createObjectURL(file));
 
-                const result = await uploadFile(file);
+                const result = await uploadFile(file, (progress) => {
+                    setUploadProgress(progress);
+                });
                 if (result.success) {
                     setFieldValue('thumbnail', result.url);
                     setFieldValue('thumbnailPreview', fixUrl(result.url));
@@ -510,10 +514,18 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                     {uploading && (
                                         <Box sx={{
                                             position: 'absolute', inset: 0, zIndex: 10,
-                                            bgcolor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            bgcolor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
                                         }}>
-                                            <CircularProgress size={40} />
+                                            <CircularProgress size={40} thickness={4} />
+                                            <Typography variant="caption" fontWeight={800} color="primary" sx={{ mt: 2 }}>
+                                                {uploadProgress < 100 ? `🚀 UPLOADING ${uploadProgress}%` : '⚙️ PROCESSING & ENCRYPTING...'}
+                                            </Typography>
+                                            <LinearProgress 
+                                                variant="determinate" 
+                                                value={uploadProgress} 
+                                                sx={{ width: '80%', mt: 1, borderRadius: 5, height: 6 }} 
+                                            />
                                         </Box>
                                     )}
                                     {values.thumbnailPreview ? (
@@ -595,7 +607,24 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                             <CardContent sx={{ p: 3 }}>
                                 <SectionHeader icon={<VideoLibraryIcon />} title="Course Teaser" subtitle="A short preview video for students" />
                                 
-                                <Box sx={{ mb: 2 }}>
+                                <Box sx={{ mb: 2, position: 'relative', borderRadius: '12px', overflow: 'hidden', minHeight: uploading ? 180 : 0 }}>
+                                    {uploading && (
+                                        <Box sx={{
+                                            position: 'absolute', inset: 0, zIndex: 10,
+                                            bgcolor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
+                                        }}>
+                                            <CircularProgress size={40} thickness={4} />
+                                            <Typography variant="caption" fontWeight={800} color="primary" sx={{ mt: 2 }}>
+                                                {uploadProgress < 100 ? `🚀 UPLOADING ${uploadProgress}%` : '⚙️ PROCESSING & ENCRYPTING...'}
+                                            </Typography>
+                                            <LinearProgress 
+                                                variant="determinate" 
+                                                value={uploadProgress} 
+                                                sx={{ width: '80%', mt: 1, borderRadius: 5, height: 6 }} 
+                                            />
+                                        </Box>
+                                    )}
                                     <VideoPreview url={values.demoVideoUrl} height={180} />
                                 </Box>
 
@@ -630,7 +659,10 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                     if (file) {
                                                         try {
                                                             setUploading(true);
-                                                            const result = await uploadFile(file);
+                                                            setUploadProgress(0);
+                                                            const result = await uploadFile(file, (progress) => {
+                                                                setUploadProgress(progress);
+                                                            });
                                                             if (result.success) {
                                                                 setFieldValue('demoVideoUrl', result.url);
                                                                 toast.success('Video uploaded successfully');

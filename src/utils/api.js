@@ -113,8 +113,8 @@ export const fixUrl = (url) => {
         return url.replace('http://localhost:5000', endpoint);
     }
 
-    // Handle relative /uploads path
-    if (url.startsWith('/uploads')) {
+    // Handle relative /uploads or /api/media paths
+    if (url.startsWith('/uploads') || url.startsWith('/api/media')) {
         const result = `${endpoint}${url}`;
         return result;
     }

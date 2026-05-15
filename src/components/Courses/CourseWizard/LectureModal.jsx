@@ -51,6 +51,11 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
         meetTitle: '',
         meetScheduledAt: '',
         meetEndsAt: '',
+        // Assessment/Assignment fields
+        selectedQuestions: [],
+        assignmentType: 'file_upload',
+        assignmentDesc: '',
+        maxMb: 10,
     });
     const [exams, setExams] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -72,11 +77,16 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     meetTitle: initialData.meetTitle || '',
                     meetScheduledAt: initialData.meetScheduledAt ? initialData.meetScheduledAt.slice(0, 16) : '',
                     meetEndsAt: initialData.meetEndsAt ? initialData.meetEndsAt.slice(0, 16) : '',
+                    selectedQuestions: initialData.selectedQuestions || [],
+                    assignmentType: initialData.assignmentType || 'file_upload',
+                    assignmentDesc: initialData.assignmentDesc || '',
+                    maxMb: initialData.maxMb || 10,
                 });
             } else {
                 setVideoForm({ 
                     title: '', type: 'video', videoUrl: '', duration: '', isFree: false, resourceId: '', resourceModel: '', 
                     meetLink: '', meetTitle: '', meetScheduledAt: '', meetEndsAt: '',
+                    selectedQuestions: [], assignmentType: 'file_upload', assignmentDesc: '', maxMb: 10,
                 });
             }
             setSelectedFile(null);
@@ -396,10 +406,48 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
 
                     {uploading && (
                         <Grid item xs={12}>
-                            <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: '12px' }}>
-                                <LinearProgress variant="determinate" value={uploadProgress} sx={{ borderRadius: 10, height: 8 }} />
-                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ mt: 1, display: 'block' }}>
-                                    Uploading files... {uploadProgress}%
+                            <Box sx={{ 
+                                p: 3, 
+                                bgcolor: 'primary.light', 
+                                borderRadius: '16px', 
+                                border: '1px solid',
+                                borderColor: 'primary.main',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 2,
+                                textAlign: 'center',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}>
+                                <CircularProgress size={40} thickness={4} />
+                                <Box sx={{ width: '100%' }}>
+                                    <Stack direction="row" justifyContent="space-between" mb={1}>
+                                        <Typography variant="body2" fontWeight={800} color="primary.dark">
+                                            {uploadProgress < 100 ? '🚀 Uploading Content...' : '⚙️ Processing & Encrypting...'}
+                                        </Typography>
+                                        <Typography variant="body2" fontWeight={800} color="primary.dark">
+                                            {uploadProgress}%
+                                        </Typography>
+                                    </Stack>
+                                    <LinearProgress 
+                                        variant="determinate" 
+                                        value={uploadProgress} 
+                                        sx={{ 
+                                            borderRadius: 10, 
+                                            height: 10,
+                                            bgcolor: 'rgba(255,255,255,0.5)',
+                                            '& .MuiLinearProgress-bar': {
+                                                borderRadius: 10,
+                                                backgroundImage: 'linear-gradient(90deg, #6366f1 0%, #a855f7 100%)'
+                                            }
+                                        }} 
+                                    />
+                                </Box>
+                                <Typography variant="caption" color="primary.dark" sx={{ opacity: 0.8, fontWeight: 600 }}>
+                                    {uploadProgress < 100 
+                                        ? 'Please wait while we upload your file to our secure local storage.' 
+                                        : 'Finalizing security encryption for high-quality streaming...'}
                                 </Typography>
                             </Box>
                         </Grid>

@@ -34,6 +34,7 @@
     "date-fns": "^3.0.6",
     "face-api.js": "^0.22.2",
     "formik": "^2.4.5",
+    "hls.js": "^1.6.16",
     "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
