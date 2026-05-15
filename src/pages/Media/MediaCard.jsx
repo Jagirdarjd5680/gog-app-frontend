@@ -159,6 +159,29 @@ const MediaCard = ({
                         }}
                     />
                 </Box>
+                {file.status === 'processing' && (
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            bgcolor: 'rgba(0,0,0,0.6)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 20,
+                            backdropFilter: 'blur(4px)'
+                        }}
+                    >
+                        <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />
+                        <Typography variant="caption" sx={{ color: 'white', fontWeight: 800 }}>
+                            PROCESSING...
+                        </Typography>
+                    </Box>
+                )}
             </Box>
             <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
                 <Typography
