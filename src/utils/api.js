@@ -5,7 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend.godof
 // Create axios instance with default config
 const api = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 30000, // 30s timeout
+    timeout: 3600000, // 1 hour timeout for large transfers
     headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
@@ -113,26 +113,25 @@ export const fixUrl = (url) => {
         return url.replace('http://localhost:5000', endpoint);
     }
 
-    // Handle relative /uploads or /api/media paths
-    if (url.startsWith('/uploads') || url.startsWith('/api/media')) {
-        const result = `${endpoint}${url}`;
-        return result;
-    }
-
-    // Handle raw filenames (e.g. from legacy or specific fields)
-    if (url.match(/^(video-|image-|audio-|raw-)/) && !url.includes('://')) {
-        const result = `${endpoint}/uploads/${url}`;
-        return result;
-    }
+    let finalUrl = url;
     
-    // If it's already a full URL but needs protocol fix or host fix
-    if (url.startsWith('http://localhost:5000')) {
-        const result = url.replace('http://localhost:5000', endpoint);
-        
-        return result;
+    // 1. Resolve Endpoint and Base URL
+    if (url.startsWith('/uploads') || url.startsWith('/api/media')) {
+        finalUrl = `${endpoint}${url}`;
+    } else if (url.match(/^(video-|image-|audio-|raw-)/) && !url.includes('://')) {
+        finalUrl = `${endpoint}/uploads/${url}`;
+    } else if (url.startsWith('http://localhost:5000')) {
+        finalUrl = url.replace('http://localhost:5000', endpoint);
     }
 
-    const finalUrl = url;
+    // 2. Append Token for Security
+    const token = localStorage.getItem('token');
+    if (token && (finalUrl.includes('/api/media/') || finalUrl.includes('/uploads/'))) {
+        if (!finalUrl.includes('token=')) {
+            const separator = finalUrl.includes('?') ? '&' : '?';
+            finalUrl = `${finalUrl}${separator}token=${token}`;
+        }
+    }
     
     return finalUrl;
 };

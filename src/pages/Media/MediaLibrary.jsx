@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, CircularProgress, useTheme, Pagination, alpha } from '@mui/material';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Box, CircularProgress, useTheme, Pagination, alpha, Typography } from '@mui/material';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
+import { uploadFile } from '../../utils/upload';
 
 // Sub-components
 import MediaSidebar from './components/MediaSidebar';
@@ -20,6 +21,8 @@ const MediaLibrary = ({ onSelect }) => {
     // State
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef(null);
     const [viewMode, setViewMode] = useState('grid');
     const [activeFilter, setActiveFilter] = useState('all');
     const [uploaderTab, setUploaderTab] = useState('all');
@@ -38,6 +41,7 @@ const MediaLibrary = ({ onSelect }) => {
     const [importingUrl, setImportingUrl] = useState(false);
     const [statsModalOpen, setStatsModalOpen] = useState(false);
     const [storageStats, setStorageStats] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const fetchFiles = useCallback(async () => {
         try {
@@ -93,14 +97,17 @@ const MediaLibrary = ({ onSelect }) => {
     const handleBulkDelete = async () => {
         if (window.confirm(`Delete ${selectedFiles.length} files?`)) {
             try {
-                for (const fileName of selectedFiles) {
-                    await api.delete(`/upload/${fileName}`);
+                setDeleting(true);
+                const res = await api.post('/upload/bulk-delete', { fileNames: selectedFiles });
+                if (res.data.success) {
+                    toast.success(res.data.message || 'Selected files deleted');
+                    setSelectedFiles([]);
+                    fetchFiles();
                 }
-                toast.success('Selected files deleted');
-                setSelectedFiles([]);
-                fetchFiles();
             } catch (err) {
-                toast.error('Some deletions failed');
+                toast.error('Bulk deletion failed');
+            } finally {
+                setDeleting(false);
             }
         }
     };
@@ -124,6 +131,40 @@ const MediaLibrary = ({ onSelect }) => {
         return matchesSearch && matchesFilter;
     });
 
+    const handleUploadClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            setUploading(true);
+            const loadingToast = toast.loading(`Uploading ${file.name}... (0%)`);
+            
+            const result = await uploadFile(file, (progress) => {
+                setUploadProgress(progress);
+                toast.loading(`Uploading ${file.name}... (${progress}%)`, { id: loadingToast });
+            });
+
+            if (result.success) {
+                toast.success('Upload successful', { id: loadingToast });
+                fetchFiles();
+            } else {
+                toast.error(result.message || 'Upload failed', { id: loadingToast });
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Upload failed');
+        } finally {
+            setUploading(false);
+            setUploadProgress(0);
+            if (e.target) e.target.value = '';
+        }
+    };
+
     return (
         <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden', bgcolor: '#f1f3f4' }}>
             {/* Sidebar — Skeleton while loading */}
@@ -134,8 +175,15 @@ const MediaLibrary = ({ onSelect }) => {
                     onFilterChange={setActiveFilter}
                     uploaderTab={uploaderTab}
                     onUploaderTabChange={setUploaderTab}
-                    onUploadClick={() => {}} 
+                    onUploadClick={handleUploadClick} 
                 />}
+
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+            />
 
             <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
 
@@ -149,7 +197,36 @@ const MediaLibrary = ({ onSelect }) => {
                         alignItems: 'center', justifyContent: 'center', gap: 2
                     }}>
                         <CircularProgress color="error" size={48} />
-                        <Box sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'error.main' }}>Deleting file...</Box>
+                        <Box sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'error.main' }}>
+                            {selectedFiles.length > 1 ? `Deleting ${selectedFiles.length} files...` : 'Deleting file...'}
+                        </Box>
+                    </Box>
+                )}
+
+                {/* Uploading Overlay Spinner */}
+                {uploading && (
+                    <Box sx={{
+                        position: 'absolute', inset: 0, zIndex: 100,
+                        bgcolor: alpha('#fff', 0.7),
+                        backdropFilter: 'blur(3px)',
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 2
+                    }}>
+                        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                            <CircularProgress variant="determinate" value={uploadProgress} size={64} thickness={4} />
+                            <Box
+                                sx={{
+                                    top: 0, left: 0, bottom: 0, right: 0,
+                                    position: 'absolute',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                            >
+                                <Typography variant="caption" component="div" color="text.secondary" fontWeight={800}>
+                                    {`${Math.round(uploadProgress)}%`}
+                                </Typography>
+                            </Box>
+                        </Box>
+                        <Box sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main' }}>Uploading file...</Box>
                     </Box>
                 )}
 
@@ -193,6 +270,7 @@ const MediaLibrary = ({ onSelect }) => {
                             onDelete={(file) => { setDeleteFile(file); setDeleteDialogOpen(true); }}
                             onCopy={(url) => { navigator.clipboard.writeText(url); toast.success('Link copied!'); }}
                             onPreview={setPreviewFile}
+                            onSelect={onSelect}
                             formatSize={formatSize}
                         />}
                 </Box>

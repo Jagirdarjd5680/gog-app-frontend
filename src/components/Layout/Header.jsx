@@ -203,7 +203,7 @@ const Header = ({ onMenuClick }) => {
                     <IconButton onClick={handleProfileClick} sx={{ p: 0, ml: 1 }}>
                         <Avatar
                             alt={user?.name}
-                            src={user?.avatar}
+                            src={fixUrl(user?.avatar)}
                             sx={{ width: 38, height: 38 }}
                         >
                             {user?.name?.charAt(0).toUpperCase()}

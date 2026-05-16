@@ -11,7 +11,7 @@ export const uploadFile = async (file, onUploadProgress) => {
             headers: {
                 'Content-Type': 'multipart/form-data'
             },
-            timeout: 300000, // 5 minutes timeout for large files
+            timeout: 3600000, // 1 hour timeout for very large files (1GB+)
             onUploadProgress: (progressEvent) => {
                 if (onUploadProgress) {
                     const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);

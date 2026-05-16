@@ -50,6 +50,7 @@ import FlameIcon from '@mui/icons-material/Whatshot';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { fixUrl } from '../../utils/api';
 
 const DRAWER_WIDTH = 260;
 
@@ -156,7 +157,7 @@ const Sidebar = ({ open, onClose }) => {
                 {settings?.general?.siteLogo ? (
                     <Box
                         component="img"
-                        src={settings.general.siteLogo}
+                        src={fixUrl(settings.general.siteLogo)}
                         sx={{ height: 40, mb: 1 }}
                         alt="Logo"
                     />

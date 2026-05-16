@@ -23,6 +23,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { format } from 'date-fns';
 import { fixUrl } from '../../../utils/api';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 
 import ImageIcon from '@mui/icons-material/Image';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
@@ -39,6 +40,7 @@ const MediaFileList = ({
     onDelete,
     onCopy,
     onPreview,
+    onSelect,
     formatSize
 }) => {
     const theme = useTheme();
@@ -68,6 +70,7 @@ const MediaFileList = ({
                                 onDelete={onDelete}
                                 onCopy={onCopy}
                                 onPreview={onPreview}
+                                onSelect={onSelect}
                             />
                         </Grid>
                     ))}
@@ -131,6 +134,13 @@ const MediaFileList = ({
                                 <TableCell sx={{ fontSize: '0.8rem' }}>{format(new Date(file.createdAt), 'dd MMM, yyyy')}</TableCell>
                                 <TableCell align="right">
                                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                        {onSelect && (
+                                            <Tooltip title="Select File">
+                                                <IconButton size="small" color="primary" onClick={() => onSelect(file)}>
+                                                    <CheckBoxIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
                                         <Tooltip title="Preview"><IconButton size="small" onClick={() => onPreview(file)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
                                         <Tooltip title="Copy Link"><IconButton size="small" onClick={() => onCopy(fixUrl(file.url))}><ContentCopyIcon fontSize="small" /></IconButton></Tooltip>
                                         <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => onDelete(file)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>

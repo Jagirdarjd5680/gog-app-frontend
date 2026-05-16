@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../utils/api';
+import api, { fixUrl } from '../utils/api';
 
 const SettingsContext = createContext();
 
@@ -54,7 +54,7 @@ export const SettingsProvider = ({ children }) => {
                     link.rel = 'icon';
                     document.getElementsByTagName('head')[0].appendChild(link);
                 }
-                link.href = siteFavicon;
+                link.href = fixUrl(siteFavicon);
             }
         }
     }, [settings]);
