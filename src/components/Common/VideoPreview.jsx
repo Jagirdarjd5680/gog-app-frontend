@@ -127,8 +127,11 @@ const VideoPreview = ({ url, file, height = 200 }) => {
                 <video
                     ref={videoRef}
                     key={isHLS ? 'hls-video' : videoSrc}
-                    src={isHLS ? undefined : videoSrc}
+                    src={isHLS ? undefined : (videoSrc && !isIframe ? `${videoSrc}${videoSrc.includes('#') ? '' : '#t=0.1'}` : videoSrc)}
                     controls
+                    preload="metadata"
+                    muted
+                    playsInline
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 >
                     Your browser does not support the video tag.
