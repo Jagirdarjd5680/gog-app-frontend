@@ -184,7 +184,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                 setUploading(true);
                 const result = await uploadFile(selectedFile, (progress) => {
                     setUploadProgress(progress);
-                });
+                }, videoForm.title, courseId);
 
                 if (result.success) {
                     finalUrl = result.url;
