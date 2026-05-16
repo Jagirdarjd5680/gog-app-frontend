@@ -66,6 +66,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSettings } from '../../context/SettingsContext';
+import { fixUrl } from '../../utils/api';
 
 const DRAWER_WIDTH_EXPANDED = 280;
 const DRAWER_WIDTH_COLLAPSED = 80;
@@ -202,21 +203,21 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
 
     const filterMenuItems = (items) => {
         return items.reduce((acc, item) => {
+            // 1. Check if user role matches this item/parent
             const matchesRole = item.roles ? item.roles.includes(user?.role) : true;
-            
+            if (!matchesRole) return acc;
+
+            // 2. Filter children if they exist
             if (item.children) {
                 const filteredChildren = filterMenuItems(item.children);
+                // Only show parent if it has visible children after role filtering
                 if (filteredChildren.length > 0) {
                     acc.push({ ...item, children: filteredChildren });
                 }
             } else {
-                // Custom condition for Student Leave Management
-                if (user?.role === 'student' && item.path === '/leaves') {
-                    if (user?.registrationStatus !== 'approved') return acc;
-                }
-
+                // 3. Simple item: check search query
                 const matchesSearch = item.text.toLowerCase().includes(searchQuery.toLowerCase());
-                if (matchesRole && matchesSearch) {
+                if (matchesSearch) {
                     acc.push(item);
                 }
             }
@@ -276,7 +277,7 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                     bgcolor: darkMode ? '#1e1e1e' : (settings?.theme?.sidebarBg || '#fff')
                 }}>
                     <Avatar
-                        src={collapsed ? settings?.general?.siteIcon : settings?.general?.siteLogo}
+                        src={fixUrl(collapsed ? settings?.general?.siteIcon : settings?.general?.siteLogo)}
                         sx={{
                             bgcolor: '#fff',
                             width: 40,

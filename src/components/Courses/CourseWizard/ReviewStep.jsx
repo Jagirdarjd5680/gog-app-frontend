@@ -16,7 +16,7 @@ import FolderZipIcon from '@mui/icons-material/FolderZip';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import QuizIcon from '@mui/icons-material/Quiz';
 import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
-import api from '../../../utils/api';
+import api, { fixUrl } from '../../../utils/api';
 
 const ReviewStep = ({ values, categories = [], courseId }) => {
     const categoryName = categories.find(c => c._id === values.category)?.name || values.category || 'N/A';
@@ -288,7 +288,7 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                                 >
                                     {values.thumbnailPreview ? (
                                         <img
-                                            src={values.thumbnailPreview}
+                                            src={fixUrl(values.thumbnailPreview)}
                                             alt="Thumbnail"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />

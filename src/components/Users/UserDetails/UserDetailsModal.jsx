@@ -254,7 +254,7 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                             <SubmissionsTab submissions={submissions} onGrade={handleGradeSubmission} />
                         </TabPanel>
                         <TabPanel value={value} index={6}>
-                            <FaceCapture userId={userId} onComplete={fetchUserDetails} />
+                            <FaceCapture userId={userId} user={user} onComplete={fetchUserDetails} />
                         </TabPanel>
                         <TabPanel value={value} index={7}>
                             <UserAttendanceCalendar userId={userId} />

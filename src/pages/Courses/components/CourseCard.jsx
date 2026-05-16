@@ -7,6 +7,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { fixUrl } from '../../../utils/api';
 
 const CourseActionMenu = ({ course, onReview, onDelete, onTogglePublish }) => {
     const [anchorEl, setAnchorEl] = useState(null);
@@ -53,7 +54,7 @@ const CourseCard = ({ course, handleViewCourse, handleEditCourse, handleAssignAs
             }}
         >
             <Box sx={{ position: 'relative' }}>
-                <CardMedia component="img" height="160" image={course.thumbnail || 'https://via.placeholder.com/400x225?text=No+Image'} alt={course.title} />
+                <CardMedia component="img" height="160" image={course.thumbnail ? fixUrl(course.thumbnail) : 'https://via.placeholder.com/400x225?text=No+Image'} alt={course.title} />
                 <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 0.5 }}>
                     <Chip label={course.courseType === 'offline' ? 'Offline' : 'Online'} size="small" sx={{ bgcolor: course.courseType === 'offline' ? 'rgba(156, 39, 176, 0.9)' : 'rgba(33, 150, 243, 0.9)', color: 'white', fontWeight: 800, fontSize: '0.65rem', backdropFilter: 'blur(4px)' }} />
                     <Chip label={course.isPublished ? 'Published' : 'Draft'} size="small" sx={{ bgcolor: course.isPublished ? 'rgba(76, 175, 80, 0.9)' : 'rgba(158, 158, 158, 0.9)', color: 'white', fontWeight: 800, fontSize: '0.65rem', backdropFilter: 'blur(4px)' }} />

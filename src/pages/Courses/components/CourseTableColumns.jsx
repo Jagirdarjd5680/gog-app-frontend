@@ -9,6 +9,7 @@ import Edit from '@mui/icons-material/Edit';
 import Delete from '@mui/icons-material/Delete';
 import Visibility from '@mui/icons-material/Visibility';
 import ContentCopy from '@mui/icons-material/ContentCopy';
+import { fixUrl } from '../../../utils/api';
 
 export const getCourseTableColumns = ({ 
     user, handleViewCourse, handleAssignExam, handleAssignAssignment, 
@@ -36,7 +37,7 @@ export const getCourseTableColumns = ({
                 }}
             >
                 {params.value ? (
-                    <img src={params.value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={fixUrl(params.value)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                     <Typography variant="caption" sx={{ fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>TEST</Typography>
                 )}

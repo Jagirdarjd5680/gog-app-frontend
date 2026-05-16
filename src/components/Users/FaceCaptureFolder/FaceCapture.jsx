@@ -13,18 +13,24 @@ import * as faceapi from 'face-api.js';
 import api from '../../../utils/api';
 import { toast } from 'react-toastify';
 
-const FaceCapture = ({ userId, onComplete }) => {
+import { fixUrl } from '../../../utils/api';
+
+const FaceCapture = ({ userId, user, onComplete }) => {
     const webcamRef = useRef(null);
     const [capturedImage, setCapturedImage] = useState(null);
     const [loading, setLoading] = useState(false);
     const [modelsLoaded, setModelsLoaded] = useState(false);
-    
+
+    const registeredFace = user?.studentProfile?.biometricFace;
+
     const [step, setStep] = useState(-1);
+    // ... rest of state stays same ...
     const [overallProgress, setOverallProgress] = useState(0);
     const [holdProgress, setHoldProgress] = useState(0);
     const [isCapturing, setIsCapturing] = useState(false);
     const [status, setStatus] = useState('Wait for models...');
 
+    // ... steps ...
     const steps = [
         { label: 'Look Up', icon: <ArrowUpwardIcon sx={{ fontSize: 32 }} /> },
         { label: 'Look Down', icon: <ArrowDownwardIcon sx={{ fontSize: 32 }} /> },
@@ -32,6 +38,7 @@ const FaceCapture = ({ userId, onComplete }) => {
         { label: 'Look Right', icon: <ArrowForwardIcon sx={{ fontSize: 32 }} /> }
     ];
 
+    // ... useEffect for models ...
     useEffect(() => {
         const loadModels = async () => {
             const MODEL_URL = '/models';
@@ -70,17 +77,12 @@ const FaceCapture = ({ userId, onComplete }) => {
             const jaw = landmarks.getJawOutline();
             const mouth = landmarks.getMouth();
 
-            // Calculate center of eyes
             const eyeCenterX = (leftEye[0].x + rightEye[3].x) / 2;
             const eyeCenterY = (leftEye[0].y + rightEye[3].y) / 2;
-            
-            // Horizontal Pose (Y-axis rotation)
-            // Using nose tip relative to eye center and jaw width
+
             const jawWidth = jaw[16].x - jaw[0].x;
             const hOffset = (nose[3].x - eyeCenterX) / jawWidth;
 
-            // Vertical Pose (X-axis rotation)
-            // Using nose length relative to distance between eyes and mouth
             const eyeToMouthDist = mouth[3].y - eyeCenterY;
             const noseToEyeDist = nose[3].y - eyeCenterY;
             const vRatio = noseToEyeDist / eyeToMouthDist;
@@ -88,7 +90,6 @@ const FaceCapture = ({ userId, onComplete }) => {
             let poseMatched = false;
             const target = steps[step].label;
 
-            // Refined Thresholds
             if (target === 'Look Left' && hOffset < -0.12) poseMatched = true;
             else if (target === 'Look Right' && hOffset > 0.12) poseMatched = true;
             else if (target === 'Look Up' && vRatio < 0.45) poseMatched = true;
@@ -124,17 +125,13 @@ const FaceCapture = ({ userId, onComplete }) => {
 
     const [capturedImages, setCapturedImages] = useState([]);
     const [finalStep, setFinalStep] = useState(false);
-    
-    // ... existing code ...
 
     const performCapture = (currentStep) => {
         setIsCapturing(true);
         setStatus('Scanning Angle...');
-        
+
         setTimeout(() => {
             const imageSrc = webcamRef.current.getScreenshot();
-            
-            // Save to capturedImages array
             setCapturedImages(prev => [...prev, imageSrc]);
 
             const nextStep = currentStep + 1;
@@ -186,94 +183,113 @@ const FaceCapture = ({ userId, onComplete }) => {
     );
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 320, mx: 'auto' }}>
-            {!finalStep ? (
-                <Box sx={{ textAlign: 'center' }}>
-                    <Box sx={{ 
-                        position: 'relative', 
-                        width: 200, height: 200, mx: 'auto',
-                        borderRadius: '50%', overflow: 'hidden', bgcolor: '#000', 
-                        border: '4px solid', 
-                        borderColor: holdProgress > 0 ? 'success.main' : (step === -1 ? 'grey.300' : 'primary.main'), 
-                        transition: 'border-color 0.2s'
-                    }}>
-                        <Webcam
-                            audio={false}
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            width="100%"
-                            videoConstraints={{ facingMode: "user" }}
-                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                        
-                        {/* Hold Progress Overlay */}
-                        {holdProgress > 0 && (
-                            <Box sx={{ 
-                                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-                                border: '8px solid rgba(76, 175, 80, 0.4)',
-                                borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <CircularProgress 
-                                    variant="determinate" 
-                                    value={holdProgress} 
-                                    size={184} 
-                                    thickness={2}
-                                    sx={{ color: 'success.main' }}
-                                />
-                            </Box>
-                        )}
-
-                        {isCapturing && (
-                            <Box sx={{ 
-                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                                bgcolor: 'rgba(26, 115, 232, 0.2)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <CircularProgress color="inherit" />
-                            </Box>
-                        )}
-                    </Box>
-
-                    <Stack spacing={2} sx={{ mt: 3, alignItems: 'center' }}>
-                        {step === -1 ? (
-                            <Button variant="contained" onClick={startAutoScan} sx={{ borderRadius: 5, px: 4 }}>Start Smart Scan</Button>
-                        ) : (
-                            <>
-                                <Typography variant="subtitle1" fontWeight={700} color={holdProgress > 0 ? 'success.main' : 'primary.main'}>
-                                    {status}
-                                </Typography>
-                                <Paper elevation={0} sx={{ p: 1, bgcolor: 'rgba(26, 115, 232, 0.05)', borderRadius: '50%' }}>
-                                    {steps[step]?.icon}
-                                </Paper>
-                                <Box sx={{ width: '100%', px: 4 }}>
-                                    <LinearProgress variant="determinate" value={overallProgress} sx={{ height: 4, borderRadius: 2 }} />
-                                    <Typography variant="caption" color="text.secondary">Total Progress: {Math.round(overallProgress)}%</Typography>
-                                </Box>
-                            </>
-                        )}
-                    </Stack>
-                </Box>
-            ) : (
-                <Box sx={{ textAlign: 'center' }}>
-                    <Box sx={{ position: 'relative', width: 200, height: 200, mx: 'auto', borderRadius: '50%', overflow: 'hidden', border: '4px solid #2e7d32', mb: 2 }}>
-                        <img src={capturedImages[0]} alt="Captured" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(46, 125, 50, 0.1)' }}>
-                            <CheckCircleIcon sx={{ fontSize: 60, color: 'success.main' }} />
+        <Box sx={{ width: '100%', maxWidth: 700, mx: 'auto' }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} justifyContent="center" alignItems="center">
+                {/* Registered Face Preview */}
+                {registeredFace && step === -1 && !finalStep && (
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1}>
+                            Currently Registered
+                        </Typography>
+                        <Box sx={{
+                            width: 150, height: 150, borderRadius: '50%', overflow: 'hidden',
+                            border: '3px solid #eee', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                        }}>
+                            <img src={fixUrl(registeredFace)} alt="Registered" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </Box>
                     </Box>
-                    <Typography variant="subtitle1" fontWeight={700} color="success.main">Scan Successful!</Typography>
-                    <Typography variant="caption" display="block">4 Angles Captured for Smart Attendance</Typography>
-                    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                        <Button fullWidth size="small" variant="outlined" onClick={resetCapture}>Retake</Button>
-                        <Button fullWidth size="small" variant="contained" color="success" onClick={handleSave} disabled={loading}>
-                            {loading ? <CircularProgress size={16} color="inherit" /> : 'Register Face'}
-                        </Button>
-                    </Box>
+                )}
+
+                <Box sx={{ width: 320 }}>
+                    {!finalStep ? (
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Box sx={{
+                                position: 'relative',
+                                width: 200, height: 200, mx: 'auto',
+                                borderRadius: '50%', overflow: 'hidden', bgcolor: '#000',
+                                border: '4px solid',
+                                borderColor: holdProgress > 0 ? 'success.main' : (step === -1 ? 'grey.300' : 'primary.main'),
+                                transition: 'border-color 0.2s'
+                            }}>
+                                <Webcam
+                                    audio={false}
+                                    ref={webcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    width="100%"
+                                    videoConstraints={{ facingMode: "user" }}
+                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+
+                                {holdProgress > 0 && (
+                                    <Box sx={{
+                                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                        border: '8px solid rgba(76, 175, 80, 0.4)',
+                                        borderRadius: '50%',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <CircularProgress
+                                            variant="determinate"
+                                            value={holdProgress}
+                                            size={184}
+                                            thickness={2}
+                                            sx={{ color: 'success.main' }}
+                                        />
+                                    </Box>
+                                )}
+
+                                {isCapturing && (
+                                    <Box sx={{
+                                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                                        bgcolor: 'rgba(26, 115, 232, 0.2)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <CircularProgress color="inherit" />
+                                    </Box>
+                                )}
+                            </Box>
+
+                            <Stack spacing={2} sx={{ mt: 3, alignItems: 'center' }}>
+                                {step === -1 ? (
+                                    <Button variant="contained" onClick={startAutoScan} sx={{ borderRadius: 5, px: 4 }}>Start Smart Scan</Button>
+                                ) : (
+                                    <>
+                                        <Typography variant="subtitle1" fontWeight={700} color={holdProgress > 0 ? 'success.main' : 'primary.main'}>
+                                            {status}
+                                        </Typography>
+                                        <Paper elevation={0} sx={{ p: 1, bgcolor: 'rgba(26, 115, 232, 0.05)', borderRadius: '50%' }}>
+                                            {steps[step]?.icon}
+                                        </Paper>
+                                        <Box sx={{ width: '100%', px: 4 }}>
+                                            <LinearProgress variant="determinate" value={overallProgress} sx={{ height: 4, borderRadius: 2 }} />
+                                            <Typography variant="caption" color="text.secondary">Total Progress: {Math.round(overallProgress)}%</Typography>
+                                        </Box>
+                                    </>
+                                )}
+                            </Stack>
+                        </Box>
+                    ) : (
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Box sx={{ position: 'relative', width: 200, height: 200, mx: 'auto', borderRadius: '50%', overflow: 'hidden', border: '4px solid #2e7d32', mb: 2 }}>
+                                <img src={capturedImages[0]} alt="Captured" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(46, 125, 50, 0.1)' }}>
+                                    <CheckCircleIcon sx={{ fontSize: 60, color: 'success.main' }} />
+                                </Box>
+                            </Box>
+                            <Typography variant="subtitle1" fontWeight={700} color="success.main">Scan Successful!</Typography>
+                            <Typography variant="caption" display="block">4 Angles Captured for Smart Attendance</Typography>
+                            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                                <Button fullWidth size="small" variant="outlined" onClick={resetCapture}>Retake</Button>
+                                <Button fullWidth size="small" variant="contained" color="success" onClick={handleSave} disabled={loading}>
+                                    {loading ? <CircularProgress size={16} color="inherit" /> : 'Register Face'}
+                                </Button>
+                            </Box>
+                        </Box>
+                    )}
                 </Box>
-            )}
+            </Stack>
         </Box>
     );
 };
+
 
 export default FaceCapture;

@@ -163,27 +163,34 @@ const BatchAttendance = () => {
             
 
             if (response.data.success) {
-                const newAttendance = response.data.data;
-                const student = response.data.student || (newAttendance && newAttendance.student);
+                const results = response.data.results || [];
+                
+                results.forEach(res => {
+                    const student = res.student;
+                    if (!student) return;
 
-                if (!student) {
-                    
-                    return setScanStatus({ type: 'error', message: 'Verification error' });
-                }
-
-                setScanStatus({ type: 'success', message: `Matched: ${student.name}` });
-
-                // Check if already in list to avoid duplicates in UI
-                const isAlreadyPresent = presentStudents.some(p => p.student?._id === student._id);
-                if (!isAlreadyPresent) {
-                    setPresentStudents(prev => [
-                        { ...newAttendance, student },
-                        ...prev
-                    ]);
-                    setStats(prev => ({ ...prev, present: prev.present + 1 }));
+                    if (res.alreadyMarked) {
+                        setScanStatus({ type: 'warning', message: `${student.name}: Already Marked` });
+                        // Only toast if it's the first time we see this student in this scan session
+                        if (lastDetection?.student?._id !== student._id) {
+                            toast.info(`${student.name}: Already marked today`, { autoClose: 1500 });
+                        }
+                    } else {
+                        setScanStatus({ type: 'success', message: `Marked: ${student.name}` });
+                        
+                        // Check if already in list to avoid duplicates in UI
+                        const isAlreadyInList = presentStudents.some(p => p.student?._id === student._id);
+                        if (!isAlreadyInList) {
+                            setPresentStudents(prev => [
+                                { ...res.attendance, student },
+                                ...prev
+                            ]);
+                            setStats(prev => ({ ...prev, present: prev.present + 1 }));
+                            toast.success(`Marked: ${student.name}`, { autoClose: 2000 });
+                        }
+                    }
                     setLastDetection({ student, time: new Date() });
-                    toast.success(`Marked: ${student.name}`, { autoClose: 1000 });
-                }
+                });
             }
         } catch (error) {
             const msg = error.response?.data?.message || 'Error';
