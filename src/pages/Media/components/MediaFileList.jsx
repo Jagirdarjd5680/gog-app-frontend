@@ -125,9 +125,16 @@ const MediaFileList = ({
                                         }}>
                                             {getFileIcon(file.format)}
                                         </Box>
-                                        <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: 300 }}>
-                                            {file.name}
-                                        </Typography>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                            <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: 300, color: file.status === 'upload_failed' ? 'error.main' : 'inherit' }}>
+                                                {file.name}
+                                            </Typography>
+                                            {['uploading', 'upload_failed'].includes(file.status) && (
+                                                <Typography variant="caption" sx={{ color: file.status === 'upload_failed' ? 'error.main' : 'primary.main', fontWeight: 700, mt: 0.5 }}>
+                                                    {file.status === 'upload_failed' ? `Failed at ${file.uploadedChunks}/${file.totalChunks} chunks` : `Uploading ${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}% (${file.uploadedChunks}/${file.totalChunks})`}
+                                                </Typography>
+                                            )}
+                                        </Box>
                                     </Box>
                                 </TableCell>
                                 <TableCell sx={{ fontSize: '0.8rem' }}>{formatSize(file.size)}</TableCell>

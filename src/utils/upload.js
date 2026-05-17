@@ -49,23 +49,36 @@ export const uploadFile = async (file, onUploadProgress, title, courseId) => {
         if (title) formData.append('title', title);
         if (courseId) formData.append('courseId', courseId);
 
-        try {
-            const response = await api.post('/upload/chunk', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-                timeout: 300000, // 5 min per chunk
-            });
+        let chunkSuccess = false;
+        let retries = 0;
+        const MAX_RETRIES = 3;
 
-            if (onUploadProgress) {
-                const overallProgress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-                onUploadProgress(overallProgress);
-            }
+        while (!chunkSuccess && retries <= MAX_RETRIES) {
+            try {
+                const response = await api.post('/upload/chunk', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 300000, // 5 min per chunk
+                });
 
-            if (response.data.message === 'Upload complete') {
-                result = response.data;
+                if (onUploadProgress) {
+                    const overallProgress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+                    onUploadProgress(overallProgress);
+                }
+
+                if (response.data.message === 'Upload complete') {
+                    result = response.data;
+                }
+                chunkSuccess = true; // Mark as success to exit retry loop
+            } catch (error) {
+                retries++;
+                console.warn(`⚠️ Chunk ${chunkIndex} failed (Attempt ${retries}/${MAX_RETRIES + 1}):`, error.message);
+                if (retries > MAX_RETRIES) {
+                    console.error(`❌ Chunk ${chunkIndex} failed permanently after ${MAX_RETRIES} retries:`, error);
+                    throw new Error(`Upload failed at chunk ${chunkIndex + 1}/${totalChunks} due to network error or timeout. Please check your connection and try again.`);
+                }
+                // Wait briefly before retrying (exponential backoff: 2s, 4s, 8s...)
+                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
             }
-        } catch (error) {
-            console.error(`❌ Chunk ${chunkIndex} failed:`, error);
-            throw new Error(`Upload failed at chunk ${chunkIndex + 1}/${totalChunks}. Network error or timeout.`);
         }
     }
 

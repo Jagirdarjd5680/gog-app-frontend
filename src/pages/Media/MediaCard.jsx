@@ -160,7 +160,7 @@ const MediaCard = ({
                         }}
                     />
                 </Box>
-                {file.status === 'processing' && (
+                {['processing', 'uploading', 'upload_failed'].includes(file.status) && (
                     <Box
                         sx={{
                             position: 'absolute',
@@ -168,19 +168,27 @@ const MediaCard = ({
                             left: 0,
                             width: '100%',
                             height: '100%',
-                            bgcolor: 'rgba(0,0,0,0.6)',
+                            bgcolor: file.status === 'upload_failed' ? 'rgba(211, 47, 47, 0.8)' : 'rgba(0,0,0,0.6)',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                             zIndex: 20,
-                            backdropFilter: 'blur(4px)'
+                            backdropFilter: 'blur(4px)',
+                            px: 1
                         }}
                     >
-                        <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />
-                        <Typography variant="caption" sx={{ color: 'white', fontWeight: 800 }}>
-                            PROCESSING...
+                        {file.status !== 'upload_failed' && <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />}
+                        <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center' }}>
+                            {file.status === 'processing' ? 'PROCESSING...' : 
+                             file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
+                             'UPLOAD FAILED'}
                         </Typography>
+                        {(file.status === 'uploading' || file.status === 'upload_failed') && !!file.totalChunks && (
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem', mt: 0.5 }}>
+                                {file.uploadedChunks} / {file.totalChunks} chunks
+                            </Typography>
+                        )}
                     </Box>
                 )}
             </Box>
