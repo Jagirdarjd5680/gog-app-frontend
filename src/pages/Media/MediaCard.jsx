@@ -29,6 +29,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { format } from 'date-fns';
 import VideoPreview from '../../components/Common/VideoPreview';
 import { fixUrl } from '../../utils/api';
+import { useEffect } from 'react';
 
 const formatSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -57,6 +58,12 @@ const MediaCard = ({
     onPreview
 }) => {
     const theme = useTheme();
+
+    useEffect(() => {
+        if (file && ['failed', 'upload_failed'].includes(file.status)) {
+            console.error(`❌ [GOG] Media file "${file.name}" failed:`, file.failureReason || 'Unknown error');
+        }
+    }, [file.status, file.failureReason, file.name]);
 
     return (
         <Card
@@ -179,11 +186,13 @@ const MediaCard = ({
                         }}
                     >
                         {!['upload_failed', 'failed'].includes(file.status) && <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />}
-                        <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center' }}>
-                            {file.status === 'processing' ? 'PROCESSING...' : 
-                             file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
-                             'UPLOAD FAILED'}
-                        </Typography>
+                        <Tooltip title={file.failureReason || 'Unknown failure reason'} arrow>
+                            <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center', cursor: 'help', textDecoration: 'underline dotted' }}>
+                                {file.status === 'processing' ? 'PROCESSING...' : 
+                                 file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
+                                 'UPLOAD FAILED'}
+                            </Typography>
+                        </Tooltip>
                         {(file.status === 'uploading' || file.status === 'upload_failed') && !!file.totalChunks && (
                             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem', mt: 0.5 }}>
                                 {file.uploadedChunks} / {file.totalChunks} chunks
