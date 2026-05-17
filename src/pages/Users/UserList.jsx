@@ -51,14 +51,14 @@ const UserList = () => {
         try {
             const response = await api.get('/users/bin/count');
             if (response.data.success) setBinCount(response.data.count);
-        } catch {}
+        } catch { }
     }, []);
 
     const fetchAllBatches = useCallback(async () => {
         try {
             const response = await api.get('/batches');
             if (response.data.success) setAllBatches(response.data.data);
-        } catch {}
+        } catch { }
     }, []);
 
     useEffect(() => {
@@ -77,16 +77,16 @@ const UserList = () => {
             setSearchTerm(searchVal);
         }
 
-        if (openProfileId) { 
-            setViewUserId(openProfileId); 
-            setViewModalOpen(true); 
+        if (openProfileId) {
+            setViewUserId(openProfileId);
+            setViewModalOpen(true);
         }
-        
-        if (editId && users.length > 0) { 
+
+        if (editId && users.length > 0) {
             const user = users.find(u => u._id === editId);
             if (user) { setSelectedUser(user); setModalOpen(true); }
         }
-        
+
         if (paymentId && users.length > 0) {
             const user = users.find(u => u._id === paymentId);
             if (user) { setSelectedUser(user); setPaymentModalOpen(true); }
@@ -168,7 +168,7 @@ const UserList = () => {
         const search = searchTerm.trim().toLowerCase();
         // Remove leading zero for cleaner phone matching
         const searchClean = search.startsWith('0') ? search.substring(1) : search;
-        
+
         return users.filter(user => {
             if (!searchTerm) return true;
 
@@ -182,7 +182,7 @@ const UserList = () => {
                 phone.includes(search) ||
                 (phone.startsWith('0') && phone.substring(1).includes(searchClean)) ||
                 roll.includes(search);
-            
+
             if (!matchesSearch) return false;
 
             if (statusFilter !== 'all' && user.isActive !== (statusFilter === 'active')) return false;
@@ -224,10 +224,10 @@ const UserList = () => {
                 />
 
                 {selectedRows.length > 0 && (
-                    <UserBulkActions 
-                        selectedCount={selectedRows.length} handleBulkSync={handleBulkSync} 
-                        handleBulkBatchAssign={handleBulkBatchAssign} handleBulkDelete={handleBulkDelete} 
-                        batches={batches} isDark={isDark} 
+                    <UserBulkActions
+                        selectedCount={selectedRows.length} handleBulkSync={handleBulkSync}
+                        handleBulkBatchAssign={handleBulkBatchAssign} handleBulkDelete={handleBulkDelete}
+                        batches={batches} isDark={isDark}
                     />
                 )}
 
@@ -239,11 +239,11 @@ const UserList = () => {
                 />
             </Box>
 
-            <UserModals 
-                modalOpen={modalOpen} setModalOpen={setModalOpen} selectedUser={selectedUser} fetchUsers={fetchUsers} 
-                viewModalOpen={viewModalOpen} setViewModalOpen={setViewModalOpen} viewUserId={viewUserId} 
-                deleteDialogOpen={deleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} confirmDelete={confirmDelete} userToDelete={userToDelete} 
-                recycleBinOpen={recycleBinOpen} setRecycleBinOpen={setRecycleBinOpen} fetchBinCount={fetchBinCount} 
+            <UserModals
+                modalOpen={modalOpen} setModalOpen={setModalOpen} selectedUser={selectedUser} fetchUsers={fetchUsers}
+                viewModalOpen={viewModalOpen} setViewModalOpen={setViewModalOpen} viewUserId={viewUserId}
+                deleteDialogOpen={deleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} confirmDelete={confirmDelete} userToDelete={userToDelete}
+                recycleBinOpen={recycleBinOpen} setRecycleBinOpen={setRecycleBinOpen} fetchBinCount={fetchBinCount}
                 paymentModalOpen={paymentModalOpen} setPaymentModalOpen={setPaymentModalOpen}
                 setSearchParams={setSearchParams}
             />

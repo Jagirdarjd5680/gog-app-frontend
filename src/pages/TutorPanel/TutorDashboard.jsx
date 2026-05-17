@@ -88,25 +88,58 @@ const TutorDashboard = () => {
       </Typography>
       
       <Grid container spacing={3}>
-        {/* Status Toggle */}
+        {/* Status Toggle & Custom Statuses */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Paper sx={{ p: 2.5, borderRadius: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box>
               <Typography variant="subtitle1" fontWeight="bold">Availability Status</Typography>
               <Typography variant="body2" color="text.secondary">
-                {tutorData?.status === 'online' ? 'You are receiving requests' : 'You are currently offline'}
+                Select your current real-time support status
               </Typography>
             </Box>
-            <FormControlLabel
-              control={
-                <Switch 
-                  checked={tutorData?.status === 'online'} 
-                  onChange={handleStatusToggle}
-                  color="success"
-                />
-              }
-              label={tutorData?.status === 'online' ? 'Online' : 'Offline'}
-            />
+            
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {[
+                { val: 'offline', label: 'Offline', color: '#757575' },
+                { val: 'online', label: 'Online', color: '#2e7d32' },
+                { val: 'busy', label: 'Busy', color: '#ed6c02' },
+                { val: 'live', label: 'Live Now 🔴', color: '#d32f2f' }
+              ].map((opt) => {
+                const isActive = tutorData?.status === opt.val;
+                return (
+                  <Button
+                    key={opt.val}
+                    variant={isActive ? "contained" : "outlined"}
+                    size="small"
+                    onClick={async () => {
+                      try {
+                        const { data } = await axios.put('/tutors/status', { status: opt.val });
+                        if (data.success) {
+                          setTutorData(prev => ({ ...prev, status: opt.val }));
+                          toast.success(`You are now ${opt.label}`);
+                        }
+                      } catch (err) {
+                        toast.error('Failed to update status');
+                      }
+                    }}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                      borderColor: isActive ? 'transparent' : opt.color,
+                      color: isActive ? 'white' : opt.color,
+                      bgcolor: isActive ? opt.color : 'transparent',
+                      '&:hover': {
+                        bgcolor: isActive ? opt.color : 'rgba(0,0,0,0.05)',
+                        borderColor: opt.color
+                      }
+                    }}
+                  >
+                    {opt.label}
+                  </Button>
+                );
+              })}
+            </Stack>
           </Paper>
         </Grid>
 

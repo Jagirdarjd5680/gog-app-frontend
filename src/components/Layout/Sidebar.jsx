@@ -90,7 +90,7 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'App Reviews', icon: <StarIcon />, path: '/app-reviews', roles: ['admin'] },
         { text: 'Free Materials', icon: <AutoAwesomeIcon />, path: '/free-materials', roles: ['admin', 'teacher'] },
         { text: 'Settings', icon: <SettingsIcon />, path: '/settings', roles: ['admin'] },
-        
+
         // --- NEW FEATURES ---
         { text: 'Timetable Manager', icon: <EventIcon />, path: '/timetable', roles: ['admin', 'teacher'] },
         { text: 'My Routine', icon: <HistoryIcon />, path: '/my-routine', roles: ['student'] },
@@ -106,7 +106,7 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'Support Tickets', icon: <SupportAgentIcon />, path: '/support-tickets', roles: ['admin', 'student'] },
         { text: 'Live Support', icon: <SupportAgentIcon />, path: '/tutor-support', roles: ['student'] },
         { text: 'Study Streaks', icon: <FlameIcon />, path: '/streaks', roles: ['student'] },
-        
+
         // --- TUTOR PANEL ---
         { text: 'Tutor Dashboard', icon: <DashboardIcon />, path: '/tutor/dashboard', roles: ['tutor', 'admin'] },
         { text: 'Live Requests', icon: <SupportAgentIcon />, path: '/tutor/requests', roles: ['tutor', 'admin'] },

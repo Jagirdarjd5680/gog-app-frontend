@@ -65,18 +65,18 @@ const GeneralTab = ({ user, loading, actionLoading, handleResendLetter }) => {
                         </Typography>
                     </Stack>
                 </Paper>
-                
+
                 <Box sx={{ mt: 3 }}>
-                    <Button 
+                    <Button
                         fullWidth
-                        startIcon={<EmailIcon />} 
+                        startIcon={<EmailIcon />}
                         onClick={handleResendLetter}
                         disabled={actionLoading || loading}
                         variant="outlined"
                         color="secondary"
-                        sx={{ 
-                            borderRadius: 2, 
-                            fontWeight: 700, 
+                        sx={{
+                            borderRadius: 2,
+                            fontWeight: 700,
                             textTransform: 'none',
                             color: '#000',
                             borderColor: 'secondary.main',

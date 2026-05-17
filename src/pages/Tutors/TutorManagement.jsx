@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, Button, Typography, Paper, 
-  Container, Breadcrumbs, Link 
+import {
+  Box, Button, Typography, Paper,
+  Container, Breadcrumbs, Link
 } from '@mui/material';
-import { 
+import {
   Add as AddIcon,
   AccountBalanceWallet as WalletIcon,
   CheckCircle as PaidIcon,
@@ -98,9 +98,9 @@ const TutorManagement = () => {
               <Typography color="text.primary">Tutors</Typography>
             </Breadcrumbs>
           </Box>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
             onClick={handleAddClick}
             sx={{ borderRadius: 2, px: 3 }}
           >
@@ -160,11 +160,11 @@ const TutorManagement = () => {
         </Grid>
 
         <Paper sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 3 }}>
-          <TutorList 
-            tutors={tutors} 
-            loading={loading} 
-            onEdit={handleEditClick} 
-            onDelete={handleDelete} 
+          <TutorList
+            tutors={tutors}
+            loading={loading}
+            onEdit={handleEditClick}
+            onDelete={handleDelete}
             onViewHistory={handleViewHistory}
             pendingWithdrawals={pendingWithdrawals}
             withdrawalRequests={withdrawalRequests}
@@ -173,11 +173,11 @@ const TutorManagement = () => {
         </Paper>
       </Box>
 
-      <TutorModal 
-        open={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        tutor={selectedTutor} 
-        onSuccess={fetchTutors} 
+      <TutorModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        tutor={selectedTutor}
+        onSuccess={fetchTutors}
       />
 
       <TutorHistoryModal

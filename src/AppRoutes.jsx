@@ -120,7 +120,7 @@ const AppRoutes = () => {
           <Route path="free-materials" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><FreeMaterialList /></ProtectedRoute>} />
           <Route path="fee-records" element={<ProtectedRoute allowedRoles={['admin']}><FeeRecordsPage /></ProtectedRoute>} />
           <Route path="booking" element={<ProtectedRoute allowedRoles={['admin']}><BookingManagement /></ProtectedRoute>} />
-          <Route path="timetable" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}><TimetableAdmin /></ProtectedRoute>} />
+          <Route path="timetable" element={<ProtectedRoute allowedRoles={['admin', 'teacher']}><TimetableAdmin /></ProtectedRoute>} />
           <Route path="referrals" element={<ProtectedRoute allowedRoles={['student']}><ReferralDashboard /></ProtectedRoute>} />
           <Route path="my-rewards" element={<ProtectedRoute allowedRoles={['student']}><MyRewards /></ProtectedRoute>} />
           <Route path="withdrawal-requests" element={<ProtectedRoute allowedRoles={['admin']}><WithdrawalRequests /></ProtectedRoute>} />

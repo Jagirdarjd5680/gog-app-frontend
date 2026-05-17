@@ -127,7 +127,7 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
           <TableHead sx={{ bgcolor: 'action.hover' }}>
             <TableRow>
               <TableCell>Tutor</TableCell>
-              <TableCell>Skills</TableCell>
+              <TableCell>Categories</TableCell>
               <TableCell>Charges</TableCell>
               <TableCell>Earnings</TableCell>
               <TableCell>Status</TableCell>

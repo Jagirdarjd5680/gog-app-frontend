@@ -47,8 +47,10 @@ const Dashboard = () => {
     });
 
     useEffect(() => {
-        fetchDashboardData();
-    }, [dateRange]);
+        if (user?.role !== 'student') {
+            fetchDashboardData();
+        }
+    }, [dateRange, user]);
 
     const handleCustomFilter = () => {
         fetchDashboardData();

@@ -1,21 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, Typography, Paper, TextField, IconButton, 
-  Avatar, Divider, CircularProgress, Badge
+  Avatar, Divider, CircularProgress, Badge, Popover
 } from '@mui/material';
 import { 
   Send as SendIcon, 
   ArrowBack as BackIcon,
   Image as ImageIcon,
   EmojiEmotions as EmojiIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import html2pdf from 'html2pdf.js';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from '../../utils/api';
+import axios, { fixUrl } from '../../utils/api';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../context/AuthContext';
 import io from 'socket.io-client';
+const emojiCategories = [
+  {
+    name: 'Smileys',
+    emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🫣', '🤭', '🤫', '🤥', '😶', '🫥', '😐', '😑', '😬', '🫨', '🫠', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '😵‍💫', '🫨', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕']
+  },
+  {
+    name: 'Gestures',
+    emojis: ['👍', '👎', '👌', '✌️', '🤞', '🤙', '🤟', '🤘', '🤝', '👏', '🙌', '👐', '🤲', '🙏', '✍️', '💅', '🤳', '💪', '🦾']
+  },
+  {
+    name: 'Hearts & Symbols',
+    emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💖', '💗', '💓', '💞', '💕', '💟', '❣️', '💔', '🔥', '✨', '⭐', '🌟', '💥', '💯', '✅', '❌', '⚠️', '🔔', '📢', '💬', '💭']
+  }
+];
 
 const SupportChat = () => {
   const { sessionId } = useParams();
@@ -27,9 +42,36 @@ const SupportChat = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [emojiAnchorEl, setEmojiAnchorEl] = useState(null);
+  const fileInputRef = useRef(null);
   const socket = useRef(null);
   const scrollRef = useRef(null);
   const [elapsedTime, setElapsedTime] = useState('00:00');
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size must be less than 5MB");
+        return;
+      }
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     let timer;
@@ -203,23 +245,46 @@ const SupportChat = () => {
 
   const handleSend = async (e) => {
     if (e) e.preventDefault();
-    if (!input.trim() || sending) return;
+    if ((!input.trim() && !imageFile) || sending) return;
 
     setSending(true);
     try {
-      const { data } = await axios.post('/chat/send', {
-        receiver: session.student._id,
-        message: input.trim(),
-        sessionId: sessionId
-      });
+      let data;
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('receiver', session.student._id);
+        formData.append('message', input.trim());
+        formData.append('sessionId', sessionId);
+        formData.append('image', imageFile);
+
+        const res = await axios.post('/chat/send', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        data = res.data;
+      } else {
+        const res = await axios.post('/chat/send', {
+          receiver: session.student._id,
+          message: input.trim(),
+          sessionId: sessionId
+        });
+        data = res.data;
+      }
+
       if (data.success) {
         const messageWithSession = { ...data.data, sessionId };
-        setMessages(prev => [...prev, messageWithSession]);
+        setMessages(prev => {
+          const exists = prev.some(m => m._id === messageWithSession._id);
+          if (exists) return prev;
+          return [...prev, messageWithSession];
+        });
         socket.current.emit('new_message', messageWithSession);
         setInput('');
+        clearImage();
       }
     } catch (error) {
-      toast.error('Failed to send message');
+      toast.error(error.response?.data?.message || 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -284,9 +349,8 @@ const SupportChat = () => {
           const isTutor = (msg.sender === tutorUserId || msg.sender?._id === tutorUserId);
           const isStudent = (msg.sender === studentUserId || msg.sender?._id === studentUserId);
           
-          // Tutor on LEFT (white), Student on RIGHT (red)
-          // User requested: tutor left, student right
-          const alignRight = isStudent;
+          // Tutor on RIGHT, Student on LEFT
+          const alignRight = isTutor;
 
           return (
             <Box key={i} sx={{ alignSelf: alignRight ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
@@ -303,7 +367,7 @@ const SupportChat = () => {
                 {(msg.image || msg.file) && (
                   <Box 
                     component="img" 
-                    src={msg.image || msg.file} 
+                    src={fixUrl(msg.image || msg.file)} 
                     sx={{ 
                       maxWidth: '200px', 
                       maxHeight: '200px', 
@@ -312,13 +376,13 @@ const SupportChat = () => {
                       mb: 0.5,
                       cursor: 'pointer'
                     }} 
-                    onClick={() => window.open(msg.image || msg.file, '_blank')}
+                    onClick={() => window.open(fixUrl(msg.image || msg.file), '_blank')}
                   />
                 )}
                 {msg.video && (
                   <Box 
                     component="video" 
-                    src={msg.video} 
+                    src={fixUrl(msg.video)} 
                     controls 
                     sx={{ maxWidth: '200px', borderRadius: 1, mb: 0.5 }} 
                   />
@@ -347,32 +411,116 @@ const SupportChat = () => {
            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>This session has ended</Typography>
          </Box>
        ) : (
-        <Paper component="form" onSubmit={handleSend} sx={{ p: 2, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton size="small"><EmojiIcon color="action" /></IconButton>
-          <IconButton size="small"><ImageIcon color="action" /></IconButton>
-          <TextField 
-            fullWidth 
-            size="small" 
-            placeholder="Type a message..." 
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              if (socket.current) {
-                socket.current.emit('typing', { room: session.student._id, senderId: user._id });
-              }
-            }}
-            onBlur={() => {
-              if (socket.current) {
-                socket.current.emit('stop_typing', { room: session.student._id, senderId: user._id });
-              }
-            }}
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 5 } }}
-          />
-          <IconButton color="primary" onClick={handleSend} disabled={sending}>
-            <SendIcon />
-          </IconButton>
-        </Paper>
-      )}
+         <Box sx={{ display: 'flex', flexDirection: 'column', mr: '90px' }}>
+           {imagePreview && (
+             <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 2, borderTop: '1px solid #eee', bgcolor: 'white' }}>
+               <Box sx={{ position: 'relative' }}>
+                 <Box 
+                   component="img" 
+                   src={imagePreview} 
+                   sx={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 2 }} 
+                 />
+                 <IconButton 
+                   size="small" 
+                   onClick={clearImage}
+                   sx={{ 
+                     position: 'absolute', 
+                     top: -8, 
+                     right: -8, 
+                     bgcolor: 'rgba(0,0,0,0.6)', 
+                     color: 'white',
+                     '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' }
+                   }}
+                 >
+                   <CloseIcon sx={{ fontSize: 14 }} />
+                 </IconButton>
+               </Box>
+               <Typography variant="caption" color="text.secondary">
+                 Ready to send
+               </Typography>
+             </Box>
+           )}
+           <Paper component="form" onSubmit={handleSend} sx={{ p: 2, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+             <IconButton size="small" onClick={(e) => setEmojiAnchorEl(e.currentTarget)}>
+               <EmojiIcon color="action" />
+             </IconButton>
+             <IconButton size="small" onClick={() => fileInputRef.current?.click()}>
+               <ImageIcon color="action" />
+             </IconButton>
+             
+             {/* Hidden File Input */}
+             <input 
+               type="file" 
+               ref={fileInputRef} 
+               onChange={handleImageChange} 
+               accept="image/*" 
+               style={{ display: 'none' }} 
+             />
+
+             <TextField 
+               fullWidth 
+               size="small" 
+               placeholder="Type a message..." 
+               value={input}
+               onChange={(e) => {
+                 setInput(e.target.value);
+                 if (socket.current) {
+                   socket.current.emit('typing', { room: session.student._id, senderId: user._id });
+                 }
+               }}
+               onBlur={() => {
+                 if (socket.current) {
+                   socket.current.emit('stop_typing', { room: session.student._id, senderId: user._id });
+                 }
+               }}
+               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 5 } }}
+             />
+             <IconButton color="primary" onClick={handleSend} disabled={sending}>
+               <SendIcon />
+             </IconButton>
+           </Paper>
+
+           {/* Emojis Popover */}
+           <Popover
+             open={Boolean(emojiAnchorEl)}
+             anchorEl={emojiAnchorEl}
+             onClose={() => setEmojiAnchorEl(null)}
+             anchorOrigin={{
+               vertical: 'top',
+               horizontal: 'left',
+             }}
+             transformOrigin={{
+               vertical: 'bottom',
+               horizontal: 'left',
+             }}
+             PaperProps={{
+               sx: { p: 2, maxWidth: 320, maxHeight: 350, overflowY: 'auto', borderRadius: 3 }
+             }}
+           >
+             {emojiCategories.map((cat, i) => (
+               <Box key={i} sx={{ mb: 1.5 }}>
+                 <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                   {cat.name}
+                 </Typography>
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                   {cat.emojis.map((emoji) => (
+                     <IconButton
+                       key={emoji}
+                       size="small"
+                       onClick={() => {
+                         setInput(prev => prev + emoji);
+                       }}
+                       sx={{ fontSize: '1.2rem', p: 0.5 }}
+                     >
+                       {emoji}
+                     </IconButton>
+                   ))}
+                 </Box>
+               </Box>
+             ))}
+           </Popover>
+         </Box>
+       )}
     </Box>
   );
 };

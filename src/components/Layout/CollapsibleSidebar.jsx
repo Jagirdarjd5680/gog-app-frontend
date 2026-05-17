@@ -91,7 +91,7 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
 
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/', roles: ['admin', 'teacher', 'student'] },
-        
+
         // --- ADMIN / TEACHER GROUPS ---
         {
             text: 'User Management',
@@ -106,7 +106,7 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                 { text: 'Referral Records', path: '/referral-records', icon: <CardGiftcardIcon /> },
             ]
         },
-        
+
         {
             text: 'LMS Management',
             icon: <SchoolIcon />,
@@ -187,12 +187,11 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
 
         // --- STUDENT SPECIFIC ---
         { text: 'Personal Info', icon: <PeopleIcon />, path: '/profile', roles: ['student'] },
-        { text: 'Timetable', icon: <EventIcon />, path: '/timetable', roles: ['student'] },
         { text: 'Refer & Earn', icon: <CardGiftcardIcon />, path: '/referrals', roles: ['student'] },
         { text: 'My Rewards', icon: <ReceiptLongIcon />, path: '/my-rewards', roles: ['student'] },
         { text: 'Leaderboard', icon: <EmojiEventsIcon />, path: '/leaderboard', roles: ['admin', 'teacher', 'student'] },
         { text: 'Leave Management', icon: <EventBusyIcon />, path: '/leaves', roles: ['student'] },
-        { text: 'My Routine', icon: <HistoryIcon />, path: '/my-routine', roles: ['student'] },
+        { text: 'Timetable', icon: <EventIcon />, path: '/my-routine', roles: ['student'] },
         { text: 'Study Streaks', icon: <FlameIcon />, path: '/streaks', roles: ['student'] },
 
         // --- TUTOR PANEL ---

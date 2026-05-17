@@ -8,9 +8,8 @@ import {
 import axios from '../../utils/api';
 import { toast } from 'react-toastify';
 
-const skillOptions = ['Java', 'PHP', 'Python', 'React', 'Laravel', 'WordPress', 'Other'];
-
 const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
+  const [skillOptions, setSkillOptions] = useState(['Java', 'PHP', 'Python', 'React', 'Laravel', 'WordPress', 'Other']);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', tutorId: '',
     skills: [], experience: 0, description: '',
@@ -18,6 +17,23 @@ const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
     googleMeetEnabled: false, userId: '', status: 'offline',
     password: '', minWithdrawal: 5
   });
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data } = await axios.get('/categories');
+        if (data.success && data.data) {
+          const names = data.data.map(cat => cat.name);
+          const currentSkills = tutor?.skills || [];
+          const uniqueNames = Array.from(new Set([...names, ...currentSkills, 'Other']));
+          setSkillOptions(uniqueNames);
+        }
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+    fetchCategories();
+  }, [open, tutor]);
 
   useEffect(() => {
     if (tutor) {
@@ -72,8 +88,8 @@ const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
           <Grid item xs={6}><TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} /></Grid>
           <Grid item xs={12}>
             <FormControl fullWidth>
-              <InputLabel>Skills</InputLabel>
-              <Select multiple value={formData.skills} onChange={(e) => setFormData({...formData, skills: e.target.value})} label="Skills">
+              <InputLabel>Categories</InputLabel>
+              <Select multiple value={formData.skills} onChange={(e) => setFormData({...formData, skills: e.target.value})} label="Categories">
                 {skillOptions.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
               </Select>
             </FormControl>

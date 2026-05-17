@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Box, Typography, Grid, Card, CardContent, 
-  Button, Avatar, Chip, Container, Paper,
-  Stack, Divider
+   Box, Typography, Grid, Card, CardContent, 
+   Button, Avatar, Chip, Container, Paper,
+   Stack, Divider
 } from '@mui/material';
 import { Support as SupportIcon, Timer as TimerIcon } from '@mui/icons-material';
 import axios from '../../utils/api';
 import { toast } from 'react-toastify';
 import CreditHistory from './CreditHistory';
+import socket from '../../utils/socket';
 
 const TutorSupportLanding = () => {
   const [tutors, setTutors] = useState([]);
@@ -32,6 +33,20 @@ const TutorSupportLanding = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Listen for real-time status updates from the socket server
+    socket.connect();
+    socket.on('tutor_status_changed', (data) => {
+      setTutors(prevTutors => 
+        prevTutors.map(t => 
+          t._id === data.tutorId ? { ...t, status: data.status } : t
+        )
+      );
+    });
+
+    return () => {
+      socket.off('tutor_status_changed');
+    };
   }, []);
 
   const handleRequestHelp = async (tutorId) => {
@@ -42,7 +57,6 @@ const TutorSupportLanding = () => {
       });
       if (data.success) {
         toast.info('Support request sent! Waiting for tutor...');
-        // In a real app, we would redirect to a waiting room or show a socket notification
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Request failed');
@@ -67,11 +81,29 @@ const TutorSupportLanding = () => {
                       <Avatar src={tutor.profileImage} sx={{ width: 60, height: 60, mr: 2 }} />
                       <Box>
                         <Typography variant="h6" fontWeight="bold">{tutor.name}</Typography>
-                        <Chip 
-                          label={tutor.status} 
-                          color={tutor.status === 'online' ? 'success' : 'default'} 
-                          size="small" 
-                        />
+                        {tutor.status === 'live' ? (
+                          <Chip 
+                            label="LIVE NOW 🔴" 
+                            color="error"
+                            size="small" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              animation: 'pulse 1.5s infinite',
+                              '@keyframes pulse': {
+                                '0%': { opacity: 0.6 },
+                                '50%': { opacity: 1 },
+                                '100%': { opacity: 0.6 }
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Chip 
+                            label={tutor.status.toUpperCase()} 
+                            color={tutor.status === 'online' ? 'success' : (tutor.status === 'busy' ? 'warning' : 'default')} 
+                            size="small" 
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        )}
                       </Box>
                     </Box>
                     
@@ -94,7 +126,7 @@ const TutorSupportLanding = () => {
                       </Box>
                       <Button 
                         variant="contained" 
-                        disabled={tutor.status !== 'online'}
+                        disabled={tutor.status !== 'online' && tutor.status !== 'live'}
                         onClick={() => handleRequestHelp(tutor._id)}
                       >
                         Request Help

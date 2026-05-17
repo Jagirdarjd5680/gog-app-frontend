@@ -89,7 +89,7 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
         try {
             const response = await api.get(`/users/${userId}/submissions`);
             if (response.data.success) setSubmissions(response.data.data || []);
-        } catch (error) {}
+        } catch (error) { }
     };
 
     const fetchTokenHistory = async () => {
@@ -115,7 +115,7 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                 return backendExpiryDate;
             }
         }
-        
+
         const correctExpiry = new Date(activation);
         correctExpiry.setDate(correctExpiry.getDate() + 30);
         return correctExpiry;
@@ -242,12 +242,12 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                             <UserFeeHistory userId={userId} user={user} />
                         </TabPanel>
                         <TabPanel value={value} index={4}>
-                            <PersonalInfoTab 
-                                user={user} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile} 
-                                editedProfile={editedProfile} handleProfileChange={(e) => setEditedProfile({...editedProfile, [e.target.name]: e.target.value})} 
-                                handleSaveProfile={handleSaveProfile} handleApproveRegistration={handleApproveRegistration} 
+                            <PersonalInfoTab
+                                user={user} isEditingProfile={isEditingProfile} setIsEditingProfile={setIsEditingProfile}
+                                editedProfile={editedProfile} handleProfileChange={(e) => setEditedProfile({ ...editedProfile, [e.target.name]: e.target.value })}
+                                handleSaveProfile={handleSaveProfile} handleApproveRegistration={handleApproveRegistration}
                                 handleRejectRegistration={handleRejectRegistration} handleResendLetter={handleResendLetter}
-                                actionLoading={actionLoading} 
+                                actionLoading={actionLoading}
                             />
                         </TabPanel>
                         <TabPanel value={value} index={5}>
@@ -260,9 +260,9 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                             <UserAttendanceCalendar userId={userId} />
                         </TabPanel>
                         <TabPanel value={value} index={8}>
-                            <TokenTab 
-                                tokenBalance={tokenBalance} tokenLoading={tokenLoading} tokenTab={tokenTab} setTokenTab={setTokenTab} 
-                                tokenHistory={tokenHistory} handleSyncTokens={handleSyncTokens} actionLoading={actionLoading} 
+                            <TokenTab
+                                tokenBalance={tokenBalance} tokenLoading={tokenLoading} tokenTab={tokenTab} setTokenTab={setTokenTab}
+                                tokenHistory={tokenHistory} handleSyncTokens={handleSyncTokens} actionLoading={actionLoading}
                             />
                         </TabPanel>
                     </>

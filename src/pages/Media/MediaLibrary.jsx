@@ -138,7 +138,11 @@ const MediaLibrary = ({ onSelect }) => {
 
     const filteredFiles = files.filter(f => {
         const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter = activeFilter === 'all' || f.type === activeFilter || f.format === activeFilter;
+        const matchesFilter = activeFilter === 'all' 
+            ? true 
+            : activeFilter === 'chat' 
+                ? f.isChatMedia === true 
+                : f.type === activeFilter || f.format === activeFilter;
         return matchesSearch && matchesFilter;
     });
 
