@@ -43,9 +43,9 @@ const MediaLibrary = ({ onSelect }) => {
     const [storageStats, setStorageStats] = useState(null);
     const [uploadProgress, setUploadProgress] = useState(0);
 
-    const fetchFiles = useCallback(async () => {
+    const fetchFiles = useCallback(async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const params = {
                 page,
                 limit: 20,
@@ -57,13 +57,24 @@ const MediaLibrary = ({ onSelect }) => {
                 setTotalPages(res.data.totalPages);
             }
         } catch (err) {
-            toast.error('Failed to fetch media');
+            if (!silent) toast.error('Failed to fetch media');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [page, uploaderTab]);
 
     useEffect(() => { fetchFiles(); }, [fetchFiles]);
+
+    // Poll if any file is processing
+    useEffect(() => {
+        const hasProcessing = files.some(f => f.status === 'processing');
+        if (hasProcessing) {
+            const timer = setTimeout(() => {
+                fetchFiles(true);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [files, fetchFiles]);
 
     const formatSize = (bytes) => {
         if (!bytes) return '0 B';
