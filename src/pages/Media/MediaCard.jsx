@@ -160,7 +160,7 @@ const MediaCard = ({
                         }}
                     />
                 </Box>
-                {['processing', 'uploading', 'upload_failed'].includes(file.status) && (
+                {['processing', 'uploading', 'upload_failed', 'failed'].includes(file.status) && (
                     <Box
                         sx={{
                             position: 'absolute',
@@ -168,7 +168,7 @@ const MediaCard = ({
                             left: 0,
                             width: '100%',
                             height: '100%',
-                            bgcolor: file.status === 'upload_failed' ? 'rgba(211, 47, 47, 0.8)' : 'rgba(0,0,0,0.6)',
+                            bgcolor: ['upload_failed', 'failed'].includes(file.status) ? 'rgba(211, 47, 47, 0.8)' : 'rgba(0,0,0,0.6)',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -178,7 +178,7 @@ const MediaCard = ({
                             px: 1
                         }}
                     >
-                        {file.status !== 'upload_failed' && <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />}
+                        {!['upload_failed', 'failed'].includes(file.status) && <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />}
                         <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center' }}>
                             {file.status === 'processing' ? 'PROCESSING...' : 
                              file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
