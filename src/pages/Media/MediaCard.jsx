@@ -108,7 +108,7 @@ const MediaCard = ({
                     />
                 </Box>
 
-                {(file.type === 'image' || ['heic', 'heif'].includes(file.format?.toLowerCase())) ? (
+                {(file.type === 'image' && !['heic', 'heif'].includes(file.format?.toLowerCase())) ? (
                     <CardMedia
                         component="img"
                         image={`${fixUrl(file.url)}${fixUrl(file.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
@@ -122,6 +122,26 @@ const MediaCard = ({
                             objectFit: 'cover'
                         }}
                     />
+                ) : ['heic', 'heif'].includes(file.format?.toLowerCase()) ? (
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            height: '100%',
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'linear-gradient(135deg, #E3F2FD 0%, #E8EAF6 100%)',
+                        }}
+                    >
+                        <ImageIcon sx={{ fontSize: '3rem', color: '#3f51b5', mb: 1, opacity: 0.8 }} />
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#3f51b5', bgcolor: 'rgba(63, 81, 181, 0.1)', px: 1.5, py: 0.5, borderRadius: 2 }}>
+                            HEIC PHOTO
+                        </Typography>
+                    </Box>
                 ) : (file.type === 'video' && (!file.status || file.status === 'ready')) ? (
                     <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                         <VideoPreview url={fixUrl(file.url)} height="100%" />

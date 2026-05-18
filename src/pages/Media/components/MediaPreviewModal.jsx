@@ -57,12 +57,19 @@ const MediaPreviewModal = ({ previewFile, setPreviewFile, formatSize, onDelete }
                 }}>
                     {previewFile?.type === 'video' ? (
                         <VideoPreview url={previewFile.url} height="100%" />
-                    ) : (previewFile?.type === 'image' || ['heic', 'heif'].includes(previewFile?.format?.toLowerCase())) ? (
+                    ) : (previewFile?.type === 'image' && !['heic', 'heif'].includes(previewFile?.format?.toLowerCase())) ? (
                         <img 
                             src={previewFile?.url ? `${fixUrl(previewFile.url)}${fixUrl(previewFile.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}` : ''} 
                             alt={previewFile?.name} 
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
                         />
+                    ) : ['heic', 'heif'].includes(previewFile?.format?.toLowerCase()) ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3, width: '100%', height: '100%', background: 'linear-gradient(135deg, #E3F2FD 0%, #E8EAF6 100%)' }}>
+                            <ImageIcon sx={{ fontSize: 64, color: '#3f51b5', mb: 1, opacity: 0.8 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: '#3f51b5', bgcolor: 'rgba(63, 81, 181, 0.1)', px: 2, py: 0.5, borderRadius: 2 }}>
+                                HEIC Photo (Apple Format)
+                            </Typography>
+                        </Box>
                     ) : (
                         <InsertDriveFileIcon sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.5 }} />
                     )}
