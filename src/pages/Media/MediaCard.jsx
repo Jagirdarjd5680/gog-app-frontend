@@ -247,7 +247,7 @@ const MediaCard = ({
                         }}
                     />
                 </Box>
-                {['processing', 'uploading', 'upload_failed', 'failed'].includes(file.status) && (
+                {['queued', 'processing', 'uploading', 'upload_failed', 'failed'].includes(file.status) && (
                     <Box
                         sx={{
                             position: 'absolute',
@@ -268,7 +268,8 @@ const MediaCard = ({
                         {!['upload_failed', 'failed'].includes(file.status) && <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />}
                         <Tooltip title={file.failureReason || 'Unknown failure reason'} arrow>
                             <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center', cursor: 'help', textDecoration: 'underline dotted' }}>
-                                {file.status === 'processing' ? 'PROCESSING...' : 
+                                {file.status === 'queued' ? 'QUEUED...' : 
+                                 file.status === 'processing' ? 'PROCESSING...' : 
                                  file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
                                  'UPLOAD FAILED'}
                             </Typography>
