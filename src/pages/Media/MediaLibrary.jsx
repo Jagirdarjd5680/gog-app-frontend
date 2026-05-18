@@ -168,14 +168,30 @@ const MediaLibrary = ({ onSelect }) => {
                 toast.loading(`Uploading ${file.name}... (${progress}%)`, { id: loadingToast });
             });
 
-            if (result.success) {
+            if (result && (result.success || result.url)) {
                 toast.success('Upload successful', { id: loadingToast });
+                console.log('%c✅ [Upload] File uploaded successfully!', 'color: #2e7d32; font-weight: bold; font-size: 14px; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px;');
+                console.log('%cUploaded File Details:', 'color: #2e7d32; font-weight: bold;', {
+                    name: file.name,
+                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+                    mimetype: file.type || 'unknown',
+                    result: result
+                });
                 fetchFiles();
             } else {
-                toast.error(result.message || 'Upload failed', { id: loadingToast });
+                const failureMsg = result?.message || 'Upload failed';
+                toast.error(failureMsg, { id: loadingToast });
+                console.log('%c❌ [Upload] Upload failed:', 'color: #c62828; font-weight: bold; font-size: 14px; background-color: #ffebee; padding: 4px 8px; border-radius: 4px;');
+                console.log('%cReason:', 'color: #c62828; font-weight: bold;', failureMsg);
             }
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Upload failed');
+            const errorMsg = err.response?.data?.message || err.message || 'Upload failed';
+            toast.error(errorMsg);
+            console.log('%c❌ [Upload] Error occurred during upload:', 'color: #c62828; font-weight: bold; font-size: 14px; background-color: #ffebee; padding: 4px 8px; border-radius: 4px;');
+            console.log('%cError Details:', 'color: #c62828; font-weight: bold;', {
+                message: errorMsg,
+                errorObject: err
+            });
         } finally {
             setUploading(false);
             setUploadProgress(0);
