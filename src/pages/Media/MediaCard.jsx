@@ -48,6 +48,16 @@ const getFileIcon = (file) => {
     return <InsertDriveFileIcon color="action" />;
 };
 
+const getVideoThumbnail = (file) => {
+    if (!file || !file.url) return '';
+    if (file.thumbnailUrl) return fixUrl(file.thumbnailUrl);
+    const videoId = file.url.match(/\/api\/media\/stream\/(video_[^\/]+)\//)?.[1];
+    if (videoId) {
+        return fixUrl(`/api/media/stream/${videoId}/thumbnail.jpg`);
+    }
+    return '';
+};
+
 const MediaCard = ({
     file,
     isSelected,
@@ -143,8 +153,58 @@ const MediaCard = ({
                         </Typography>
                     </Box>
                 ) : (file.type === 'video' && (!file.status || file.status === 'ready')) ? (
-                    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-                        <VideoPreview url={fixUrl(file.url)} height="100%" />
+                    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#000' }}>
+                        {getVideoThumbnail(file) ? (
+                            <CardMedia
+                                component="img"
+                                image={`${getVideoThumbnail(file)}${getVideoThumbnail(file).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                alt={file.name}
+                                sx={{
+                                    height: '100%',
+                                    width: '100%',
+                                    objectFit: 'cover'
+                                }}
+                            />
+                        ) : (
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                <VideoLibraryIcon color="primary" sx={{ fontSize: '3rem', opacity: 0.6 }} />
+                            </Box>
+                        )}
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                bgcolor: 'rgba(0,0,0,0.15)',
+                                transition: 'background-color 0.2s',
+                                '&:hover': {
+                                    bgcolor: 'rgba(0,0,0,0.3)',
+                                    '& .play-icon': { transform: 'scale(1.15)' }
+                                }
+                            }}
+                        >
+                            <Box
+                                className="play-icon"
+                                sx={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: '50%',
+                                    bgcolor: 'primary.main',
+                                    color: 'white',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                                    transition: 'transform 0.2s'
+                                }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            </Box>
+                        </Box>
                     </Box>
                 ) : (
                     <Box
