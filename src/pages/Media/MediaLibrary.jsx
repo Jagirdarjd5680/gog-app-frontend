@@ -53,6 +53,9 @@ const MediaLibrary = ({ onSelect }) => {
             };
             const res = await api.get('/upload', { params });
             if (res.data.success) {
+                console.log('📂 [Media Library] All Fetched Files:', res.data.files);
+                const images = res.data.files.filter(f => f.type === 'image' || f.mimetype?.startsWith('image') || f.format?.match(/(jpg|jpeg|png|gif|webp|svg)$/i));
+                console.log('📷 [Media Library] Filtered Images:', images);
                 setFiles(res.data.files);
                 setTotalPages(res.data.totalPages);
             }
