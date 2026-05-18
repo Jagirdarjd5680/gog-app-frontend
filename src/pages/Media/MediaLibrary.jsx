@@ -68,10 +68,10 @@ const MediaLibrary = ({ onSelect }) => {
 
     useEffect(() => { fetchFiles(); }, [fetchFiles]);
 
-    // Poll if any file is processing
+    // Poll if any file is uploading, queued, or processing
     useEffect(() => {
-        const hasProcessing = files.some(f => f.status === 'processing');
-        if (hasProcessing) {
+        const hasActiveJobs = files.some(f => ['uploading', 'queued', 'processing'].includes(f.status));
+        if (hasActiveJobs) {
             const timer = setTimeout(() => {
                 fetchFiles(true);
             }, 3000);
