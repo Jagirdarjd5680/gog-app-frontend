@@ -55,7 +55,7 @@ const GeneralSettings = ({ settings, onSave, isSaving }) => {
                 toast.error('Upload failed', { id: loadingToast });
             }
         } catch (err) {
-            console.error('Upload error:', err);
+            
             toast.error(err.response?.data?.message || 'Upload failed');
         } finally {
             if (e.target) e.target.value = '';

@@ -195,12 +195,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     return;
                 }
             } catch (error) {
-                console.error('🚀 [GOG UPLOAD DEBUG] Failed to upload file:', {
-                    fileName: selectedFile?.name,
-                    fileSize: selectedFile?.size,
-                    error: error.response?.data || error.message,
-                    status: error.response?.status
-                });
+                
                 
                 const errorMsg = error.response?.data?.message || error.message || 'Upload failed';
                 toast.error(`❌ ${errorMsg}`);

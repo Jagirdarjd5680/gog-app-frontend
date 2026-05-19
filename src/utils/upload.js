@@ -71,9 +71,9 @@ export const uploadFile = async (file, onUploadProgress, title, courseId) => {
                 chunkSuccess = true; // Mark as success to exit retry loop
             } catch (error) {
                 retries++;
-                console.warn(`⚠️ Chunk ${chunkIndex} failed (Attempt ${retries}/${MAX_RETRIES + 1}):`, error.message);
+                
                 if (retries > MAX_RETRIES) {
-                    console.error(`❌ Chunk ${chunkIndex} failed permanently after ${MAX_RETRIES} retries:`, error);
+                    
                     throw new Error(`Upload failed at chunk ${chunkIndex + 1}/${totalChunks} due to network error or timeout. Please check your connection and try again.`);
                 }
                 // Wait briefly before retrying (exponential backoff: 2s, 4s, 8s...)

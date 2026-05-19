@@ -124,7 +124,7 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                 }
             }
         } catch (error) {
-            console.error('Failed to fetch course details:', error);
+            
         }
     };
 

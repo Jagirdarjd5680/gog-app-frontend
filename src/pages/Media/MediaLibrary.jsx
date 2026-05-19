@@ -53,9 +53,9 @@ const MediaLibrary = ({ onSelect }) => {
             };
             const res = await api.get('/upload', { params });
             if (res.data.success) {
-                console.log('📂 [Media Library] All Fetched Files:', res.data.files);
+                
                 const images = res.data.files.filter(f => f.type === 'image' || f.mimetype?.startsWith('image') || f.format?.match(/(jpg|jpeg|png|gif|webp|svg)$/i));
-                console.log('📷 [Media Library] Filtered Images:', images);
+                
                 setFiles(res.data.files);
                 setTotalPages(res.data.totalPages);
             }
@@ -170,28 +170,20 @@ const MediaLibrary = ({ onSelect }) => {
 
             if (result && (result.success || result.url)) {
                 toast.success('Upload successful', { id: loadingToast });
-                console.log('%c✅ [Upload] File uploaded successfully!', 'color: #2e7d32; font-weight: bold; font-size: 14px; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px;');
-                console.log('%cUploaded File Details:', 'color: #2e7d32; font-weight: bold;', {
-                    name: file.name,
-                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-                    mimetype: file.type || 'unknown',
-                    result: result
-                });
+                
+                
                 fetchFiles();
             } else {
                 const failureMsg = result?.message || 'Upload failed';
                 toast.error(failureMsg, { id: loadingToast });
-                console.log('%c❌ [Upload] Upload failed:', 'color: #c62828; font-weight: bold; font-size: 14px; background-color: #ffebee; padding: 4px 8px; border-radius: 4px;');
-                console.log('%cReason:', 'color: #c62828; font-weight: bold;', failureMsg);
+                
+                
             }
         } catch (err) {
             const errorMsg = err.response?.data?.message || err.message || 'Upload failed';
             toast.error(errorMsg);
-            console.log('%c❌ [Upload] Error occurred during upload:', 'color: #c62828; font-weight: bold; font-size: 14px; background-color: #ffebee; padding: 4px 8px; border-radius: 4px;');
-            console.log('%cError Details:', 'color: #c62828; font-weight: bold;', {
-                message: errorMsg,
-                errorObject: err
-            });
+            
+            
         } finally {
             setUploading(false);
             setUploadProgress(0);

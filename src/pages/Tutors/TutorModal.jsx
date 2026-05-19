@@ -29,7 +29,7 @@ const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
           setSkillOptions(uniqueNames);
         }
       } catch (err) {
-        console.error('Failed to load categories', err);
+        
       }
     };
     fetchCategories();

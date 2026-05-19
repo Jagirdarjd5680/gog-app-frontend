@@ -71,7 +71,7 @@ const MediaCard = ({
 
     useEffect(() => {
         if (file && ['failed', 'upload_failed'].includes(file.status)) {
-            console.error(`❌ [GOG] Media file "${file.name}" failed:`, file.failureReason || 'Unknown error');
+            
         }
     }, [file.status, file.failureReason, file.name]);
 
