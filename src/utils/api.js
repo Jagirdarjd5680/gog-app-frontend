@@ -116,17 +116,22 @@ export const fixUrl = (url) => {
     let finalUrl = url;
     
     // 1. Resolve Endpoint and Base URL
-    if (url.startsWith('/uploads') || url.startsWith('/api/media')) {
+    // Serve all /uploads/ paths via backend-mediated /api/media/file/ endpoint to bypass production Nginx static folder block
+    if (url.startsWith('/uploads/')) {
+        finalUrl = `${endpoint}/api/media/file/${url.substring(9)}`;
+    } else if (url.startsWith('/uploads') || url.startsWith('/api/media')) {
         finalUrl = `${endpoint}${url}`;
     } else if (url.match(/^(video-|image-|audio-|raw-)/) && !url.includes('://')) {
-        finalUrl = `${endpoint}/uploads/${url}`;
+        finalUrl = `${endpoint}/api/media/file/${url}`;
+    } else if (url.startsWith('http://localhost:5000/uploads/')) {
+        finalUrl = `${endpoint}/api/media/file/${url.substring(29)}`;
     } else if (url.startsWith('http://localhost:5000')) {
         finalUrl = url.replace('http://localhost:5000', endpoint);
     }
 
     // 2. Append Token for Security
     const token = localStorage.getItem('token');
-    if (token && (finalUrl.includes('/api/media/') || finalUrl.includes('/uploads/'))) {
+    if (token && finalUrl.includes('/api/media/')) {
         if (!finalUrl.includes('token=')) {
             const separator = finalUrl.includes('?') ? '&' : '?';
             finalUrl = `${finalUrl}${separator}token=${token}`;
