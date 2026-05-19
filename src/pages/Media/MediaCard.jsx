@@ -269,7 +269,7 @@ const MediaCard = ({
                         <Tooltip title={file.failureReason || 'Unknown failure reason'} arrow>
                             <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center', cursor: 'help', textDecoration: 'underline dotted' }}>
                                 {file.status === 'queued' ? 'QUEUED...' : 
-                                 file.status === 'processing' ? 'PROCESSING...' : 
+                                 file.status === 'processing' ? `PROCESSING (${file.processingProgress || 0}%)` : 
                                  file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
                                  'UPLOAD FAILED'}
                             </Typography>
