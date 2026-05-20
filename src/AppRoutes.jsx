@@ -49,6 +49,7 @@ const EventManagement = lazy(() => import('./pages/Events/EventManagement'));
 const PassedStudentManagement = lazy(() => import('./pages/Users/PassedStudentManagement'));
 const PublicEvents = lazy(() => import('./pages/Public/EventsPage'));
 const PublicSuccessStories = lazy(() => import('./pages/Public/PassedStudentsPage'));
+const PublicFaceCapture = lazy(() => import('./pages/Public/PublicFaceCapture'));
 
 const TimetableAdmin = lazy(() => import('./pages/Timetable/TimetableAdmin'));
 const TimetableStudent = lazy(() => import('./pages/Timetable/TimetableStudent'));
@@ -84,6 +85,7 @@ const AppRoutes = () => {
         <Route path="/seat-booking" element={<PublicSeatBooking />} />
         <Route path="/all-events" element={<PublicEvents />} />
         <Route path="/success-stories" element={<PublicSuccessStories />} />
+        <Route path="/face-capture/:userId/:token" element={<PublicFaceCapture />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Protected Routes */}
