@@ -18,13 +18,11 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
 const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
-    const [courses, setCourses] = useState([]);
-    const [loadingCourses, setLoadingCourses] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        course: '',
+        platform: 'google_meet',
         scheduledDate: '',
         startDate: '',
         endDate: '',
@@ -35,11 +33,10 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
 
     useEffect(() => {
         if (open) {
-            fetchCourses();
             if (initialData) {
                 setFormData({
                     ...initialData,
-                    course: initialData.course?._id || initialData.course,
+                    platform: initialData.platform || 'google_meet',
                     scheduledDate: new Date(initialData.scheduledDate || initialData.startDate).toISOString().slice(0, 16),
                     startDate: new Date(initialData.startDate || initialData.scheduledDate).toISOString().slice(0, 16),
                     endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().slice(0, 16) : ''
@@ -48,7 +45,7 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                 setFormData({
                     title: '',
                     description: '',
-                    course: '',
+                    platform: 'google_meet',
                     scheduledDate: '',
                     startDate: '',
                     endDate: '',
@@ -59,20 +56,6 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
             }
         }
     }, [open, initialData]);
-
-    const fetchCourses = async () => {
-        setLoadingCourses(true);
-        try {
-            const response = await api.get('/courses?limit=100'); // Corrected endpoint
-            if (response.data.success) {
-                setCourses(response.data.data);
-            }
-        } catch (error) {
-            
-        } finally {
-            setLoadingCourses(false);
-        }
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -169,21 +152,20 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                                 placeholder="e.g., Intro to Advanced React Hooks"
                             />
                         </Grid>
+
                         <Grid item xs={12}>
                             <TextField
                                 fullWidth
-                                label="Course"
-                                name="course"
+                                label="Platform"
+                                name="platform"
                                 select
-                                value={formData.course}
+                                value={formData.platform}
                                 onChange={handleChange}
                                 required
                             >
-                                {loadingCourses ? (
-                                    <MenuItem disabled><CircularProgress size={20} /></MenuItem>
-                                ) : courses.map(course => (
-                                    <MenuItem key={course._id} value={course._id}>{course.title}</MenuItem>
-                                ))}
+                                <MenuItem value="google_meet">🔴 Google Meet</MenuItem>
+                                <MenuItem value="youtube_live">▶️ YouTube Live</MenuItem>
+                                <MenuItem value="zoom">🔵 Zoom Meet</MenuItem>
                             </TextField>
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -225,21 +207,31 @@ const LiveClassModal = ({ open, onClose, onSuccess, initialData = null }) => {
                             <Box sx={{ display: 'flex', gap: 1 }}>
                                 <TextField
                                     fullWidth
-                                    label="Google Meet Link"
+                                    label={
+                                        formData.platform === 'youtube_live' ? "YouTube Live Link" :
+                                        formData.platform === 'zoom' ? "Zoom Invite Link" :
+                                        "Google Meet Link"
+                                    }
                                     name="meetingLink"
                                     value={formData.meetingLink}
                                     onChange={handleChange}
                                     required
-                                    placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                    placeholder={
+                                        formData.platform === 'youtube_live' ? "https://youtube.com/live/..." :
+                                        formData.platform === 'zoom' ? "https://zoom.us/j/..." :
+                                        "https://meet.google.com/xxx-xxxx-xxx"
+                                    }
                                 />
-                                <Button
-                                    variant="outlined"
-                                    onClick={handleGenerateMeet}
-                                    disabled={generating}
-                                    sx={{ minWidth: 140, borderRadius: 2 }}
-                                >
-                                    {generating ? <CircularProgress size={20} /> : 'Auto Generate'}
-                                </Button>
+                                {formData.platform === 'google_meet' && (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleGenerateMeet}
+                                        disabled={generating}
+                                        sx={{ minWidth: 140, borderRadius: 2 }}
+                                    >
+                                        {generating ? <CircularProgress size={20} /> : 'Auto Generate'}
+                                    </Button>
+                                )}
                             </Box>
                         </Grid>
                         <Grid item xs={12}>

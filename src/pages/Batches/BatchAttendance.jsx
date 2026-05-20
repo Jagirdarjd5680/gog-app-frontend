@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import Webcam from 'react-webcam';
 import api from '../../utils/api';
+import socket from '../../utils/socket';
+import { useAuth } from '../../context/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
 import { toast } from 'react-toastify';
@@ -30,6 +32,39 @@ const BatchAttendance = () => {
     const lastLandmarks = useRef(null);
     const canvasRef = useRef(null);
     const [modelsLoaded, setModelsLoaded] = useState(false);
+
+    const { user } = useAuth();
+
+    useEffect(() => {
+        if (!socket.connected) {
+            socket.connect();
+        }
+        if (user?._id) {
+            socket.emit('setup', user._id);
+        }
+        socket.emit('join_batch', batchId);
+
+        const handleRealtimeAttendance = (data) => {
+            const { student, attendance, alreadyMarked } = data;
+            if (!student) return;
+
+            setPresentStudents(prev => {
+                const exists = prev.some(p => p.student?._id === student._id);
+                if (exists) return prev;
+                
+                // Update stats and show success toast
+                setStats(s => ({ ...s, present: s.present + 1 }));
+                toast.success(`Marked: ${student.name} (Real-time)`, { autoClose: 2500 });
+                return [{ ...attendance, student }, ...prev];
+            });
+        };
+
+        socket.on('attendance_marked', handleRealtimeAttendance);
+
+        return () => {
+            socket.off('attendance_marked', handleRealtimeAttendance);
+        };
+    }, [batchId, user?._id]);
 
     useEffect(() => {
         const loadModels = async () => {

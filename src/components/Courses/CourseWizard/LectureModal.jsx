@@ -22,6 +22,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import VideoPreview from '../../Common/VideoPreview';
 import { uploadFile } from '../../../utils/upload';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { toast } from 'react-toastify';
 import MediaPickerModal from '../../Media/MediaPickerModal';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
@@ -283,6 +285,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             <MenuItem value="zip">📦 Resource Pack (ZIP)</MenuItem>
                             <MenuItem value="exam">🏆 Quiz/Exam</MenuItem>
                             <MenuItem value="google_meet">📹 Google Meet</MenuItem>
+                            <MenuItem value="youtube_live">▶️ YouTube Live</MenuItem>
+                            <MenuItem value="zoom">🔵 Zoom Meet</MenuItem>
                             <MenuItem value="none">📖 Informational (No File)</MenuItem>
                         </TextField>
                     </Grid>
@@ -469,13 +473,26 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                         ) : null}
                     </Grid>
 
-                    {/* Google Meet Fields */}
-                    {videoForm.type === 'google_meet' && (
+                    {/* Live Meeting Fields (Google Meet, YouTube Live, Zoom) */}
+                    {(videoForm.type === 'google_meet' || videoForm.type === 'youtube_live' || videoForm.type === 'zoom') && (
                         <Grid item xs={12}>
-                            <Box sx={{ p: 2.5, bgcolor: '#E8F0FE', borderRadius: 3, border: '1px solid #1A73E8' }}>
+                            <Box sx={{ 
+                                p: 2.5, 
+                                borderRadius: 3, 
+                                bgcolor: videoForm.type === 'youtube_live' ? '#FEF2F2' : videoForm.type === 'zoom' ? '#EFF6FF' : '#E8F0FE',
+                                border: '1px solid',
+                                borderColor: videoForm.type === 'youtube_live' ? '#DC2626' : videoForm.type === 'zoom' ? '#2563EB' : '#1A73E8'
+                            }}>
                                 <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-                                    <VideoCallIcon sx={{ color: '#1A73E8', fontSize: 24 }} />
-                                    <Typography fontWeight={700} color="#1A73E8">Google Meet Session</Typography>
+                                    <VideoCallIcon sx={{ 
+                                        color: videoForm.type === 'youtube_live' ? '#DC2626' : videoForm.type === 'zoom' ? '#2563EB' : '#1A73E8', 
+                                        fontSize: 24 
+                                    }} />
+                                    <Typography fontWeight={700} color={
+                                        videoForm.type === 'youtube_live' ? '#DC2626' : videoForm.type === 'zoom' ? '#2563EB' : '#1A73E8'
+                                    }>
+                                        {videoForm.type === 'youtube_live' ? 'YouTube Live Session' : videoForm.type === 'zoom' ? 'Zoom Meeting' : 'Google Meet Session'}
+                                    </Typography>
                                 </Stack>
                                 <Grid container spacing={2}>
                                     <Grid item xs={12}>
@@ -514,20 +531,30 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                         <Box sx={{ display: 'flex', gap: 1 }}>
                                             <TextField
                                                 fullWidth
-                                                label="Google Meet Link"
+                                                label={
+                                                    videoForm.type === 'youtube_live' ? "YouTube Live Link" :
+                                                    videoForm.type === 'zoom' ? "Zoom Invite Link" :
+                                                    "Google Meet Link"
+                                                }
                                                 value={videoForm.meetLink || ''}
                                                 onChange={(e) => setVideoForm({ ...videoForm, meetLink: e.target.value })}
-                                                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                                                placeholder={
+                                                    videoForm.type === 'youtube_live' ? "https://youtube.com/live/..." :
+                                                    videoForm.type === 'zoom' ? "https://zoom.us/j/..." :
+                                                    "https://meet.google.com/xxx-xxxx-xxx"
+                                                }
                                                 InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
                                             />
-                                            <Button
-                                                variant="outlined"
-                                                onClick={handleGenerateMeet}
-                                                disabled={generating}
-                                                sx={{ minWidth: 140, borderRadius: 2 }}
-                                            >
-                                                {generating ? <CircularProgress size={20} /> : 'Auto Generate'}
-                                            </Button>
+                                            {videoForm.type === 'google_meet' && (
+                                                <Button
+                                                    variant="outlined"
+                                                    onClick={handleGenerateMeet}
+                                                    disabled={generating}
+                                                    sx={{ minWidth: 140, borderRadius: 2 }}
+                                                >
+                                                    {generating ? <CircularProgress size={20} /> : 'Auto Generate'}
+                                                </Button>
+                                            )}
                                         </Box>
                                     </Grid>
                                     {videoForm.meetLink && (
@@ -537,10 +564,14 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                                 variant="contained"
                                                 href={videoForm.meetLink}
                                                 target="_blank"
-                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, bgcolor: '#1A73E8', '&:hover': { bgcolor: '#1557B0' } }}
+                                                sx={{ 
+                                                    borderRadius: 2, textTransform: 'none', fontWeight: 700, 
+                                                    bgcolor: videoForm.type === 'youtube_live' ? '#DC2626' : videoForm.type === 'zoom' ? '#2563EB' : '#1A73E8', 
+                                                    '&:hover': { opacity: 0.9 } 
+                                                }}
                                                 startIcon={<VideoCallIcon />}
                                             >
-                                                Join Meeting (Preview)
+                                                Join/Preview Session
                                             </Button>
                                         </Grid>
                                     )}
