@@ -1,59 +1,84 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    Box,
-    Button,
-    Typography,
-    Paper,
-    IconButton,
-    TextField,
-    MenuItem,
-    Select,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Tooltip,
-    CircularProgress,
-    Stack,
-    AppBar,
-    Toolbar
+    Box, Typography, IconButton, Stack, TextField, Button, CircularProgress,
+    Select, MenuItem, Radio, Checkbox, Table, TableBody, TableCell, TableContainer,
+    TableHead, TableRow, Paper
 } from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
+import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import { useTheme } from '../../context/ThemeContext';
+import { parseQuestionForEditing, serializeQuestionForSaving } from '../../components/Exams/QuestionForm';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
+const TYPE_LABELS = {
+    single_choice: 'Single Choice',
+    multiple_choice: 'Multiple Choice',
+    true_false: 'True / False'
+};
+
+const DIFFICULTY_STYLES = {
+    easy: { bg: 'var(--color-vc-success-soft, #dcfce7)', color: 'var(--color-vc-success-deep, #15803d)' },
+    medium: { bg: 'var(--color-vc-warning-soft, #fef3c7)', color: 'var(--color-vc-warning-deep, #b45309)' },
+    hard: { bg: 'var(--color-vc-error-soft, #fee2e2)', color: 'var(--color-vc-error-deep, #b91c1c)' }
+};
+
+const blankRow = () => ({
+    _rowKey: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    id: null,
+    content: '',
+    type: 'single_choice',
+    marks: 1,
+    category: '',
+    difficulty: 'medium',
+    options: [
+        { text: '', isCorrect: false },
+        { text: '', isCorrect: false }
+    ],
+    explanation: ''
+});
+
+const fieldSx = {
+    '& .MuiInputBase-root': {
+        fontSize: '13px',
+        fontFamily: 'inherit',
+        borderRadius: '6px',
+        color: 'var(--color-vc-ink)',
+        bgcolor: 'var(--color-vc-canvas)'
+    },
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-vc-hairline)' },
+    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--color-vc-hairline-strong)' }
+};
 
 const BulkQuestionEdit = () => {
-    const { isDark } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
-    const [questions, setQuestions] = useState([]);
+    const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                // If we passed selected IDs from the main page
                 const selectedIds = location.state?.selectedIds || [];
+                const { data } = await api.get('/questions');
+                const listData = data?.data || data || [];
+                const filtered = selectedIds.length > 0
+                    ? listData.filter(q => selectedIds.includes(q._id || q.id))
+                    : listData;
 
-                if (selectedIds.length > 0) {
-                    const { data } = await api.get('/questions');
-                    const filtered = data.filter(q => selectedIds.includes(q._id));
-                    setQuestions(filtered);
-                } else {
-                    const { data } = await api.get('/questions');
-                    setQuestions(data);
-                }
+                setRows(filtered.map(q => ({
+                    _rowKey: `existing-${q._id || q.id}`,
+                    id: q._id || q.id,
+                    ...parseQuestionForEditing(q)
+                })));
             } catch (error) {
-                toast.error('Failed to load questions');
-                
+                console.error('Failed to load questions:', error);
+                toast.error('Failed to load questions for editing');
             } finally {
                 setLoading(false);
             }
@@ -62,366 +87,296 @@ const BulkQuestionEdit = () => {
         fetchInitialData();
     }, [location.state]);
 
-    const handleRowChange = (index, field, value) => {
-        const updated = [...questions];
-        updated[index] = { ...updated[index], [field]: value };
-        setQuestions(updated);
+    const updateRow = (rowIdx, patch) => {
+        setRows(prev => prev.map((r, i) => (i === rowIdx ? { ...r, ...patch } : r)));
     };
 
-    const handleOptionChange = (qIndex, oIndex, field, value) => {
-        const updated = [...questions];
-        const updatedOptions = [...updated[qIndex].options];
-        updatedOptions[oIndex] = { ...updatedOptions[oIndex], [field]: value };
+    const handleTypeChange = (rowIdx, type) => {
+        setRows(prev => prev.map((r, i) => {
+            if (i !== rowIdx) return r;
+            let options = r.options;
+            if (type === 'true_false') {
+                options = [{ text: 'True', isCorrect: true }, { text: 'False', isCorrect: false }];
+            } else if (r.type === 'true_false' && type !== 'true_false') {
+                options = [{ text: '', isCorrect: false }, { text: '', isCorrect: false }];
+            }
+            return { ...r, type, options };
+        }));
+    };
 
-        // If setting isCorrect to true, and it's single_choice/true_false, uncheck others
-        if (field === 'isCorrect' && value === true && updated[qIndex].type !== 'multiple_choice') {
-            updatedOptions.forEach((opt, idx) => {
-                if (idx !== oIndex) opt.isCorrect = false;
-            });
+    const handleOptionTextChange = (rowIdx, optIdx, text) => {
+        setRows(prev => prev.map((r, i) => {
+            if (i !== rowIdx) return r;
+            const options = r.options.map((o, oi) => (oi === optIdx ? { ...o, text } : o));
+            return { ...r, options };
+        }));
+    };
+
+    const handleCorrectToggle = (rowIdx, optIdx) => {
+        setRows(prev => prev.map((r, i) => {
+            if (i !== rowIdx) return r;
+            const options = r.type === 'multiple_choice'
+                ? r.options.map((o, oi) => (oi === optIdx ? { ...o, isCorrect: !o.isCorrect } : o))
+                : r.options.map((o, oi) => ({ ...o, isCorrect: oi === optIdx }));
+            return { ...r, options };
+        }));
+    };
+
+    const handleAddOption = (rowIdx) => {
+        setRows(prev => prev.map((r, i) => (i === rowIdx ? { ...r, options: [...r.options, { text: '', isCorrect: false }] } : r)));
+    };
+
+    const handleRemoveOption = (rowIdx, optIdx) => {
+        setRows(prev => prev.map((r, i) => (i === rowIdx ? { ...r, options: r.options.filter((_, oi) => oi !== optIdx) } : r)));
+    };
+
+    const handleAddRow = () => setRows(prev => [...prev, blankRow()]);
+
+    const handleDeleteRow = async (rowIdx) => {
+        const row = rows[rowIdx];
+        if (row.id) {
+            if (!window.confirm('Delete this question?')) return;
+            try {
+                await api.delete(`/questions/${row.id}`);
+                toast.success('Question deleted');
+            } catch {
+                toast.error('Failed to delete question');
+                return;
+            }
         }
-
-        updated[qIndex].options = updatedOptions;
-        setQuestions(updated);
+        setRows(prev => prev.filter((_, i) => i !== rowIdx));
     };
 
-    const addOption = (qIndex) => {
-        const updated = [...questions];
-        updated[qIndex].options.push({ text: 'New Option', isCorrect: false });
-        setQuestions(updated);
-    };
-
-    const removeOption = (qIndex, oIndex) => {
-        const updated = [...questions];
-        if (updated[qIndex].options.length > 1) {
-            updated[qIndex].options.splice(oIndex, 1);
-            setQuestions(updated);
-        }
-    };
-
-    const handleSave = async () => {
+    const handlePublish = async () => {
         setSaving(true);
         try {
-            await api.put('/questions/bulk-update', questions);
-            toast.success('All questions updated successfully');
+            await Promise.all(rows.map(row => {
+                const payload = serializeQuestionForSaving(row);
+                return row.id ? api.put(`/questions/${row.id}`, payload) : api.post('/questions', payload);
+            }));
+            toast.success('All changes published successfully');
             navigate('/question-bank');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to save changes');
+            toast.error('Failed to publish some changes');
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: isDark ? '#121212' : '#f4f6f8' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    const cellStyle = {
-        borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-        px: 1.5,
-        py: 1,
-        transition: 'background-color 0.2s',
-        '&:hover': {
-            bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
-        }
-    };
-
-    const headerStyle = {
-        bgcolor: isDark ? '#252525' : '#f8f9fa',
-        fontWeight: 800,
-        fontSize: '0.75rem',
-        textTransform: 'uppercase',
-        letterSpacing: '1px',
-        color: 'text.secondary',
-        borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
-        borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
-        boxShadow: 'none !important'
-    };
-
     return (
-        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: isDark ? '#121212' : '#f4f6f8' }}>
-            <AppBar
-                position="fixed"
-                color="inherit"
-                elevation={0}
-                sx={{
-                    bgcolor: isDark ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.8)',
-                    backdropFilter: 'blur(10px)',
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    zIndex: (theme) => theme.zIndex.drawer + 1
-                }}
+        <Box sx={{ bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ p: 2, borderBottom: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', position: 'sticky', top: 0, zIndex: 5 }}
             >
-                <Toolbar sx={{ justifyContent: 'space-between' }}>
-                    <Stack direction="row" spacing={3} alignItems="center">
-                        <IconButton onClick={() => navigate('/question-bank')} edge="start" sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-                            <CloseIcon />
-                        </IconButton>
-                        <Box>
-                            <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1 }}>Bulk Question Editor</Typography>
-                            <Typography variant="caption" color="primary" fontWeight={700}>
-                                {questions.length} Questions Loaded
-                            </Typography>
-                        </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={2}>
-                        <Button
-                            variant="text"
-                            onClick={() => navigate('/question-bank')}
-                            sx={{ color: 'text.secondary', fontWeight: 700 }}
-                        >
-                            Discard
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                            onClick={handleSave}
-                            disabled={saving}
-                            sx={{
-                                borderRadius: 2,
-                                px: 4,
-                                boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)',
-                                fontWeight: 700
-                            }}
-                        >
-                            {saving ? 'Saving...' : 'Publish Changes'}
-                        </Button>
-                    </Stack>
-                </Toolbar>
-            </AppBar>
+                <Stack direction="row" spacing={2} alignItems="center">
+                    <IconButton onClick={() => navigate('/question-bank')} sx={{ bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-mute)' }}>
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                    <Box>
+                        <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                            Bulk Question Editor
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--color-vc-error)', fontWeight: 700 }}>
+                            {rows.length} Questions Loaded
+                        </Typography>
+                    </Box>
+                </Stack>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Button onClick={() => navigate('/question-bank')} sx={{ textTransform: 'none', fontWeight: 700, color: 'var(--color-vc-mute)' }}>
+                        Discard
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        startIcon={<SaveIcon fontSize="small" />}
+                        onClick={handlePublish}
+                        disabled={saving || loading || rows.length === 0}
+                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '24px', px: 3 }}
+                    >
+                        {saving ? 'Publishing...' : 'Publish Changes'}
+                    </Button>
+                </Stack>
+            </Stack>
 
-            <Toolbar /> {/* Spacer */}
-
-            <TableContainer component={Paper} sx={{ flex: 1, borderRadius: 0, boxShadow: 'none', overflowX: 'auto', bgcolor: 'transparent' }}>
-                <Table stickyHeader size="small" sx={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell sx={{ ...headerStyle, width: 50, textAlign: 'center' }}>#</TableCell>
-                            <TableCell sx={{ ...headerStyle, minWidth: 350 }}>Question Content</TableCell>
-                            <TableCell sx={{ ...headerStyle, minWidth: 160 }}>Type</TableCell>
-                            <TableCell sx={{ ...headerStyle, minWidth: 400 }}>Options & Correct Answer</TableCell>
-                            <TableCell sx={{ ...headerStyle, width: 80 }}>Marks</TableCell>
-                            <TableCell sx={{ ...headerStyle, width: 140 }}>Difficulty</TableCell>
-                            <TableCell sx={{ ...headerStyle, width: 160 }}>Category</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {questions.map((q, qIdx) => (
-                            <TableRow key={q._id} sx={{ '&:hover': { bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' } }}>
-                                <TableCell sx={{ ...cellStyle, textAlign: 'center', color: 'text.secondary', fontWeight: 800 }}>
-                                    {qIdx + 1}
-                                    <IconButton 
-                                        size="small" 
-                                        color="error" 
-                                        onClick={() => {
-                                            const updated = [...questions];
-                                            updated.splice(qIdx, 1);
-                                            setQuestions(updated);
-                                        }}
-                                        sx={{ mt: 1, p: 0.5, opacity: 0.3, '&:hover': { opacity: 1 } }}
-                                    >
-                                        <DeleteIcon fontSize="inherit" />
-                                    </IconButton>
-                                </TableCell>
-                                <TableCell sx={cellStyle}>
-                                    <TextField
-                                        fullWidth
-                                        multiline
-                                        rows={2}
-                                        value={q.content}
-                                        onChange={(e) => handleRowChange(qIdx, 'content', e.target.value)}
-                                        size="small"
-                                        variant="standard"
-                                        InputProps={{
-                                            disableUnderline: true,
-                                            sx: {
-                                                fontSize: '0.875rem',
-                                                fontWeight: 500,
-                                                fontFamily: 'inherit',
-                                                lineHeight: 1.5
-                                            }
-                                        }}
-                                    />
-                                </TableCell>
-                                <TableCell sx={cellStyle}>
-                                    <Select
-                                        fullWidth
-                                        value={q.type}
-                                        onChange={(e) => handleRowChange(qIdx, 'type', e.target.value)}
-                                        size="small"
-                                        variant="standard"
-                                        disableUnderline
-                                        sx={{
-                                            fontSize: '0.8rem',
-                                            fontWeight: 700,
-                                            bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                                            borderRadius: 1.5,
-                                            px: 1,
-                                            height: 32
-                                        }}
-                                    >
-                                        <MenuItem value="single_choice">Single Choice</MenuItem>
-                                        <MenuItem value="multiple_choice">Multiple Choice</MenuItem>
-                                        <MenuItem value="true_false">True / False</MenuItem>
-                                    </Select>
-                                </TableCell>
-                                <TableCell sx={cellStyle}>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
-                                        {q.options.map((opt, oIdx) => (
-                                            <Stack key={oIdx} direction="row" spacing={1.5} alignItems="center">
-                                                <Tooltip title={opt.isCorrect ? "Correct answer" : "Mark as correct"}>
-                                                    <Box
-                                                        onClick={() => handleOptionChange(qIdx, oIdx, 'isCorrect', !opt.isCorrect)}
-                                                        sx={{
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            width: 24,
-                                                            height: 24,
-                                                            borderRadius: q.type === 'multiple_choice' ? 0.5 : '50%',
-                                                            border: '2px solid',
-                                                            borderColor: opt.isCorrect ? 'primary.main' : 'divider',
-                                                            bgcolor: opt.isCorrect ? 'primary.main' : 'transparent',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        {opt.isCorrect && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'white' }} />}
-                                                    </Box>
-                                                </Tooltip>
-                                                <TextField
-                                                    fullWidth
-                                                    value={opt.text}
-                                                    onChange={(e) => handleOptionChange(qIdx, oIdx, 'text', e.target.value)}
-                                                    size="small"
-                                                    variant="standard"
-                                                    placeholder={`Option ${oIdx + 1}`}
-                                                    InputProps={{
-                                                        disableUnderline: true,
-                                                        sx: {
-                                                            fontSize: '0.85rem',
-                                                            bgcolor: opt.isCorrect ? (isDark ? 'rgba(0,118,255,0.1)' : 'rgba(0,118,255,0.05)') : 'transparent',
-                                                            px: 1,
-                                                            py: 0.5,
-                                                            borderRadius: 1,
-                                                            transition: 'all 0.2s',
-                                                            '&:hover': { bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }
-                                                        }
-                                                    }}
-                                                />
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => removeOption(qIdx, oIdx)}
-                                                    color="error"
-                                                    disabled={q.options.length <= 1}
-                                                    sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }}
-                                                >
-                                                    <CloseIcon fontSize="inherit" />
-                                                </IconButton>
-                                            </Stack>
-                                        ))}
-                                        {q.type !== 'true_false' && (
-                                            <Button
-                                                size="small"
-                                                startIcon={<AddIcon />}
-                                                onClick={() => addOption(qIdx)}
-                                                sx={{
-                                                    alignSelf: 'flex-start',
-                                                    mt: 0.5,
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 700,
-                                                    color: 'text.secondary'
-                                                }}
-                                            >
-                                                Add Option
-                                            </Button>
-                                        )}
-                                    </Box>
-                                </TableCell>
-                                <TableCell sx={cellStyle}>
-                                    <TextField
-                                        type="number"
-                                        value={q.marks}
-                                        onChange={(e) => handleRowChange(qIdx, 'marks', e.target.value)}
-                                        size="small"
-                                        variant="standard"
-                                        inputProps={{ style: { textAlign: 'center', fontWeight: 800 } }}
-                                        InputProps={{ disableUnderline: true }}
-                                    />
-                                </TableCell>
-                                <TableCell sx={cellStyle}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                                        <Select
-                                            value={q.difficulty}
-                                            onChange={(e) => handleRowChange(qIdx, 'difficulty', e.target.value)}
-                                            size="small"
-                                            variant="standard"
-                                            disableUnderline
+            {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                    <CircularProgress size={28} />
+                </Box>
+            ) : (
+                <>
+                    <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 0, bgcolor: 'var(--color-vc-canvas)' }}>
+                        <Table sx={{ tableLayout: 'fixed' }}>
+                            <TableHead>
+                                <TableRow>
+                                    {['#', 'QUESTION CONTENT', 'TYPE', 'OPTIONS & CORRECT ANSWER', 'MARKS', 'DIFFICULTY', 'CATEGORY'].map((h, i) => (
+                                        <TableCell
+                                            key={h}
                                             sx={{
-                                                fontSize: '0.7rem',
-                                                fontWeight: 900,
-                                                textTransform: 'uppercase',
-                                                bgcolor: q.difficulty === 'hard' ? 'error.main' : q.difficulty === 'medium' ? 'warning.main' : 'success.main',
-                                                color: 'white',
-                                                borderRadius: 10,
-                                                px: 2,
-                                                height: 22,
-                                                minWidth: 80,
-                                                '.MuiSelect-select': { py: 0, pr: '0 !important', textAlign: 'center' },
-                                                '.MuiSvgIcon-root': { display: 'none' }
+                                                bgcolor: 'var(--color-vc-canvas-soft)',
+                                                color: 'var(--color-vc-mute)',
+                                                fontWeight: 700,
+                                                fontSize: '11px',
+                                                letterSpacing: '0.06em',
+                                                borderBottom: '1px solid var(--color-vc-hairline)',
+                                                width: [50, 220, 150, 320, 80, 130, 140][i]
                                             }}
                                         >
-                                            <MenuItem value="easy">Easy</MenuItem>
-                                            <MenuItem value="medium">Medium</MenuItem>
-                                            <MenuItem value="hard">Hard</MenuItem>
-                                        </Select>
-                                    </Box>
-                                </TableCell>
-                                <TableCell sx={cellStyle}>
-                                    <TextField
-                                        value={q.category}
-                                        onChange={(e) => handleRowChange(qIdx, 'category', e.target.value)}
-                                        size="small"
-                                        variant="standard"
-                                        placeholder="Category..."
-                                        InputProps={{
-                                            disableUnderline: true,
-                                            sx: {
-                                                fontSize: '0.85rem',
-                                                fontStyle: 'italic',
-                                                color: 'primary.main',
-                                                fontWeight: 600
-                                            }
-                                        }}
-                                    />
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                        <TableRow>
-                            <TableCell colSpan={7} sx={{ p: 2, textAlign: 'center', bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)' }}>
-                                <Button
-                                    startIcon={<AddIcon />}
-                                    onClick={() => setQuestions([...questions, {
-                                        content: '',
-                                        type: 'single_choice',
-                                        options: [{ text: '', isCorrect: true }, { text: '', isCorrect: false }],
-                                        marks: 1,
-                                        difficulty: 'easy',
-                                        category: ''
-                                    }])}
-                                    sx={{ fontWeight: 800, textTransform: 'none' }}
-                                >
-                                    Add New Row
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                            {h}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {rows.map((row, rowIdx) => (
+                                    <TableRow key={row._rowKey} sx={{ verticalAlign: 'top' }}>
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <Stack alignItems="center" spacing={1}>
+                                                <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-mute)' }}>
+                                                    {rowIdx + 1}
+                                                </Typography>
+                                                <IconButton size="small" onClick={() => handleDeleteRow(rowIdx)} sx={{ color: 'var(--color-vc-error)' }}>
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Stack>
+                                        </TableCell>
+
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <Box
+                                                sx={{
+                                                    '.ql-toolbar': { borderRadius: '6px 6px 0 0', borderColor: 'var(--color-vc-hairline)' },
+                                                    '.ql-container': { borderRadius: '0 0 6px 6px', borderColor: 'var(--color-vc-hairline)', fontSize: '13px', bgcolor: 'var(--color-vc-canvas)' },
+                                                    '.ql-editor': { minHeight: '90px', color: 'var(--color-vc-ink)' }
+                                                }}
+                                            >
+                                                <ReactQuill
+                                                    theme="snow"
+                                                    value={row.content}
+                                                    onChange={(content) => updateRow(rowIdx, { content })}
+                                                    placeholder="Enter question text..."
+                                                />
+                                            </Box>
+                                        </TableCell>
+
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <Select
+                                                fullWidth
+                                                size="small"
+                                                value={row.type}
+                                                onChange={(e) => handleTypeChange(rowIdx, e.target.value)}
+                                                sx={{ ...fieldSx, fontSize: '13px' }}
+                                            >
+                                                {Object.entries(TYPE_LABELS).map(([val, label]) => (
+                                                    <MenuItem key={val} value={val} sx={{ fontSize: '13px' }}>{label}</MenuItem>
+                                                ))}
+                                            </Select>
+                                        </TableCell>
+
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <Stack spacing={0.75}>
+                                                {row.options.map((opt, optIdx) => (
+                                                    <Stack key={optIdx} direction="row" alignItems="center" spacing={0.5}>
+                                                        {row.type === 'multiple_choice' ? (
+                                                            <Checkbox size="small" checked={opt.isCorrect} onChange={() => handleCorrectToggle(rowIdx, optIdx)} />
+                                                        ) : (
+                                                            <Radio size="small" checked={opt.isCorrect} onChange={() => handleCorrectToggle(rowIdx, optIdx)} />
+                                                        )}
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            value={opt.text}
+                                                            disabled={row.type === 'true_false'}
+                                                            placeholder={`Option ${optIdx + 1}`}
+                                                            onChange={(e) => handleOptionTextChange(rowIdx, optIdx, e.target.value)}
+                                                            sx={{
+                                                                ...fieldSx,
+                                                                ...(opt.isCorrect ? { '& .MuiInputBase-root': { ...fieldSx['& .MuiInputBase-root'], bgcolor: 'var(--color-vc-primary-soft, #dbeafe)' } } : {})
+                                                            }}
+                                                        />
+                                                        {row.type !== 'true_false' && (
+                                                            <IconButton size="small" onClick={() => handleRemoveOption(rowIdx, optIdx)} sx={{ color: 'var(--color-vc-error)' }}>
+                                                                <CloseIcon fontSize="small" />
+                                                            </IconButton>
+                                                        )}
+                                                    </Stack>
+                                                ))}
+                                                {row.type !== 'true_false' && (
+                                                    <Button
+                                                        size="small"
+                                                        startIcon={<AddIcon fontSize="small" />}
+                                                        onClick={() => handleAddOption(rowIdx)}
+                                                        sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 600, color: 'var(--color-vc-mute)' }}
+                                                    >
+                                                        Add Option
+                                                    </Button>
+                                                )}
+                                            </Stack>
+                                        </TableCell>
+
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TextField
+                                                type="number"
+                                                size="small"
+                                                value={row.marks}
+                                                onChange={(e) => updateRow(rowIdx, { marks: e.target.value })}
+                                                sx={fieldSx}
+                                            />
+                                        </TableCell>
+
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <Select
+                                                fullWidth
+                                                size="small"
+                                                value={row.difficulty}
+                                                onChange={(e) => updateRow(rowIdx, { difficulty: e.target.value })}
+                                                sx={{
+                                                    ...fieldSx,
+                                                    fontSize: '12px',
+                                                    fontWeight: 800,
+                                                    '& .MuiSelect-select': {
+                                                        bgcolor: DIFFICULTY_STYLES[row.difficulty]?.bg,
+                                                        color: DIFFICULTY_STYLES[row.difficulty]?.color,
+                                                        borderRadius: '20px',
+                                                        textAlign: 'center',
+                                                        textTransform: 'uppercase'
+                                                    }
+                                                }}
+                                            >
+                                                <MenuItem value="easy" sx={{ fontSize: '12px', fontWeight: 700 }}>Easy</MenuItem>
+                                                <MenuItem value="medium" sx={{ fontSize: '12px', fontWeight: 700 }}>Medium</MenuItem>
+                                                <MenuItem value="hard" sx={{ fontSize: '12px', fontWeight: 700 }}>Hard</MenuItem>
+                                            </Select>
+                                        </TableCell>
+
+                                        <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TextField
+                                                fullWidth
+                                                size="small"
+                                                value={row.category}
+                                                placeholder="Category"
+                                                onChange={(e) => updateRow(rowIdx, { category: e.target.value })}
+                                                sx={fieldSx}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                        <Button
+                            startIcon={<AddIcon />}
+                            onClick={handleAddRow}
+                            sx={{ textTransform: 'none', fontWeight: 700, color: 'var(--color-vc-error)' }}
+                        >
+                            Add New Row
+                        </Button>
+                    </Box>
+                </>
+            )}
         </Box>
     );
 };

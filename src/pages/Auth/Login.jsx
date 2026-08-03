@@ -13,7 +13,7 @@ import {
     FormControlLabel,
     Paper,
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, PhoneIphone, Email as EmailIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -24,15 +24,15 @@ import { useSettings } from '../../context/SettingsContext';
 
 const Login = () => {
     const navigate = useNavigate();
-    const { login, googleLogin } = useAuth();
+    const { login, googleLogin, sendOtp, verifyOtpLogin } = useAuth();
     const { settings } = useSettings();
     const { executeRecaptcha } = useGoogleReCaptcha() ?? {};
     const theme = useTheme();
-    
+
     // Dynamic Primary Color from settings
-    const primaryColor = settings?.theme?.primaryColor || '#C40C0C'; 
+    const primaryColor = settings?.theme?.primaryColor || '#C40C0C';
     const siteName = settings?.general?.siteName || 'God of Graphics';
-    
+
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -40,10 +40,20 @@ const Login = () => {
     const [allowRegistration, setAllowRegistration] = useState(true);
     const [allowForgotPassword, setAllowForgotPassword] = useState(true);
     const [allowGoogleLogin, setAllowGoogleLogin] = useState(false);
+    const [allowEmailLogin, setAllowEmailLogin] = useState(true);
+    const [allowMobileOtpLogin, setAllowMobileOtpLogin] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: '',
     });
+
+    // ─── Mobile number / OTP login (toggled via the phone icon below the form) ───
+    const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'phone'
+    const [phone, setPhone] = useState('');
+    const [otp, setOtp] = useState('');
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
 
     const location = useLocation();
 
@@ -52,6 +62,13 @@ const Login = () => {
             setAllowRegistration(settings.auth.allowRegistration);
             setAllowForgotPassword(settings.auth.allowForgotPassword ?? true);
             setAllowGoogleLogin(settings.auth.allowGoogleLogin ?? false);
+            setAllowEmailLogin(settings.auth.allowEmailLogin ?? true);
+            setAllowMobileOtpLogin(settings.auth.allowMobileOtpLogin ?? false);
+            // If the admin has disabled email login but enabled mobile OTP, land
+            // straight on the phone form instead of showing a dead-end email form.
+            if (settings.auth.allowEmailLogin === false && settings.auth.allowMobileOtpLogin) {
+                setLoginMethod('phone');
+            }
         }
 
         if (location.state?.email) {
@@ -62,6 +79,49 @@ const Login = () => {
             window.history.replaceState({}, document.title);
         }
     }, [location, settings]);
+
+    useEffect(() => {
+        if (resendTimer <= 0) return;
+        const timer = setTimeout(() => setResendTimer((s) => s - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [resendTimer]);
+
+    const switchLoginMethod = (method) => {
+        setLoginMethod(method);
+        setError('');
+        setOtpSent(false);
+        setOtp('');
+    };
+
+    const handleSendOtp = async () => {
+        if (!/^[6-9]\d{9}$/.test(phone)) {
+            toast.error('Enter a valid 10-digit mobile number');
+            return;
+        }
+        setOtpLoading(true);
+        const result = await sendOtp(`+91${phone}`);
+        setOtpLoading(false);
+        if (result.success) {
+            setOtpSent(true);
+            setResendTimer(30);
+            toast.success(`OTP sent to +91 ${phone}`);
+        } else {
+            toast.error(result.message);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (otp.length < 4) return;
+        setOtpLoading(true);
+        const result = await verifyOtpLogin(`+91${phone}`, otp);
+        setOtpLoading(false);
+        if (result.success) {
+            toast.success('Login successful!');
+            navigate('/');
+        } else {
+            toast.error(result.message);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({
@@ -99,8 +159,12 @@ const Login = () => {
         const result = await login(formData.email, formData.password, recaptchaToken);
 
         if (result.success) {
-            toast.success('Login successful!');
-            navigate('/');
+            if (result.requiresTwoFactor) {
+                navigate('/verify-2fa', { state: { email: result.email } });
+            } else {
+                toast.success('Login successful!');
+                navigate('/');
+            }
         } else {
             if (result.message?.toLowerCase().includes('not verified') || result.message?.toLowerCase().includes('verify')) {
                 setUnverifiedEmail(formData.email);
@@ -236,116 +300,226 @@ const Login = () => {
                     )}
 
                     <form onSubmit={handleSubmit}>
-                        <Box sx={{ mb: 1.5 }}>
-                            <TextField
-                                fullWidth
-                                placeholder="Email Address"
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                variant="outlined"
-                                autoComplete="email"
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '10px',
-                                        backgroundColor: '#f8fafc',
-                                        height: '48px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                        {allowEmailLogin && loginMethod === 'email' && (
+                            <>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Email Address"
+                                        name="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                        variant="outlined"
+                                        autoComplete="email"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
 
-                        <Box sx={{ mb: 1.5 }}>
-                            <TextField
-                                fullWidth
-                                placeholder="Password"
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={formData.password}
-                                onChange={handleChange}
-                                required
-                                variant="outlined"
-                                autoComplete="current-password"
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                                size="small"
-                                            >
-                                                {showPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '10px',
-                                        backgroundColor: '#f8fafc',
-                                        height: '48px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Password"
+                                        name="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        required
+                                        variant="outlined"
+                                        autoComplete="current-password"
+                                        InputProps={{
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        edge="end"
+                                                        size="small"
+                                                    >
+                                                        {showPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
 
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <FormControlLabel
-                                control={<Checkbox size="small" sx={{ color: '#cbd5e1', '&.Mui-checked': { color: primaryColor } }} />}
-                                label={<Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.8rem' }}>Keep me logged in</Typography>}
-                            />
-                            {allowForgotPassword && (
-                                <Link
-                                    component="button"
-                                    type="button"
-                                    onClick={() => navigate('/forgot-password')}
-                                    sx={{ 
-                                        cursor: 'pointer', 
-                                        fontSize: '0.78rem', 
-                                        color: primaryColor, 
-                                        fontWeight: 600,
-                                        textDecoration: 'none',
-                                        '&:hover': { textDecoration: 'underline' }
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <FormControlLabel
+                                        control={<Checkbox size="small" sx={{ color: '#cbd5e1', '&.Mui-checked': { color: primaryColor } }} />}
+                                        label={<Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.8rem' }}>Keep me logged in</Typography>}
+                                    />
+                                    {allowForgotPassword && (
+                                        <Link
+                                            component="button"
+                                            type="button"
+                                            onClick={() => navigate('/forgot-password')}
+                                            sx={{
+                                                cursor: 'pointer',
+                                                fontSize: '0.78rem',
+                                                color: primaryColor,
+                                                fontWeight: 600,
+                                                textDecoration: 'none',
+                                                '&:hover': { textDecoration: 'underline' }
+                                            }}
+                                        >
+                                            Forgot Password?
+                                        </Link>
+                                    )}
+                                </Box>
+
+                                <Button
+                                    type="submit"
+                                    fullWidth
+                                    variant="contained"
+                                    size="large"
+                                    disabled={loading}
+                                    sx={{
+                                        py: 1.8,
+                                        borderRadius: '12px',
+                                        bgcolor: primaryColor,
+                                        fontWeight: 700,
+                                        fontSize: '1rem',
+                                        textTransform: 'none',
+                                        boxShadow: `0 10px 15px -3px rgba(196, 12, 12, 0.3)`,
+                                        '&:hover': {
+                                            bgcolor: '#a00a0a',
+                                            boxShadow: `0 20px 25px -5px rgba(196, 12, 12, 0.4)`,
+                                        }
                                     }}
                                 >
-                                    Forgot Password?
-                                </Link>
-                            )}
-                        </Box>
+                                    {loading ? 'Signing in...' : 'Sign In'}
+                                </Button>
+                            </>
+                        )}
 
-                        <Button
-                            type="submit"
-                            fullWidth
-                            variant="contained"
-                            size="large"
-                            disabled={loading}
-                            sx={{ 
-                                py: 1.8, 
-                                borderRadius: '12px', 
-                                bgcolor: primaryColor,
-                                fontWeight: 700,
-                                fontSize: '1rem',
-                                textTransform: 'none',
-                                boxShadow: `0 10px 15px -3px rgba(196, 12, 12, 0.3)`,
-                                '&:hover': {
-                                    bgcolor: '#a00a0a',
-                                    boxShadow: `0 20px 25px -5px rgba(196, 12, 12, 0.4)`,
-                                }
-                            }}
-                        >
-                            {loading ? 'Signing in...' : 'Sign In'}
-                        </Button>
+                        {allowMobileOtpLogin && loginMethod === 'phone' && (
+                            <Box>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="10-digit mobile number"
+                                        type="tel"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                        disabled={otpSent}
+                                        variant="outlined"
+                                        autoComplete="tel"
+                                        InputProps={{
+                                            startAdornment: <InputAdornment position="start">+91</InputAdornment>,
+                                        }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
+
+                                {otpSent && (
+                                    <Box sx={{ mb: 1.5 }}>
+                                        <TextField
+                                            fullWidth
+                                            placeholder="Enter OTP"
+                                            type="tel"
+                                            value={otp}
+                                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            autoFocus
+                                            variant="outlined"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: '10px',
+                                                    backgroundColor: '#f8fafc',
+                                                    height: '48px',
+                                                    letterSpacing: '4px',
+                                                }
+                                            }}
+                                        />
+                                        <Box sx={{ mt: 1 }}>
+                                            {resendTimer > 0 ? (
+                                                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                                    Resend OTP in 00:{String(resendTimer).padStart(2, '0')}
+                                                </Typography>
+                                            ) : (
+                                                <Link component="button" type="button" onClick={handleSendOtp} sx={{ fontSize: '0.78rem', color: primaryColor, fontWeight: 600, cursor: 'pointer' }}>
+                                                    Resend OTP
+                                                </Link>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                )}
+
+                                <Button
+                                    type="button"
+                                    fullWidth
+                                    variant="contained"
+                                    size="large"
+                                    disabled={otpLoading || (otpSent ? otp.length < 4 : phone.length !== 10)}
+                                    onClick={otpSent ? handleVerifyOtp : handleSendOtp}
+                                    sx={{
+                                        py: 1.8,
+                                        borderRadius: '12px',
+                                        bgcolor: primaryColor,
+                                        fontWeight: 700,
+                                        fontSize: '1rem',
+                                        textTransform: 'none',
+                                        boxShadow: `0 10px 15px -3px rgba(196, 12, 12, 0.3)`,
+                                        '&:hover': {
+                                            bgcolor: '#a00a0a',
+                                            boxShadow: `0 20px 25px -5px rgba(196, 12, 12, 0.4)`,
+                                        }
+                                    }}
+                                >
+                                    {otpLoading ? 'Please wait...' : otpSent ? 'Verify & Sign In' : 'Send OTP'}
+                                </Button>
+                            </Box>
+                        )}
+
+                        {/* Switch between email and mobile-number login — mirrors the app's own toggle. */}
+                        {allowEmailLogin && allowMobileOtpLogin && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2.5 }}>
+                                <IconButton
+                                    onClick={() => switchLoginMethod(loginMethod === 'email' ? 'phone' : 'email')}
+                                    title={loginMethod === 'email' ? 'Sign in with mobile number' : 'Sign in with email'}
+                                    sx={{
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '50%',
+                                        width: 44,
+                                        height: 44,
+                                        color: '#475569',
+                                        '&:hover': { borderColor: primaryColor, color: primaryColor, bgcolor: 'transparent' },
+                                    }}
+                                >
+                                    {loginMethod === 'email' ? <PhoneIphone /> : <EmailIcon />}
+                                </IconButton>
+                            </Box>
+                        )}
 
                         {allowGoogleLogin && settings?.integrations?.googleClientId && (
                             <>
-                                <Box sx={{ display: 'flex', alignItems: 'center', my: 3.5 }}>
-                                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
-                                    <Typography variant="body2" sx={{ px: 2, color: '#94a3b8', fontWeight: 500 }}>OR</Typography>
-                                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                {(loginMethod === 'email' ? allowEmailLogin : allowMobileOtpLogin) && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', my: 3.5 }}>
+                                        <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
+                                        <Typography variant="body2" sx={{ px: 2, color: '#94a3b8', fontWeight: 500 }}>OR</Typography>
+                                        <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
+                                    </Box>
+                                )}
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: allowEmailLogin ? 0 : 1 }}>
                                     <GoogleLogin
                                         onSuccess={handleGoogleSuccess}
                                         onError={() => toast.error('Google login failed')}
@@ -353,10 +527,16 @@ const Login = () => {
                                         shape="pill"
                                         size="large"
                                         text="continue_with"
-                                        width="100%"
+                                        width="320"
                                     />
                                 </Box>
                             </>
+                        )}
+
+                        {!allowEmailLogin && !allowGoogleLogin && !allowMobileOtpLogin && (
+                            <Alert severity="warning" sx={{ borderRadius: '12px', fontSize: '0.85rem' }}>
+                                No login method is currently enabled. Please contact the administrator.
+                            </Alert>
                         )}
 
                         {allowRegistration && (

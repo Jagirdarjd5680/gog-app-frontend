@@ -88,21 +88,22 @@ const GlobalSearchBar = () => {
             <Box sx={{ position: 'relative', zIndex: 1300 }}>
                 {/* Search Input */}
                 <Paper
-                    elevation={open ? 6 : 1}
+                    elevation={0}
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
                         width: open ? 500 : 260,
-                        transition: 'all 0.3s ease',
-                        borderRadius: open ? '12px 12px 0 0' : '10px',
+                        transition: 'all 0.2s ease',
+                        borderRadius: open ? '6px 6px 0 0' : '6px',
                         px: 1.5,
                         py: 0.5,
-                        border: open ? '2px solid' : '1px solid',
-                        borderColor: open ? 'primary.main' : 'divider',
-                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: open ? 'var(--color-topbar-border, var(--color-vc-hairline-strong))' : 'var(--color-topbar-border, var(--color-vc-hairline))',
+                        bgcolor: 'var(--color-topbar-hover-bg, var(--color-vc-canvas-soft))',
+                        boxShadow: open ? '0px 2px 2px rgba(0,0,0,0.02)' : 'none',
                     }}
                 >
-                    <SearchIcon sx={{ color: open ? 'primary.main' : 'text.secondary', mr: 1, fontSize: 20 }} />
+                    <SearchIcon sx={{ color: 'var(--color-topbar-text, var(--color-vc-mute))', opacity: 0.8, mr: 1, fontSize: 18 }} />
 
                     {/* Type filter - small select */}
                     {open && (
@@ -111,7 +112,7 @@ const GlobalSearchBar = () => {
                                 value={filterType}
                                 onChange={(e) => setFilterType(e.target.value)}
                                 disableUnderline
-                                sx={{ fontSize: 12, color: 'primary.main', fontWeight: 700 }}
+                                sx={{ fontSize: 12, color: 'var(--color-topbar-text, var(--color-vc-ink))', fontWeight: 600 }}
                             >
                                 <MenuItem value="all">All</MenuItem>
                                 <MenuItem value="user">Users</MenuItem>
@@ -129,11 +130,11 @@ const GlobalSearchBar = () => {
                         onChange={(e) => setQuery(e.target.value)}
                         onFocus={handleFocus}
                         onKeyDown={handleKeyDown}
-                        sx={{ flex: 1, fontSize: 14 }}
+                        sx={{ flex: 1, fontSize: 14, color: 'var(--color-topbar-text, var(--color-vc-ink))', fontFamily: 'inherit' }}
                     />
 
                     {open && (
-                        <IconButton size="small" onClick={handleClose}>
+                        <IconButton size="small" onClick={handleClose} sx={{ color: 'var(--color-topbar-text, var(--color-vc-mute))', opacity: 0.8, '&:hover': { opacity: 1 } }}>
                             <CloseIcon fontSize="small" />
                         </IconButton>
                     )}
@@ -142,16 +143,18 @@ const GlobalSearchBar = () => {
                 {/* Dropdown results */}
                 {open && (
                     <Paper
-                        elevation={8}
+                        elevation={0}
                         sx={{
                             position: 'absolute',
                             top: '100%',
                             left: 0,
                             right: 0,
-                            borderRadius: '0 0 12px 12px',
-                            border: '2px solid',
+                            borderRadius: '0 0 6px 6px',
+                            border: '1px solid',
                             borderTop: 'none',
-                            borderColor: 'primary.main',
+                            borderColor: 'var(--color-vc-hairline-strong)',
+                            boxShadow: '0px 8px 16px -4px rgba(0,0,0,0.08)',
+                            bgcolor: 'var(--color-vc-canvas)',
                             maxHeight: 400,
                             overflowY: 'auto',
                             zIndex: 1301,
@@ -159,11 +162,11 @@ const GlobalSearchBar = () => {
                     >
                         {loading ? (
                             <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
-                                <CircularProgress size={24} />
+                                <CircularProgress size={20} sx={{ color: 'var(--color-vc-primary)' }} />
                             </Box>
                         ) : results.length === 0 ? (
                             <Box sx={{ p: 3, textAlign: 'center' }}>
-                                <Typography color="text.secondary" variant="body2">
+                                <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit' }}>
                                     {query.trim() ? `No results for "${query}"` : 'Start typing to search...'}
                                 </Typography>
                             </Box>
@@ -173,14 +176,15 @@ const GlobalSearchBar = () => {
                                     const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.course;
                                     return (
                                         <Box key={`${item.type}-${item._id}`}>
-                                            {idx > 0 && <Divider />}
+                                            {idx > 0 && <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />}
                                             <ListItem
                                                 button
                                                 onClick={() => handleResultClick(item)}
                                                 sx={{
                                                     py: 1.2,
                                                     px: 2,
-                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                    color: 'var(--color-vc-ink)',
+                                                    '&:hover': { bgcolor: 'var(--color-vc-canvas-soft)' },
                                                     cursor: 'pointer'
                                                 }}
                                             >
@@ -189,12 +193,12 @@ const GlobalSearchBar = () => {
                                                 </ListItemIcon>
                                                 <ListItemText
                                                     primary={
-                                                        <Typography variant="body2" fontWeight={600} noWrap>
+                                                        <Typography variant="body2" fontWeight={500} noWrap sx={{ fontFamily: 'inherit', color: 'var(--color-vc-ink)' }}>
                                                             {item.title}
                                                         </Typography>
                                                     }
                                                     secondary={
-                                                        <Typography variant="caption" color="text.secondary" noWrap>
+                                                        <Typography variant="caption" noWrap sx={{ fontFamily: 'inherit', color: 'var(--color-vc-body)' }}>
                                                             {item.subtitle}
                                                         </Typography>
                                                     }
@@ -204,13 +208,14 @@ const GlobalSearchBar = () => {
                                                         label={cfg.label}
                                                         size="small"
                                                         sx={{
-                                                            bgcolor: cfg.color + '20',
+                                                            bgcolor: cfg.color + '15',
                                                             color: cfg.color,
-                                                            fontWeight: 700,
-                                                            fontSize: 10
+                                                            fontWeight: 600,
+                                                            fontSize: 10,
+                                                            borderRadius: '4px'
                                                         }}
                                                     />
-                                                    <OpenInNewIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                                    <OpenInNewIcon sx={{ fontSize: 14, color: 'var(--color-vc-mute)' }} />
                                                 </Box>
                                             </ListItem>
                                         </Box>
@@ -220,11 +225,11 @@ const GlobalSearchBar = () => {
                         )}
 
                         {/* Quick tip */}
-                        <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="caption" color="text.secondary">
+                        <Box sx={{ p: 1.5, bgcolor: 'var(--color-vc-canvas-soft)', borderTop: '1px solid', borderColor: 'var(--color-vc-hairline)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                 {results.length} result{results.length !== 1 ? 's' : ''} found
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                 Press <strong>Esc</strong> to close
                             </Typography>
                         </Box>

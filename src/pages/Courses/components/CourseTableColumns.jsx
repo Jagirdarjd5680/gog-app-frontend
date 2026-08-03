@@ -1,45 +1,50 @@
 import React from 'react';
-import { Box, Typography, Chip, IconButton } from '@mui/material';
-
-// I will import normally to be safe
+import { Box, Typography, Chip, IconButton, Tooltip, Stack } from '@mui/material';
 import Star from '@mui/icons-material/Star';
-import Quiz from '@mui/icons-material/Quiz';
-import Assignment from '@mui/icons-material/Assignment';
 import Edit from '@mui/icons-material/Edit';
 import Delete from '@mui/icons-material/Delete';
 import Visibility from '@mui/icons-material/Visibility';
 import ContentCopy from '@mui/icons-material/ContentCopy';
+import Videocam from '@mui/icons-material/Videocam';
 import { fixUrl } from '../../../utils/api';
+import { hasModulePermission } from '../../../utils/permissions';
 
-export const getCourseTableColumns = ({ 
-    user, handleViewCourse, handleAssignExam, handleAssignAssignment, 
-    handleReviewCourse, handleEditCourse, handleTogglePublish, 
-    setCourseToDelete, setDeleteDialogOpen, handleDuplicateCourse 
+export const getCourseTableColumns = ({
+    user, handleViewCourse, handleAssignExam, handleAssignAssignment,
+    handleReviewCourse, handleEditCourse, handleTogglePublish,
+    setCourseToDelete, setDeleteDialogOpen, handleDuplicateCourse, handleManageLiveClasses
 }) => [
     {
         headerName: '#',
         valueGetter: (params) => params.node.rowIndex + 1,
-        width: 70,
+        width: 60,
         pinned: 'left',
         suppressMovable: true,
+        cellStyle: { display: 'flex', alignItems: 'center' }
     },
     {
         headerName: 'THUMBNAIL',
         field: 'thumbnail',
-        width: 120,
+        width: 100,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => (
             <Box
                 sx={{
-                    width: 45, height: 45, borderRadius: 1, overflow: 'hidden', mt: 0.5,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    bgcolor: params.value ? 'transparent' : 'primary.main',
-                    border: params.value ? '1px solid rgba(0,0,0,0.08)' : 'none'
+                    width: 42, 
+                    height: 42, 
+                    borderRadius: '4px', 
+                    overflow: 'hidden',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: 'var(--color-vc-canvas-soft-2)',
+                    border: '1px solid var(--color-vc-hairline)'
                 }}
             >
                 {params.value ? (
                     <img src={fixUrl(params.value)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>TEST</Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--color-vc-mute)', fontSize: '9px' }}>NO IMG</Typography>
                 )}
             </Box>
         )
@@ -47,16 +52,22 @@ export const getCourseTableColumns = ({
     {
         field: 'courseType',
         headerName: 'TYPE',
-        width: 100,
+        width: 90,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => {
             const isOffline = params.value === 'offline';
             return (
                 <Chip
-                    label={isOffline ? 'Offline' : 'Online'} size="small"
+                    label={isOffline ? 'Offline' : 'Online'} 
+                    size="small"
                     sx={{
-                        borderRadius: 1, bgcolor: isOffline ? 'rgba(156, 39, 176, 0.1)' : 'rgba(33, 150, 243, 0.1)',
-                        color: isOffline ? '#9c27b0' : '#2196f3', fontWeight: 800, fontSize: '0.65rem',
-                        border: '1px solid', borderColor: isOffline ? 'rgba(156, 39, 176, 0.2)' : 'rgba(33, 150, 243, 0.2)',
+                        borderRadius: '4px', 
+                        height: 20,
+                        bgcolor: isOffline ? 'var(--color-vc-violet-soft)' : 'var(--color-vc-link-bg-soft)',
+                        color: isOffline ? 'var(--color-vc-violet-deep)' : 'var(--color-vc-link-deep)', 
+                        fontWeight: 600, 
+                        fontSize: '9px',
+                        border: '1px solid transparent',
                         textTransform: 'uppercase'
                     }}
                 />
@@ -68,13 +79,17 @@ export const getCourseTableColumns = ({
         headerName: 'TITLE',
         flex: 2,
         minWidth: 200,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => (
             <Box sx={{
-                py: 1, px: 1, borderRadius: 1,
-                bgcolor: params.data.courseType === 'offline' ? 'rgba(156, 39, 176, 0.04)' : 'transparent',
-                borderLeft: params.data.courseType === 'offline' ? '3px solid #9c27b0' : 'none'
+                py: 0.5, 
+                px: 1, 
+                borderRadius: '4px',
+                width: '100%',
+                bgcolor: params.data.courseType === 'offline' ? 'rgba(121, 40, 202, 0.05)' : 'transparent',
+                borderLeft: params.data.courseType === 'offline' ? '3px solid var(--color-vc-violet-deep)' : 'none'
             }}>
-                <Typography variant="body2" fontWeight={700} color="text.primary">
+                <Typography sx={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-vc-ink)', fontFamily: 'inherit', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     {params.value}
                 </Typography>
             </Box>
@@ -84,11 +99,22 @@ export const getCourseTableColumns = ({
         field: 'category',
         headerName: 'CATEGORY',
         valueGetter: (params) => params.data.category?.name || params.data.category || 'Global',
-        width: 130,
+        width: 120,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => (
             <Chip
-                label={params.value?.name || params.value || 'Global'} size="small"
-                sx={{ borderRadius: 1, bgcolor: 'rgba(0,0,0,0.05)', fontSize: '0.75rem', fontWeight: 500, textTransform: 'capitalize' }}
+                label={params.value || 'Global'} 
+                size="small"
+                sx={{ 
+                    borderRadius: '4px', 
+                    height: 20,
+                    bgcolor: 'var(--color-vc-canvas-soft-2)', 
+                    color: 'var(--color-vc-body)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    fontSize: '10px', 
+                    fontWeight: 500, 
+                    textTransform: 'capitalize' 
+                }}
             />
         )
     },
@@ -96,33 +122,67 @@ export const getCourseTableColumns = ({
         headerName: 'ENROLLMENTS',
         width: 130,
         valueGetter: (params) => params.data.enrolledStudents?.length || 0,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{params.value}</Typography>
-                <Typography variant="caption" color="text.secondary">Students</Typography>
+                <Typography sx={{ fontWeight: 600, fontSize: '13px', color: 'var(--color-vc-ink)' }}>{params.value}</Typography>
+                <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '11px' }}>Students</Typography>
             </Box>
         )
     },
     {
         headerName: 'EXAMS',
         field: 'examCount',
-        width: 100,
-        cellRenderer: (params) => (
-            <Chip label={params.value || 0} size="small" color={params.value > 0 ? "info" : "default"} sx={{ fontWeight: 'bold' }} />
-        )
+        width: 90,
+        cellStyle: { display: 'flex', alignItems: 'center' },
+        cellRenderer: (params) => {
+            const count = params.value || 0;
+            return (
+                <Chip 
+                    label={count} 
+                    size="small" 
+                    sx={{ 
+                        borderRadius: '4px',
+                        height: 20,
+                        fontWeight: 600,
+                        fontSize: '10px',
+                        bgcolor: count > 0 ? 'var(--color-vc-link-bg-soft)' : 'var(--color-vc-canvas-soft-2)',
+                        color: count > 0 ? 'var(--color-vc-link-deep)' : 'var(--color-vc-mute)',
+                        border: count > 0 ? '1px solid var(--color-vc-link-bg-soft)' : '1px solid var(--color-vc-hairline)'
+                    }} 
+                />
+            );
+        }
     },
     {
         headerName: 'ASSIGNMENTS',
         field: 'assignmentCount',
-        width: 120,
-        cellRenderer: (params) => (
-            <Chip label={params.value || 0} size="small" color={params.value > 0 ? "primary" : "default"} sx={{ fontWeight: 'bold' }} />
-        )
+        width: 110,
+        cellStyle: { display: 'flex', alignItems: 'center' },
+        cellRenderer: (params) => {
+            const count = params.value || 0;
+            return (
+                <Chip 
+                    label={count} 
+                    size="small" 
+                    sx={{ 
+                        borderRadius: '4px',
+                        height: 20,
+                        fontWeight: 600,
+                        fontSize: '10px',
+                        bgcolor: count > 0 ? 'rgba(41, 188, 155, 0.15)' : 'var(--color-vc-canvas-soft-2)',
+                        color: count > 0 ? 'var(--color-vc-cyan-deep)' : 'var(--color-vc-mute)',
+                        border: count > 0 ? '1px solid rgba(41, 188, 155, 0.3)' : '1px solid var(--color-vc-hairline)'
+                    }} 
+                />
+            );
+        }
     },
     {
         field: 'price',
         headerName: 'PRICE',
-        width: 150,
+        width: 120,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => {
             const price = params.data.price ?? 0;
             const originalPrice = params.data.originalPrice ?? 0;
@@ -130,12 +190,12 @@ export const getCourseTableColumns = ({
             return (
                 <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
                     {isFree ? (
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>FREE</Typography>
+                        <Typography sx={{ fontWeight: 600, color: 'var(--color-vc-cyan-deep)', fontSize: '13px' }}>FREE</Typography>
                     ) : (
                         <>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>₹{price}</Typography>
+                            <Typography sx={{ fontWeight: 600, color: 'var(--color-vc-ink)', fontSize: '13px' }}>₹{price}</Typography>
                             {originalPrice > price && (
-                                <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary' }}>₹{originalPrice}</Typography>
+                                <Typography sx={{ textDecoration: 'line-through', color: 'var(--color-vc-mute)', fontSize: '11px', mt: 0.25 }}>₹{originalPrice}</Typography>
                             )}
                         </>
                     )}
@@ -146,11 +206,26 @@ export const getCourseTableColumns = ({
     {
         field: 'isPublished',
         headerName: 'STATUS',
-        width: 120,
+        width: 100,
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => (
             <Chip
-                label={params.value ? 'Active' : 'Inactive'} color={params.value ? 'success' : 'default'} size="small"
-                sx={{ borderRadius: 1, minWidth: 80, fontWeight: 600, fontSize: '0.7rem' }}
+                label={params.value ? 'Published' : 'Draft'} 
+                size="small"
+                sx={{ 
+                    borderRadius: '4px', 
+                    height: 20,
+                    minWidth: 70, 
+                    fontWeight: 600, 
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                    bgcolor: params.value ? 'rgba(41, 188, 155, 0.15)' : 'var(--color-vc-canvas-soft-2)',
+                    color: params.value ? 'var(--color-vc-cyan-deep)' : 'var(--color-vc-mute)',
+                    border: '1px solid transparent',
+                    '&:hover': {
+                        opacity: 0.8
+                    }
+                }}
                 onClick={() => handleTogglePublish(params.data)}
             />
         ),
@@ -158,20 +233,76 @@ export const getCourseTableColumns = ({
     {
         headerName: 'ACTIONS',
         field: 'actions',
-        width: 320,
+        width: 200,
         pinned: 'right',
+        cellStyle: { display: 'flex', alignItems: 'center' },
         cellRenderer: (params) => {
-            const canEditDelet = user?.role === 'admin' || (user?.role === 'teacher' && user?.permissions === 'fullControl');
+            const canEditDelete = user?.role === 'admin' || (user?.role === 'teacher' && user?.permissions === 'fullControl');
+            const canEdit = canEditDelete && hasModulePermission(user, 'courses', 'edit');
+            const canDelete = canEditDelete && hasModulePermission(user, 'courses', 'delete');
             return (
-                <Box sx={{ display: 'flex', gap: 0.5, p: 0.5 }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, bgcolor: 'rgba(0,0,0,0.04)', p: 0.5, borderRadius: 1 }}>
-                        <IconButton size="small" sx={{ color: '#00bcd4' }} title="View" onClick={() => handleViewCourse(params.data)}><Visibility fontSize="inherit" /></IconButton>
-                        <IconButton size="small" sx={{ color: '#2196f3' }} title="Duplicate" onClick={() => handleDuplicateCourse(params.data._id)}><ContentCopy fontSize="inherit" /></IconButton>
-                        <IconButton size="small" sx={{ color: '#ffb300' }} title="Ratings" onClick={() => handleReviewCourse(params.data)}><Star fontSize="inherit" /></IconButton>
-                        <IconButton size="small" sx={{ color: '#4caf50' }} onClick={() => handleEditCourse(params.data._id)} title="Edit" disabled={!canEditDelet}><Edit fontSize="inherit" /></IconButton>
-                        <IconButton size="small" sx={{ color: '#f44336' }} onClick={() => { setCourseToDelete(params.data); setDeleteDialogOpen(true); }} title="Delete" disabled={!canEditDelet}><Delete fontSize="inherit" /></IconButton>
-                    </Box>
-                </Box>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Tooltip title="View Detail">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleViewCourse(params.data)}
+                            sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-link)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)' } }}
+                        >
+                            <Visibility sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Duplicate">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleDuplicateCourse(params.data.id || params.data._id)}
+                            sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' } }}
+                        >
+                            <ContentCopy sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Live Classes">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleManageLiveClasses(params.data)}
+                            sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' } }}
+                        >
+                            <Videocam sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Ratings & Reviews">
+                        <IconButton
+                            size="small"
+                            onClick={() => handleReviewCourse(params.data)}
+                            sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-warning-deep)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)' } }}
+                        >
+                            <Star sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                    {hasModulePermission(user, 'courses', 'edit') && (
+                        <Tooltip title="Edit">
+                            <IconButton
+                                size="small"
+                                onClick={() => handleEditCourse(params.data.id || params.data._id)}
+                                disabled={!canEdit}
+                                sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' } }}
+                            >
+                                <Edit sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                    {hasModulePermission(user, 'courses', 'delete') && (
+                        <Tooltip title="Delete">
+                            <IconButton
+                                size="small"
+                                onClick={() => { setCourseToDelete(params.data); setDeleteDialogOpen(true); }}
+                                disabled={!canDelete}
+                                sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-error-deep)', '&:hover': { borderColor: 'var(--color-vc-error-soft)', bgcolor: 'var(--color-vc-error-soft)20' } }}
+                            >
+                                <Delete sx={{ fontSize: 16 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Stack>
             );
         }
     }

@@ -14,7 +14,6 @@ import {
     TextField,
     InputAdornment,
     Skeleton,
-    IconButton,
     Chip,
     useTheme
 } from '@mui/material';
@@ -25,7 +24,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AudioFileIcon from '@mui/icons-material/AudioFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import api from '../../utils/api';
+import api, { fixUrl } from '../../utils/api';
 import VideoPreview from '../Common/VideoPreview';
 import Divider from '@mui/material/Divider';
 
@@ -40,19 +39,21 @@ const MediaPickerModal = ({ open, onClose, onSelect, type }) => {
         try {
             setLoading(true);
             const response = await api.get('/upload');
-            if (response.data.success) {
-                // Filter by type if provided
-                let filteredFiles = response.data.files;
+            if (response.data && response.data.success) {
+                const rawFiles = response.data.data || response.data.files || (Array.isArray(response.data) ? response.data : []);
+                let filteredFiles = Array.isArray(rawFiles) ? rawFiles : [];
+
                 if (type) {
-                    if (type === 'video') filteredFiles = filteredFiles.filter(f => f.type === 'video');
-                    else if (type === 'image') filteredFiles = filteredFiles.filter(f => f.type === 'image');
-                    else if (type === 'pdf') filteredFiles = filteredFiles.filter(f => f.format === 'pdf');
-                    else if (type === 'audio') filteredFiles = filteredFiles.filter(f => f.type === 'audio');
+                    if (type === 'video') filteredFiles = filteredFiles.filter(f => f.type === 'video' || f.name?.match(/\.(mp4|mkv|mov|avi)$/i));
+                    else if (type === 'image') filteredFiles = filteredFiles.filter(f => f.type === 'image' || f.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i));
+                    else if (type === 'pdf') filteredFiles = filteredFiles.filter(f => f.format === 'pdf' || f.name?.endsWith('.pdf'));
+                    else if (type === 'audio') filteredFiles = filteredFiles.filter(f => f.type === 'audio' || f.name?.match(/\.(mp3|wav)$/i));
                 }
                 setFiles(filteredFiles);
             }
         } catch (error) {
-            
+            console.error('Failed to fetch picker files:', error);
+            setFiles([]);
         } finally {
             setLoading(false);
         }
@@ -66,7 +67,7 @@ const MediaPickerModal = ({ open, onClose, onSelect, type }) => {
     }, [open]);
 
     const filteredFiles = files.filter(file =>
-        file.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (file.title || file.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const getFileIcon = (file) => {
@@ -85,35 +86,36 @@ const MediaPickerModal = ({ open, onClose, onSelect, type }) => {
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
             <DialogTitle sx={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 Select from Media Library
-                <TextField
-                    size="small"
-                    placeholder="Search files..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon fontSize="small" />
-                            </InputAdornment>
-                        ),
-                        sx: { borderRadius: 2 }
-                    }}
-                />
+                <Chip label={`${filteredFiles.length} Available`} color="primary" size="small" variant="outlined" />
             </DialogTitle>
-            <DialogContent dividers sx={{ bgcolor: 'action.hover', p: 0 }}>
-                <Grid container sx={{ height: 500 }}>
-                    {/* Left Column: File List */}
-                    <Grid item xs={12} md={selectedFile ? 8 : 12} sx={{
-                        p: 2,
-                        height: '100%',
-                        overflowY: 'auto',
-                        borderRight: selectedFile ? '1px solid' : 'none',
-                        borderColor: 'divider',
-                        transition: 'all 0.3s ease'
-                    }}>
+            <Divider />
+
+            <DialogContent sx={{ p: 0, minHeight: '60vh', display: 'flex', flexDirection: 'column' }}>
+                {/* Search Bar */}
+                <Box sx={{ p: 2, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search media files..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon color="action" />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Box>
+
+                {/* Main Content Area */}
+                <Grid container sx={{ flexGrow: 1, minHeight: 0 }}>
+                    {/* Left Column: Media Grid */}
+                    <Grid item xs={12} md={selectedFile ? 8 : 12} sx={{ p: 2, borderRight: selectedFile ? '1px solid' : 'none', borderColor: 'divider', overflowY: 'auto', maxHeight: '55vh' }}>
                         {loading ? (
                             <Grid container spacing={2}>
                                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
@@ -125,44 +127,66 @@ const MediaPickerModal = ({ open, onClose, onSelect, type }) => {
                         ) : filteredFiles.length === 0 ? (
                             <Box sx={{ textAlign: 'center', py: 8 }}>
                                 <InsertDriveFileIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                                <Typography color="text.secondary">No files found</Typography>
+                                <Typography color="text.secondary" fontWeight={600}>No files found</Typography>
                             </Box>
                         ) : (
                             <Grid container spacing={2}>
-                                {filteredFiles.map((file) => (
-                                    <Grid item xs={12} sm={4} md={selectedFile ? 4 : 3} key={file.name}>
-                                        <Card
-                                            onClick={() => setSelectedFile(file)}
-                                            sx={{
-                                                cursor: 'pointer',
-                                                height: '100%',
-                                                position: 'relative',
-                                                borderRadius: 2,
-                                                border: '2px solid',
-                                                borderColor: selectedFile?.name === file.name ? 'primary.main' : 'transparent',
-                                                transition: 'all 0.2s',
-                                                '&:hover': { transform: 'scale(1.02)' }
-                                            }}
-                                        >
-                                            <Box sx={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
-                                                {file.type === 'image' ? (
-                                                    <CardMedia component="img" image={file.url} sx={{ height: '100%', objectFit: 'cover' }} />
-                                                ) : getFileIcon(file)}
-                                            </Box>
-                                            <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-                                                <Typography variant="caption" noWrap display="block" fontWeight={600}>
-                                                    {file.name}
-                                                </Typography>
-                                            </CardContent>
-                                            {selectedFile?.name === file.name && (
-                                                <CheckCircleIcon
-                                                    color="primary"
-                                                    sx={{ position: 'absolute', top: 5, right: 5, bgcolor: 'white', borderRadius: '50%' }}
-                                                />
-                                            )}
-                                        </Card>
-                                    </Grid>
-                                ))}
+                                {filteredFiles.map((file) => {
+                                    const thumbUrl = file.thumbnailUrl ? fixUrl(file.thumbnailUrl) : (file.type === 'image' ? fixUrl(file.url || file.fileUrl) : null);
+                                    const isSelected = selectedFile && (
+                                        (file._id && selectedFile._id === file._id) || 
+                                        (file.id && selectedFile.id === file.id) || 
+                                        (file.name && selectedFile.name === file.name)
+                                    );
+                                    
+                                    return (
+                                        <Grid item xs={12} sm={4} md={selectedFile ? 4 : 3} key={file._id || file.id || file.name}>
+                                            <Card
+                                                onClick={() => setSelectedFile(file)}
+                                                sx={{
+                                                    cursor: 'pointer',
+                                                    height: '100%',
+                                                    position: 'relative',
+                                                    borderRadius: '12px',
+                                                    border: '2px solid',
+                                                    borderColor: isSelected ? 'var(--color-vc-primary)' : 'var(--color-vc-hairline)',
+                                                    transition: 'all 0.2s',
+                                                    boxShadow: isSelected ? '0 4px 12px rgba(56, 189, 248, 0.2)' : 'none',
+                                                    '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }
+                                                }}
+                                            >
+                                                <Box sx={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'var(--color-vc-canvas-soft)', overflow: 'hidden', position: 'relative' }}>
+                                                    {thumbUrl ? (
+                                                        <CardMedia component="img" image={thumbUrl} sx={{ height: '100%', width: '100%', objectFit: 'cover' }} />
+                                                    ) : getFileIcon(file)}
+
+                                                    {/* Selection Overlay */}
+                                                    {isSelected && (
+                                                        <Box sx={{
+                                                            position: 'absolute',
+                                                            top: 0, left: 0, right: 0, bottom: 0,
+                                                            bgcolor: 'rgba(56, 189, 248, 0.15)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            backdropFilter: 'blur(1px)'
+                                                        }}>
+                                                            <CheckCircleIcon color="primary" sx={{ fontSize: 40, bgcolor: 'white', borderRadius: '50%' }} />
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                    <Typography variant="caption" noWrap display="block" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                                                        {file.title || file.name}
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)', fontSize: '0.65rem' }}>
+                                                        {file.format ? file.format.toUpperCase() : 'FILE'}
+                                                    </Typography>
+                                                </CardContent>
+                                            </Card>
+                                        </Grid>
+                                    );
+                                })}
                             </Grid>
                         )}
                     </Grid>
@@ -175,68 +199,52 @@ const MediaPickerModal = ({ open, onClose, onSelect, type }) => {
                             display: 'flex',
                             flexDirection: 'column',
                             bgcolor: 'background.paper',
-                            animation: 'fadeIn 0.3s'
+                            maxHeight: '55vh',
+                            overflowY: 'auto'
                         }}>
                             <Typography variant="subtitle2" fontWeight={800} gutterBottom color="primary">
-                                PREVIEW
+                                Selected File Details
                             </Typography>
-                            <Divider sx={{ mb: 2 }} />
 
-                            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <Box sx={{
-                                    width: '100%',
-                                    height: 200,
-                                    borderRadius: 2,
-                                    overflow: 'hidden',
-                                    bgcolor: 'black',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    boxShadow: theme.shadows[4]
-                                }}>
-                                    {selectedFile.type === 'image' ? (
-                                        <img
-                                            src={selectedFile.url}
-                                            alt="Preview"
-                                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                        />
-                                    ) : selectedFile.type === 'video' ? (
-                                        <VideoPreview url={selectedFile.url} height={200} />
-                                    ) : (
-                                        <Box sx={{ textAlign: 'center' }}>
-                                            {getFileIcon(selectedFile)}
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
-                                                No visual preview
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                </Box>
+                            <Box sx={{ my: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
+                                {selectedFile.type === 'image' ? (
+                                    <Box component="img" src={fixUrl(selectedFile.url)} sx={{ maxWidth: '100%', maxHeight: 180, borderRadius: 1, objectFit: 'contain' }} />
+                                ) : selectedFile.type === 'video' ? (
+                                    <Box sx={{ width: '100%' }}>
+                                        <VideoPreview url={selectedFile.url} height={160} />
+                                    </Box>
+                                ) : (
+                                    getFileIcon(selectedFile)
+                                )}
+                            </Box>
 
-                                <Box sx={{ mt: 1 }}>
-                                    <Typography variant="body2" fontWeight={700} noWrap>
-                                        {selectedFile.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" display="block">
-                                        Type: {selectedFile.type.toUpperCase()}
-                                    </Typography>
-                                    {selectedFile.size && (
-                                        <Typography variant="caption" color="text.secondary" display="block">
-                                            Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                                        </Typography>
-                                    )}
-                                </Box>
+                            <Typography variant="subtitle2" noWrap title={selectedFile.title || selectedFile.name} sx={{ fontWeight: 700 }}>
+                                {selectedFile.title || selectedFile.name}
+                            </Typography>
+
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                    Format: {(selectedFile.format || selectedFile.type || 'N/A').toUpperCase()}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" display="block">
+                                    Size: {selectedFile.size ? `${(Number(selectedFile.size) / (1024 * 1024)).toFixed(2)} MB` : 'N/A'}
+                                </Typography>
                             </Box>
                         </Grid>
                     )}
                 </Grid>
             </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
-                <Button onClick={onClose} sx={{ borderRadius: 1.5 }}>Cancel</Button>
+
+            <Divider />
+            <DialogActions sx={{ px: 3, py: 2 }}>
+                <Button onClick={onClose} color="inherit" sx={{ fontWeight: 700 }}>
+                    Cancel
+                </Button>
                 <Button
-                    variant="contained"
                     onClick={handleSelect}
+                    variant="contained"
                     disabled={!selectedFile}
-                    sx={{ borderRadius: 1.5, px: 4, fontWeight: 700 }}
+                    sx={{ fontWeight: 700, px: 3, borderRadius: '8px' }}
                 >
                     Select File
                 </Button>

@@ -1,60 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../utils/api';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Box,
-    Typography,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Avatar,
-    Chip,
-    Button,
-    IconButton,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Stack,
-    Tooltip,
-    CircularProgress
+    Box, Dialog, DialogTitle, DialogContent, DialogActions,
+    Button, TextField, Typography, Stack, Avatar, Chip, IconButton
 } from '@mui/material';
-import {
-    CheckCircle as ApproveIcon,
-    Cancel as RejectIcon,
-    Visibility as ViewIcon,
-    Info as InfoIcon
-} from '@mui/icons-material';
-import { toast } from 'react-hot-toast';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { format } from 'date-fns';
+import api from '../../utils/api';
+import { toast } from 'react-toastify';
 
 const ReferralJoinRequests = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+
+    // Dialog states
     const [selectedRequest, setSelectedRequest] = useState(null);
-    const [processing, setProcessing] = useState(false);
-    const [adminMessage, setAdminMessage] = useState('');
     const [openDialog, setOpenDialog] = useState(false);
-    const [dialogMode, setDialogMode] = useState('approve'); // 'approve' or 'reject'
+    const [dialogMode, setDialogMode] = useState('approve');
+    const [adminMessage, setAdminMessage] = useState('');
+    const [processing, setProcessing] = useState(false);
 
-    useEffect(() => {
-        fetchRequests();
-    }, []);
-
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
+        setLoading(true);
         try {
             const res = await api.get('/referrals/admin/join-requests');
-            setRequests(res.data.data);
+            const data = res.data?.data || res.data || [];
+            setRequests(Array.isArray(data) ? data : []);
         } catch (error) {
-            toast.error('Failed to load requests');
+            console.error('Failed to load join requests:', error);
+            toast.error('Failed to load referral join requests');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchRequests();
+    }, [fetchRequests]);
 
     const handleOpenDialog = (request, mode) => {
         setSelectedRequest(request);
@@ -81,138 +71,190 @@ const ReferralJoinRequests = () => {
         }
     };
 
-    const getStatusChip = (status) => {
-        switch (status) {
-            case 'approved': return <Chip label="Approved" color="success" size="small" variant="outlined" />;
-            case 'rejected': return <Chip label="Rejected" color="error" size="small" variant="outlined" />;
-            default: return <Chip label="Pending" color="warning" size="small" variant="outlined" />;
-        }
-    };
+    const filteredRequests = useMemo(() => {
+        return requests.filter(req => {
+            const userName = (req.user?.name || req.userName || '').toLowerCase();
+            const email = (req.user?.email || req.email || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
 
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}><CircularProgress /></Box>;
+            const matchesSearch = userName.includes(term) || email.includes(term);
+            if (!matchesSearch) return false;
+
+            if (statusFilter !== 'all' && (req.status || 'pending') !== statusFilter) return false;
+            return true;
+        });
+    }, [requests, searchTerm, statusFilter]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Applications', value: requests.length, icon: <HowToRegIcon />, color: 'primary' },
+        { title: 'Pending Review', value: requests.filter(r => r.status === 'pending').length, icon: <PendingActionsIcon />, color: 'warning' },
+        { title: 'Approved Partners', value: requests.filter(r => r.status === 'approved').length, icon: <CheckCircleIcon />, color: 'success' },
+        { title: 'Rejected', value: requests.filter(r => r.status === 'rejected').length, icon: <CancelIcon />, color: 'error' }
+    ], [requests]);
+
+    const filterConfigs = useMemo(() => [
+        {
+            key: 'status',
+            label: 'Status',
+            options: [
+                { value: 'all', label: 'All Statuses' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'approved', label: 'Approved' },
+                { value: 'rejected', label: 'Rejected' }
+            ]
+        }
+    ], []);
+
+    const filterValues = useMemo(() => ({ status: statusFilter }), [statusFilter]);
+    const filterSetters = useMemo(() => ({ status: setStatusFilter }), []);
+
+    const columns = useMemo(() => [
+        {
+            field: 'user',
+            headerName: 'STUDENT NAME',
+            flex: 1.5,
+            minWidth: 220,
+            cellRenderer: (params) => {
+                const user = params.data.user || {};
+                const name = user.name || params.data.userName || 'Student';
+                const email = user.email || params.data.email || 'N/A';
+                return (
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13, fontWeight: 700 }}>
+                            {name.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Box>
+                            <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                                {name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                                {email}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                );
+            }
+        },
+        {
+            field: 'status',
+            headerName: 'STATUS',
+            width: 140,
+            cellRenderer: (params) => {
+                const status = params.data.status || 'pending';
+                const color = status === 'approved' ? 'success' : status === 'rejected' ? 'error' : 'warning';
+                return (
+                    <Chip
+                        label={status.toUpperCase()}
+                        color={color}
+                        size="small"
+                        sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                    />
+                );
+            }
+        },
+        {
+            field: 'createdAt',
+            headerName: 'SUBMITTED DATE',
+            width: 160,
+            valueGetter: (params) => {
+                const d = params.data.createdAt;
+                return d ? format(new Date(d), 'MMM dd, yyyy') : 'N/A';
+            }
+        },
+        {
+            field: 'actions',
+            headerName: 'ACTIONS',
+            width: 160,
+            cellRenderer: (params) => {
+                const status = params.data.status || 'pending';
+                if (status !== 'pending') {
+                    return <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>Processed</Typography>;
+                }
+                return (
+                    <Stack direction="row" spacing={1}>
+                        <IconButton
+                            size="small"
+                            onClick={() => handleOpenDialog(params.data, 'approve')}
+                            sx={{ color: 'var(--color-vc-success)' }}
+                            title="Approve Application"
+                        >
+                            <CheckCircleIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                            size="small"
+                            onClick={() => handleOpenDialog(params.data, 'reject')}
+                            sx={{ color: 'var(--color-vc-error)' }}
+                            title="Reject Application"
+                        >
+                            <CancelIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                );
+            }
+        }
+    ], []);
 
     return (
-        <Box sx={{ p: 4 }}>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                    <Typography variant="h4" fontWeight={900}>Referral Joining Requests</Typography>
-                    <Typography variant="body2" color="text.secondary">Review and manage student applications for the referral program.</Typography>
-                </Box>
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Referral Joining Requests
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Review and manage student applications for the referral partner program
+                </Typography>
             </Box>
 
-            <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 800 }}>Student</TableCell>
-                            <TableCell sx={{ fontWeight: 800 }}>Request Date</TableCell>
-                            <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                            <TableCell sx={{ fontWeight: 800 }}>Admin Note</TableCell>
-                            <TableCell sx={{ fontWeight: 800 }} align="right">Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {requests.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 10 }}>
-                                    <Typography color="text.secondary">No join requests found</Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            requests.map((request) => (
-                                <TableRow key={request._id} hover>
-                                    <TableCell>
-                                        <Stack direction="row" spacing={2} alignItems="center">
-                                            <Avatar src={request.user?.avatar}>{request.user?.name?.charAt(0)}</Avatar>
-                                            <Box>
-                                                <Typography variant="subtitle2" fontWeight={800}>{request.user?.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">{request.user?.email}</Typography>
-                                            </Box>
-                                        </Stack>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">{format(new Date(request.createdAt), 'MMM dd, yyyy')}</Typography>
-                                        <Typography variant="caption" color="text.secondary">{format(new Date(request.createdAt), 'hh:mm a')}</Typography>
-                                    </TableCell>
-                                    <TableCell>{getStatusChip(request.status)}</TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2" sx={{ maxWidth: 200 }} noWrap>
-                                            {request.adminMessage || '-'}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {request.status === 'pending' ? (
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Button
-                                                    size="small"
-                                                    variant="contained"
-                                                    color="success"
-                                                    startIcon={<ApproveIcon />}
-                                                    onClick={() => handleOpenDialog(request, 'approve')}
-                                                    sx={{ borderRadius: 2, fontWeight: 800 }}
-                                                >
-                                                    Approve
-                                                </Button>
-                                                <Button
-                                                    size="small"
-                                                    variant="outlined"
-                                                    color="error"
-                                                    startIcon={<RejectIcon />}
-                                                    onClick={() => handleOpenDialog(request, 'reject')}
-                                                    sx={{ borderRadius: 2, fontWeight: 800 }}
-                                                >
-                                                    Reject
-                                                </Button>
-                                            </Stack>
-                                        ) : (
-                                            <Tooltip title={request.adminMessage || "No notes"}>
-                                                <IconButton size="small">
-                                                    <InfoIcon color="action" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <GenericMetrics items={metricsItems} />
 
-            {/* Process Dialog */}
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} fullWidth maxWidth="xs" PaperProps={{ sx: { borderRadius: 4 } }}>
-                <DialogTitle sx={{ fontWeight: 900 }}>
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                onSearchChange={(e) => setSearchTerm(e.target.value)}
+                searchPlaceholder="Search applicant name or email..."
+                filterConfigs={filterConfigs}
+                filterValues={filterValues}
+                filterSetters={filterSetters}
+            />
+
+            <TableUI
+                rowData={filteredRequests}
+                columnDefs={columns}
+                loading={loading}
+            />
+
+            {/* Action Review Dialog Modal */}
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>
                     {dialogMode === 'approve' ? 'Approve Joining Request' : 'Reject Joining Request'}
                 </DialogTitle>
-                <DialogContent>
-                    <Stack spacing={3} sx={{ mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                            {dialogMode === 'approve' 
-                                ? `Are you sure you want to approve ${selectedRequest?.user?.name}'s request? They will receive their referral code immediately.`
-                                : `Please provide a reason for rejecting ${selectedRequest?.user?.name}'s request.`
-                            }
-                        </Typography>
-                        <TextField
-                            label="Admin Message (Optional)"
-                            multiline
-                            rows={3}
-                            fullWidth
-                            placeholder="Type a message for the student..."
-                            value={adminMessage}
-                            onChange={(e) => setAdminMessage(e.target.value)}
-                        />
-                    </Stack>
+                <DialogContent dividers>
+                    {selectedRequest && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 1 }}>
+                            <Typography variant="body2">
+                                Applicant: <strong>{selectedRequest.user?.name || selectedRequest.userName}</strong>
+                            </Typography>
+                            <TextField
+                                label="Admin Note / Message"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                                value={adminMessage}
+                                onChange={(e) => setAdminMessage(e.target.value)}
+                                placeholder="Enter reason or note for student..."
+                            />
+                        </Box>
+                    )}
                 </DialogContent>
-                <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setOpenDialog(false)} color="inherit" sx={{ fontWeight: 800 }}>Cancel</Button>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button onClick={() => setOpenDialog(false)} variant="outlined" color="inherit">Cancel</Button>
                     <Button
+                        onClick={handleProcess}
                         variant="contained"
                         color={dialogMode === 'approve' ? 'success' : 'error'}
-                        onClick={handleProcess}
                         disabled={processing}
-                        sx={{ borderRadius: 2, px: 3, fontWeight: 900 }}
                     >
-                        {processing ? 'Processing...' : dialogMode === 'approve' ? 'Approve Now' : 'Reject Request'}
+                        Confirm {dialogMode === 'approve' ? 'Approve' : 'Reject'}
                     </Button>
                 </DialogActions>
             </Dialog>

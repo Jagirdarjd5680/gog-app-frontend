@@ -12,7 +12,14 @@ const BlogViewModal = ({ open, onClose, blog }) => {
     if (!blog) return null;
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth scroll="paper">
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            maxWidth="lg" 
+            fullWidth 
+            scroll="paper"
+            PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+        >
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Chip label={blog.category?.name || 'Uncategorized'} color="primary" variant="outlined" size="small" />
@@ -69,11 +76,11 @@ const BlogViewModal = ({ open, onClose, blog }) => {
                         src={blog.thumbnail}
                         sx={{
                             width: '100%',
-                            maxHeight: 400,
+                            maxHeight: 280,
                             objectFit: 'cover',
-                            borderRadius: 4,
+                            borderRadius: 3,
                             mb: 4,
-                            boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.06)'
                         }}
                     />
                 )}

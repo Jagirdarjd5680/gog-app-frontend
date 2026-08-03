@@ -94,6 +94,20 @@ const UserFeeHistory = ({ userId, user: userData }) => {
                     size="small"
                     onClick={fetchFeeRecords}
                     disabled={loading}
+                    sx={{
+                        textTransform: 'none',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                        borderRadius: '6px',
+                        color: 'var(--color-vc-ink)',
+                        borderColor: 'var(--color-vc-hairline)',
+                        bgcolor: 'var(--color-vc-canvas)',
+                        '&:hover': {
+                            bgcolor: 'var(--color-vc-canvas-soft)',
+                            borderColor: 'var(--color-vc-hairline-strong)'
+                        }
+                    }}
                 >
                     Refresh Records
                 </Button>
@@ -107,67 +121,81 @@ const UserFeeHistory = ({ userId, user: userData }) => {
                             variant="outlined" 
                             sx={{ 
                                 mb: 1.5, 
-                                borderRadius: '12px !important', 
+                                borderRadius: '6px !important', 
                                 overflow: 'hidden',
                                 '&:before': { display: 'none' },
                                 border: '1px solid',
-                                borderColor: record.remainingAmount > 0 ? 'warning.light' : 'divider',
-                                '&.Mui-expanded': {
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
-                                }
+                                borderColor: record.remainingAmount > 0 ? 'var(--color-vc-warning)' : 'var(--color-vc-hairline)',
+                                bgcolor: 'var(--color-vc-canvas)',
+                                boxShadow: 'none'
                             }}
                         >
                             <AccordionSummary 
-                                expandIcon={<ExpandMoreIcon />}
+                                expandIcon={<ExpandMoreIcon sx={{ fontSize: 18, color: 'var(--color-vc-mute)' }} />}
                                 sx={{ 
-                                    bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                                    px: 2
+                                    bgcolor: 'var(--color-vc-canvas-soft)',
+                                    borderBottom: '1px solid var(--color-vc-hairline)',
+                                    px: 2.5
                                 }}
                             >
                                 <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%', mr: 2 }}>
                                     <Box sx={{ flexGrow: 1 }}>
-                                        <Typography variant="subtitle1" fontWeight={700}>
+                                        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                                             {record.course?.title || 'Course Fee'}
                                         </Typography>
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)' }}>
                                             Batch: {record.batch?.name || 'Unassigned'}
                                         </Typography>
                                     </Box>
                                     <Stack direction="row" spacing={2} alignItems="center">
                                         <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
-                                            <Typography variant="caption" color="text.secondary" display="block">Remaining</Typography>
-                                            <Typography variant="body2" fontWeight={700} color={record.remainingAmount > 0 ? 'error.main' : 'success.main'}>
+                                            <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', display: 'block' }}>Remaining</Typography>
+                                            <Typography sx={{ fontSize: '12px', fontWeight: 700, fontFamily: '"JetBrains Mono", monospace', color: record.remainingAmount > 0 ? 'var(--color-vc-error-deep)' : 'var(--color-vc-success-deep)' }}>
                                                 ₹{record.remainingAmount?.toLocaleString()}
                                             </Typography>
                                         </Box>
                                         <Chip
                                             label={STATUS_CONFIG[record.status]?.label || record.status}
-                                            color={STATUS_CONFIG[record.status]?.color || 'default'}
                                             size="small"
-                                            sx={{ fontWeight: 700, height: 24 }}
+                                            sx={{ 
+                                                fontWeight: 600, 
+                                                fontSize: '10px',
+                                                borderRadius: '4px',
+                                                height: 20,
+                                                bgcolor: record.status === 'paid' ? 'var(--color-vc-success-soft)' :
+                                                         record.status === 'partial' ? 'var(--color-vc-warning-soft)' :
+                                                         record.status === 'overdue' ? 'var(--color-vc-error-soft)' : 'var(--color-vc-canvas-soft)',
+                                                color: record.status === 'paid' ? 'var(--color-vc-success-deep)' :
+                                                       record.status === 'partial' ? 'var(--color-vc-warning-deep)' :
+                                                       record.status === 'overdue' ? 'var(--color-vc-error-deep)' : 'var(--color-vc-mute)',
+                                                border: '1px solid',
+                                                borderColor: record.status === 'paid' ? 'var(--color-vc-success-soft)' :
+                                                             record.status === 'partial' ? 'var(--color-vc-warning-soft)' :
+                                                             record.status === 'overdue' ? 'var(--color-vc-error-soft)' : 'var(--color-vc-hairline)'
+                                            }}
                                         />
                                     </Stack>
                                 </Stack>
                             </AccordionSummary>
-                            <AccordionDetails sx={{ p: 2 }}>
-                                <Stack direction="row" spacing={3} sx={{ mb: 2, p: 2, bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
+                            <AccordionDetails sx={{ p: 2.5 }}>
+                                <Stack direction="row" spacing={3} sx={{ mb: 3, p: 2, bgcolor: 'var(--color-vc-canvas-soft)', border: '1px solid var(--color-vc-hairline)', borderRadius: '6px' }}>
                                     <Box flex={1}>
-                                        <Typography variant="caption" color="text.secondary" display="block">Total Fee</Typography>
-                                        <Typography variant="subtitle2" fontWeight={700}>₹{record.finalFee?.toLocaleString()}</Typography>
+                                        <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', mb: 0.5 }}>Total Fee</Typography>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-vc-ink)', fontFamily: '"JetBrains Mono", monospace' }}>₹{record.finalFee?.toLocaleString()}</Typography>
                                     </Box>
                                     <Box flex={1}>
-                                        <Typography variant="caption" color="text.secondary" display="block">Discount</Typography>
-                                        <Typography variant="subtitle2" fontWeight={700}>₹{(record.discount || 0).toLocaleString()}</Typography>
+                                        <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', mb: 0.5 }}>Discount</Typography>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-vc-ink)', fontFamily: '"JetBrains Mono", monospace' }}>₹{(record.discount || 0).toLocaleString()}</Typography>
                                     </Box>
                                     <Box flex={1}>
-                                        <Typography variant="caption" color="text.secondary" display="block">Paid Amount</Typography>
-                                        <Typography variant="subtitle2" fontWeight={700} color="success.main">₹{record.paidAmount?.toLocaleString()}</Typography>
+                                        <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', mb: 0.5 }}>Paid Amount</Typography>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-vc-success-deep)', fontFamily: '"JetBrains Mono", monospace' }}>₹{record.paidAmount?.toLocaleString()}</Typography>
                                     </Box>
                                 </Stack>
 
                                 <Box>
-                                    <Typography variant="subtitle2" fontWeight={700} color="primary" mb={1.5} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <PaymentIcon sx={{ fontSize: 18 }} />
+                                    <Typography sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-vc-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <PaymentIcon sx={{ fontSize: 16 }} />
                                         Payment History
                                     </Typography>
                                     <PaymentHistoryTable 
@@ -183,7 +211,9 @@ const UserFeeHistory = ({ userId, user: userData }) => {
                 </Box>
             ) : (
                 <Box sx={{ py: 5, textAlign: 'center' }}>
-                    <Typography variant="body1" color="text.secondary">No fee records found for this user.</Typography>
+                    <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit' }}>
+                        No fee records found for this user.
+                    </Typography>
                 </Box>
             )}
 

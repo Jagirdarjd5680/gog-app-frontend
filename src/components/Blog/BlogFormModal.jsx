@@ -9,13 +9,10 @@ import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CollectionsIcon from '@mui/icons-material/Collections';
-import LinkIcon from '@mui/icons-material/Link';
 import CloseIcon from '@mui/icons-material/Close';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import MediaPickerModal from '../Media/MediaPickerModal';
+import UniversalUpload from '../Common/UniversalUpload';
 
 const validationSchema = Yup.object({
     title: Yup.string().required('Title is required'),
@@ -27,8 +24,6 @@ const validationSchema = Yup.object({
 const BlogFormModal = ({ open, onClose, blog, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState([]);
-    const [uploading, setUploading] = useState(false);
-    const [pickerOpen, setPickerOpen] = useState(false);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -52,26 +47,7 @@ const BlogFormModal = ({ open, onClose, blog, onSuccess }) => {
         excerpt: blog?.excerpt || '',
     };
 
-    const handleImageUpload = async (e, setFieldValue) => {
-        const file = e.target.files[0];
-        if (!file) return;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
-        setUploading(true);
-        try {
-            const { data } = await api.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            setFieldValue('thumbnail', data.url);
-            toast.success('Image uploaded');
-        } catch (error) {
-            toast.error('Upload failed');
-        } finally {
-            setUploading(false);
-        }
-    };
 
     const handleSubmit = async (values) => {
         setLoading(true);
@@ -156,101 +132,13 @@ const BlogFormModal = ({ open, onClose, blog, onSuccess }) => {
                                     {/* Right Column: Sidebar Settings */}
                                     <Grid item xs={12} md={4}>
                                         <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, mb: 3 }}>
-                                            <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ color: 'text.secondary' }}>
-                                                THUMBNAIL IMAGE
-                                            </Typography>
-
-                                            {/* Preview Area */}
-                                            <Box sx={{ position: 'relative', width: '100%', pt: '56.25%', bgcolor: 'action.hover', borderRadius: 2, overflow: 'hidden', mb: 2 }}>
-                                                {values.thumbnail ? (
-                                                    <>
-                                                        <Avatar
-                                                            src={values.thumbnail}
-                                                            variant="rounded"
-                                                            sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                                                        />
-                                                        <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}>
-                                                            <Button
-                                                                size="small"
-                                                                variant="contained"
-                                                                color="error"
-                                                                onClick={() => setFieldValue('thumbnail', '')}
-                                                                sx={{ minWidth: 0, p: 0.5, borderRadius: '50%', bgcolor: 'rgba(211, 47, 47, 0.9)', '&:hover': { bgcolor: 'error.dark' } }}
-                                                            >
-                                                                <CloseIcon sx={{ fontSize: 16 }} />
-                                                            </Button>
-                                                        </Box>
-                                                    </>
-                                                ) : (
-                                                    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <CloudUploadIcon color="disabled" sx={{ fontSize: 40 }} />
-                                                        <Typography variant="caption" color="text.secondary">No Image selected</Typography>
-                                                    </Box>
-                                                )}
-                                                {uploading && (
-                                                    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                                                        <CircularProgress size={24} color="inherit" />
-                                                    </Box>
-                                                )}
-                                            </Box>
-
-                                            {/* Selection Buttons */}
-                                            <Stack spacing={1} sx={{ mb: 2 }}>
-                                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                                    <input
-                                                        accept="image/*"
-                                                        style={{ display: 'none' }}
-                                                        id="blog-image-upload"
-                                                        type="file"
-                                                        onChange={(e) => handleImageUpload(e, setFieldValue)}
-                                                    />
-                                                    <label htmlFor="blog-image-upload" style={{ flex: 1 }}>
-                                                        <Button
-                                                            fullWidth
-                                                            component="span"
-                                                            variant="outlined"
-                                                            size="small"
-                                                            startIcon={<CloudUploadIcon />}
-                                                            disabled={uploading}
-                                                            sx={{ borderRadius: 1.5, fontSize: 11 }}
-                                                        >
-                                                            Upload
-                                                        </Button>
-                                                    </label>
-                                                    <Button
-                                                        fullWidth
-                                                        variant="outlined"
-                                                        size="small"
-                                                        startIcon={<CollectionsIcon />}
-                                                        onClick={() => setPickerOpen(true)}
-                                                        sx={{ flex: 1, borderRadius: 1.5, fontSize: 11 }}
-                                                    >
-                                                        Gallery
-                                                    </Button>
-                                                </Box>
-
-                                                <Divider>
-                                                    <Typography variant="caption" color="text.secondary">OR</Typography>
-                                                </Divider>
-
-                                                <TextField
-                                                    fullWidth
-                                                    size="small"
-                                                    label="External Image URL"
-                                                    name="thumbnail"
-                                                    value={values.thumbnail}
-                                                    onChange={handleChange}
-                                                    placeholder="https://example.com/image.jpg"
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <LinkIcon fontSize="small" />
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    sx={{ '& .MuiInputBase-input': { fontSize: 12 } }}
-                                                />
-                                            </Stack>
+                                            <UniversalUpload
+                                                label="Thumbnail Image"
+                                                value={values.thumbnail}
+                                                onChange={(url) => setFieldValue('thumbnail', url)}
+                                                type="image"
+                                                placeholder="https://example.com/image.jpg"
+                                            />
 
                                             <TextField
                                                 fullWidth
@@ -308,12 +196,7 @@ const BlogFormModal = ({ open, onClose, blog, onSuccess }) => {
                                 </Button>
                             </DialogActions>
 
-                            <MediaPickerModal
-                                open={pickerOpen}
-                                onClose={() => setPickerOpen(false)}
-                                type="image"
-                                onSelect={(file) => setFieldValue('thumbnail', file.url)}
-                            />
+
                         </Form>
                     )}
                 </Formik>

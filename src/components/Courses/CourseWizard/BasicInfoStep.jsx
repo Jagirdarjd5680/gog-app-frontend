@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import {
     Grid, TextField, MenuItem, FormControl, InputLabel, Select, Box, Typography, Button, Divider,
-    Card, CardContent, InputAdornment, CircularProgress, LinearProgress, Switch, FormControlLabel, Stack, Chip,
-    ToggleButtonGroup, ToggleButton, Alert
+    Card, CardContent, InputAdornment, CircularProgress, LinearProgress, Switch, FormControlLabel, Stack, Alert,
+    IconButton, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import TitleIcon from '@mui/icons-material/Title';
@@ -10,12 +10,13 @@ import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import CategoryIcon from '@mui/icons-material/Category';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import SettingsIcon from '@mui/icons-material/Settings';
-import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import CollectionsIcon from '@mui/icons-material/Collections';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
-import GroupsIcon from '@mui/icons-material/Groups';
-import VideoCallIcon from '@mui/icons-material/VideoCall';
+import AddIcon from '@mui/icons-material/Add';
+import LanguageIcon from '@mui/icons-material/Language';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
+import DevicesIcon from '@mui/icons-material/Devices';
 import VideoPreview from '../../Common/VideoPreview';
 import { uploadFile } from '../../../utils/upload';
 import api, { fixUrl } from '../../../utils/api';
@@ -28,22 +29,28 @@ const SectionHeader = ({ icon, title, subtitle }) => (
     <Box sx={{ mb: 3 }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
             <Box sx={{ 
-                p: 1, borderRadius: '10px', bgcolor: 'primary.light', color: 'primary.main',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                p: 1, 
+                borderRadius: '6px', 
+                bgcolor: 'var(--color-vc-canvas-soft-2)', 
+                color: 'var(--color-vc-ink)',
+                border: '1px solid var(--color-vc-hairline)',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center'
             }}>
                 {icon}
             </Box>
             <Box>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#1e293b', lineHeight: 1.2 }}>
+                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                     {title}
                 </Typography>
-                {subtitle && <Typography variant="caption" color="text.secondary">{subtitle}</Typography>}
+                {subtitle && <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 }}>{subtitle}</Typography>}
             </Box>
         </Stack>
     </Box>
 );
 
-const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [], courseId }) => {
+const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, categories = [], courseId, onCategoryCreated }) => {
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -51,6 +58,34 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerType, setPickerType] = useState('image');
     const [pickerTarget, setPickerTarget] = useState('thumbnail');
+
+    // New Category States
+    const [newCatOpen, setNewCatOpen] = useState(false);
+    const [newCatName, setNewCatName] = useState('');
+    const [addingCat, setAddingCat] = useState(false);
+
+    const handleAddNewCategory = async () => {
+        if (!newCatName.trim()) return toast.error('Category name is required');
+        try {
+            setAddingCat(true);
+            const slug = newCatName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+            const { data } = await api.post('/categories', { name: newCatName.trim(), slug });
+            if (data.success || data.name) {
+                toast.success('Category added successfully!');
+                const addedCat = data.data || data;
+                if (onCategoryCreated) {
+                    onCategoryCreated(addedCat);
+                }
+                setFieldValue('category', addedCat._id || addedCat.id);
+                setNewCatName('');
+                setNewCatOpen(false);
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to add category');
+        } finally {
+            setAddingCat(false);
+        }
+    };
 
     const handleOpenPicker = (type, target) => {
         setPickerType(type);
@@ -67,7 +102,6 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
         }
         toast.success('Media selected from library');
     };
-
 
     const handleImageUpload = async (event) => {
         const file = event.target.files[0];
@@ -86,7 +120,6 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                     toast.success('Image uploaded successfully');
                 }
             } catch (error) {
-                
                 toast.error('Failed to upload image');
                 setFieldValue('thumbnailPreview', '');
             } finally {
@@ -95,17 +128,42 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
         }
     };
 
+    const inputStyles = {
+        fontFamily: 'inherit',
+        fontSize: '13px',
+        color: 'var(--color-vc-ink)',
+        '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--color-vc-hairline)',
+            borderRadius: '6px'
+        },
+        '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--color-vc-hairline-strong)'
+        },
+        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--color-vc-hairline-strong)'
+        }
+    };
+
+    const labelStyles = {
+        fontFamily: 'inherit',
+        fontSize: '13px',
+        color: 'var(--color-vc-mute)',
+        '&.Mui-focused': {
+            color: 'var(--color-vc-ink)'
+        }
+    };
+
     return (
-        <Box sx={{ p: 1 }}>
+        <Box sx={{ p: 0.5 }}>
             <Grid container spacing={3}>
                 {/* Main Content Area */}
                 <Grid item xs={12} md={8}>
                     <Stack spacing={3}>
                         {/* General Information Card */}
-                        <Card className="premium-card">
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                             <CardContent sx={{ p: 4 }}>
                                 <SectionHeader 
-                                    icon={<TitleIcon />} 
+                                    icon={<TitleIcon sx={{ fontSize: 18 }} />} 
                                     title="General Information" 
                                     subtitle="Define your course title, category, and level"
                                 />
@@ -121,35 +179,55 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             onChange={handleChange}
                                             error={touched.title && Boolean(errors.title)}
                                             helperText={touched.title && errors.title}
-                                            InputProps={{ sx: { borderRadius: '10px' } }}
+                                            InputLabelProps={{ sx: labelStyles }}
+                                            InputProps={{ sx: inputStyles }}
                                         />
                                     </Grid>
 
                                     <Grid item xs={12} sm={6}>
-                                        <FormControl fullWidth error={touched.category && Boolean(errors.category)}>
-                                            <InputLabel id="category-label">Category</InputLabel>
-                                            <Select
-                                                labelId="category-label"
-                                                id="category"
-                                                name="category"
-                                                value={categories.some(cat => cat._id === values.category) ? values.category : ''}
-                                                label="Category"
-                                                onChange={handleChange}
-                                                sx={{ borderRadius: '10px' }}
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                            <FormControl fullWidth error={touched.category && Boolean(errors.category)}>
+                                                <InputLabel id="category-label" sx={labelStyles}>Category</InputLabel>
+                                                <Select
+                                                    labelId="category-label"
+                                                    id="category"
+                                                    name="category"
+                                                    value={categories.some(cat => (cat._id || cat.id) === values.category) ? values.category : ''}
+                                                    label="Category"
+                                                    onChange={handleChange}
+                                                    sx={inputStyles}
+                                                >
+                                                    <MenuItem value=""><em>Select Category</em></MenuItem>
+                                                    {categories.map((cat) => (
+                                                        <MenuItem key={cat._id || cat.id} value={cat._id || cat.id}>
+                                                            {cat.name}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                            <IconButton 
+                                                onClick={() => setNewCatOpen(true)}
+                                                sx={{ 
+                                                    mt: 0.5, 
+                                                    border: '1px solid var(--color-vc-hairline)', 
+                                                    borderRadius: '6px', 
+                                                    bgcolor: 'var(--color-vc-canvas)', 
+                                                    height: 38, 
+                                                    width: 38,
+                                                    color: 'primary.main',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-canvas-soft)'
+                                                    }
+                                                }}
                                             >
-                                                <MenuItem value=""><em>Select Category</em></MenuItem>
-                                                {categories.map((cat) => (
-                                                    <MenuItem key={cat._id} value={cat._id}>
-                                                        {cat.name}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
+                                                <AddIcon sx={{ fontSize: 18 }} />
+                                            </IconButton>
+                                        </Box>
                                     </Grid>
 
                                     <Grid item xs={12} sm={6}>
                                         <FormControl fullWidth>
-                                            <InputLabel id="level-label">Level</InputLabel>
+                                            <InputLabel id="level-label" sx={labelStyles}>Level</InputLabel>
                                             <Select
                                                 labelId="level-label"
                                                 id="level"
@@ -157,7 +235,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                 value={values.level}
                                                 label="Level"
                                                 onChange={handleChange}
-                                                sx={{ borderRadius: '10px' }}
+                                                sx={inputStyles}
                                             >
                                                 <MenuItem value="beginner">Beginner</MenuItem>
                                                 <MenuItem value="intermediate">Intermediate</MenuItem>
@@ -167,24 +245,27 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                     </Grid>
                                     
                                     <Grid item xs={12}>
-                                        <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', mb: 1, display: 'block', fontFamily: 'inherit' }}>
                                             Course Overview (Rich Text)
                                         </Typography>
                                         <Box sx={{ 
                                             '& .ql-toolbar': { 
-                                                borderRadius: '12px 12px 0 0', 
-                                                border: '1px solid rgba(0,0,0,0.1) !important',
-                                                bgcolor: '#f8fafc' 
+                                                borderRadius: '6px 6px 0 0', 
+                                                border: '1px solid var(--color-vc-hairline) !important',
+                                                bgcolor: 'var(--color-vc-canvas-soft)' 
                                             },
                                             '& .ql-container': { 
-                                                borderRadius: '0 0 12px 12px', 
-                                                border: '1px solid rgba(0,0,0,0.1) !important',
+                                                borderRadius: '0 0 6px 6px', 
+                                                border: '1px solid var(--color-vc-hairline) !important',
                                                 minHeight: '220px',
-                                                fontSize: '1rem',
-                                                bgcolor: 'white'
+                                                fontSize: '13px',
+                                                fontFamily: 'inherit',
+                                                bgcolor: 'var(--color-vc-canvas)',
+                                                color: 'var(--color-vc-ink)'
                                             },
                                             '& .ql-editor': {
-                                                minHeight: '220px'
+                                                minHeight: '220px',
+                                                color: 'var(--color-vc-ink)'
                                             }
                                         }}>
                                             <ReactQuill
@@ -200,85 +281,158 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                         </Card>
 
                         {/* Course Type Card */}
-                        <Card className="premium-card">
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                             <CardContent sx={{ p: 4 }}>
                                 <SectionHeader
-                                    icon={<PublicIcon />}
+                                    icon={<PublicIcon sx={{ fontSize: 18 }} />}
                                     title="Course Type"
                                     subtitle="Online courses are public; Offline courses are private and batch-only"
                                 />
-                                <Stack direction="row" spacing={2}>
+                                <Stack direction="row" spacing={2.5}>
                                     <Box
                                         onClick={() => setFieldValue('courseType', 'online')}
                                         sx={{
-                                            flex: 1, p: 2.5, borderRadius: 3, cursor: 'pointer', transition: 'all 0.2s',
-                                            border: '2px solid',
-                                            borderColor: values.courseType !== 'offline' ? 'primary.main' : 'divider',
-                                            bgcolor: values.courseType !== 'offline' ? 'rgba(99,102,241,0.08)' : 'transparent',
-                                            '&:hover': { borderColor: 'primary.main' }
+                                            flex: 1, p: 2.5, borderRadius: '6px', cursor: 'pointer', transition: 'all 0.15s',
+                                            border: '1px solid',
+                                            borderColor: values.courseType !== 'offline' ? 'var(--color-vc-ink)' : 'var(--color-vc-hairline)',
+                                            bgcolor: values.courseType !== 'offline' ? 'var(--color-vc-canvas-soft)' : 'transparent',
+                                            '&:hover': { borderColor: 'var(--color-vc-hairline-strong)' }
                                         }}
                                     >
-                                        <Stack direction="row" alignItems="center" spacing={1.5}>
-                                            <PublicIcon sx={{ color: values.courseType !== 'offline' ? 'primary.main' : 'text.secondary', fontSize: 28 }} />
+                                        <Stack direction="row" alignItems="center" spacing={2}>
+                                            <PublicIcon sx={{ color: values.courseType !== 'offline' ? 'var(--color-vc-ink)' : 'var(--color-vc-mute)', fontSize: 24 }} />
                                             <Box>
-                                                <Typography fontWeight={700}>Online Course</Typography>
-                                                <Typography variant="caption" color="text.secondary">Visible on homepage, open to all</Typography>
+                                                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Online Course</Typography>
+                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 }}>Visible on homepage, open to all</Typography>
                                             </Box>
                                         </Stack>
                                     </Box>
                                     <Box
                                         onClick={() => setFieldValue('courseType', 'offline')}
                                         sx={{
-                                            flex: 1, p: 2.5, borderRadius: 3, cursor: 'pointer', transition: 'all 0.2s',
-                                            border: '2px solid',
-                                            borderColor: values.courseType === 'offline' ? '#FF9800' : 'divider',
-                                            bgcolor: values.courseType === 'offline' ? 'rgba(255,152,0,0.08)' : 'transparent',
-                                            '&:hover': { borderColor: '#FF9800' }
+                                            flex: 1, p: 2.5, borderRadius: '6px', cursor: 'pointer', transition: 'all 0.15s',
+                                            border: '1px solid',
+                                            borderColor: values.courseType === 'offline' ? 'var(--color-vc-ink)' : 'var(--color-vc-hairline)',
+                                            bgcolor: values.courseType === 'offline' ? 'var(--color-vc-canvas-soft)' : 'transparent',
+                                            '&:hover': { borderColor: 'var(--color-vc-hairline-strong)' }
                                         }}
                                     >
-                                        <Stack direction="row" alignItems="center" spacing={1.5}>
-                                            <LockIcon sx={{ color: values.courseType === 'offline' ? '#FF9800' : 'text.secondary', fontSize: 28 }} />
+                                        <Stack direction="row" alignItems="center" spacing={2}>
+                                            <LockIcon sx={{ color: values.courseType === 'offline' ? 'var(--color-vc-ink)' : 'var(--color-vc-mute)', fontSize: 24 }} />
                                             <Box>
-                                                <Typography fontWeight={700}>Offline Course</Typography>
-                                                <Typography variant="caption" color="text.secondary">Private, assigned batches only</Typography>
+                                                <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Offline Course</Typography>
+                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 }}>Private, assigned batches only</Typography>
                                             </Box>
                                         </Stack>
                                     </Box>
                                 </Stack>
 
                                 {values.courseType === 'offline' && (
-                                    <>
-                                        <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                                    <Box sx={{ mt: 3 }}>
+                                        <Alert 
+                                            severity="warning" 
+                                            sx={{ 
+                                                mb: 2.5, 
+                                                borderRadius: '6px',
+                                                fontSize: '13px',
+                                                bgcolor: 'var(--color-vc-canvas-soft)',
+                                                border: '1px solid var(--color-vc-hairline)',
+                                                color: 'var(--color-vc-ink)'
+                                            }}
+                                        >
                                             This course will <strong>NOT appear on the homepage</strong> or any public pages. It is private and only accessible via assigned batches.
                                         </Alert>
                                         <FormControlLabel
-                                            sx={{ mt: 2 }}
+                                            sx={{ mt: 1 }}
                                             control={
                                                 <Switch
                                                     checked={values.allowOtherBatchMaterials || false}
                                                     onChange={(e) => setFieldValue('allowOtherBatchMaterials', e.target.checked)}
-                                                    color="warning"
+                                                    sx={{
+                                                        '& .MuiSwitch-thumb': {
+                                                            bgcolor: values.allowOtherBatchMaterials ? 'var(--color-vc-ink)' : 'var(--color-vc-mute)'
+                                                        },
+                                                        '& .MuiSwitch-track': {
+                                                            bgcolor: values.allowOtherBatchMaterials ? 'var(--color-vc-ink) !important' : 'var(--color-vc-hairline) !important'
+                                                        }
+                                                    }}
                                                 />
                                             }
                                             label={
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight={600}>Allow Other Batches' Materials</Typography>
-                                                    <Typography variant="caption" color="text.secondary">
+                                                <Box sx={{ ml: 1 }}>
+                                                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Allow Other Batches' Materials</Typography>
+                                                    <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', display: 'block', mt: 0.25 }}>
                                                         Students can view materials from other batches in this course
                                                     </Typography>
                                                 </Box>
                                             }
                                         />
-                                    </>
+                                    </Box>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Platform Access Card */}
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
+                            <CardContent sx={{ p: 4 }}>
+                                <SectionHeader
+                                    icon={<DevicesIcon sx={{ fontSize: 18 }} />}
+                                    title="Allow This Course From"
+                                    subtitle="Choose where students may open and purchase this course"
+                                />
+                                <Stack direction="row" spacing={2.5}>
+                                    {[
+                                        { value: 'web', label: 'Web Only', desc: 'Blocked in the mobile app', icon: LanguageIcon },
+                                        { value: 'app', label: 'App Only', desc: 'Blocked on the website', icon: PhoneIphoneIcon },
+                                        { value: 'both', label: 'Web & App', desc: 'Accessible everywhere', icon: DevicesIcon },
+                                    ].map(({ value, label, desc, icon: OptionIcon }) => {
+                                        const selected = (values.platformAccess || 'both') === value;
+                                        return (
+                                            <Box
+                                                key={value}
+                                                onClick={() => setFieldValue('platformAccess', value)}
+                                                sx={{
+                                                    flex: 1, p: 2.5, borderRadius: '6px', cursor: 'pointer', transition: 'all 0.15s',
+                                                    border: '1px solid',
+                                                    borderColor: selected ? 'var(--color-vc-ink)' : 'var(--color-vc-hairline)',
+                                                    bgcolor: selected ? 'var(--color-vc-canvas-soft)' : 'transparent',
+                                                    '&:hover': { borderColor: 'var(--color-vc-hairline-strong)' }
+                                                }}
+                                            >
+                                                <Stack direction="row" alignItems="center" spacing={2}>
+                                                    <OptionIcon sx={{ color: selected ? 'var(--color-vc-ink)' : 'var(--color-vc-mute)', fontSize: 24 }} />
+                                                    <Box>
+                                                        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>{label}</Typography>
+                                                        <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 }}>{desc}</Typography>
+                                                    </Box>
+                                                </Stack>
+                                            </Box>
+                                        );
+                                    })}
+                                </Stack>
+                                {values.platformAccess && values.platformAccess !== 'both' && (
+                                    <Alert
+                                        severity="info"
+                                        sx={{
+                                            mt: 2.5,
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            bgcolor: 'var(--color-vc-canvas-soft)',
+                                            border: '1px solid var(--color-vc-hairline)',
+                                            color: 'var(--color-vc-ink)'
+                                        }}
+                                    >
+                                        Students opening this course from {values.platformAccess === 'web' ? 'the mobile app' : 'the website'} will see a message telling them it's only available {values.platformAccess === 'web' ? 'on the web' : 'in the mobile application'}.
+                                    </Alert>
                                 )}
                             </CardContent>
                         </Card>
 
                         {/* Pricing & GST Card */}
-                        <Card className="premium-card">
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                             <CardContent sx={{ p: 4 }}>
                                 <SectionHeader 
-                                    icon={<PaymentsIcon />} 
+                                    icon={<PaymentsIcon sx={{ fontSize: 18 }} />} 
                                     title="Pricing & Tax" 
                                     subtitle="Configure your course price and GST settings"
                                 />
@@ -290,14 +444,16 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             name="originalPrice"
                                             label="List Price (Stripped)"
                                             type="number"
+                                            InputLabelProps={{ sx: labelStyles }}
                                             InputProps={{
-                                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                                                startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { color: 'var(--color-vc-mute)' } }}>₹</InputAdornment>,
                                                 inputProps: { min: 0 },
-                                                sx: { borderRadius: '10px' }
+                                                sx: inputStyles
                                             }}
                                             value={values.originalPrice}
                                             onChange={handleChange}
                                             helperText="Original price shown to users"
+                                            FormHelperTextProps={{ sx: { color: 'var(--color-vc-mute)', fontSize: '11px', fontFamily: 'inherit' } }}
                                         />
                                     </Grid>
 
@@ -308,21 +464,23 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             name="price"
                                             label="Selling Price (Active)"
                                             type="number"
+                                            InputLabelProps={{ sx: labelStyles }}
                                             InputProps={{
-                                                startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                                                startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { color: 'var(--color-vc-mute)' } }}>₹</InputAdornment>,
                                                 inputProps: { min: 0 },
-                                                sx: { borderRadius: '10px' }
+                                                sx: inputStyles
                                             }}
                                             value={values.price}
                                             onChange={handleChange}
                                             error={touched.price && Boolean(errors.price)}
                                             helperText={touched.price && errors.price}
+                                            FormHelperTextProps={{ sx: { color: 'var(--color-vc-mute)', fontSize: '11px', fontFamily: 'inherit' } }}
                                         />
                                     </Grid>
 
                                     <Grid item xs={12} sm={6}>
                                         <FormControl fullWidth>
-                                            <InputLabel id="gst-type-label">GST Status</InputLabel>
+                                            <InputLabel id="gst-type-label" sx={labelStyles}>GST Status</InputLabel>
                                             <Select
                                                 labelId="gst-type-label"
                                                 id="gstType"
@@ -330,7 +488,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                 value={values.gstType || 'none'}
                                                 label="GST Status"
                                                 onChange={handleChange}
-                                                sx={{ borderRadius: '10px' }}
+                                                sx={inputStyles}
                                             >
                                                 <MenuItem value="none">No GST</MenuItem>
                                                 <MenuItem value="inclusive">GST Inclusive</MenuItem>
@@ -347,10 +505,11 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                 name="gstPercent"
                                                 label="GST rate (%)"
                                                 type="number"
+                                                InputLabelProps={{ sx: labelStyles }}
                                                 InputProps={{
-                                                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                                                    endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { color: 'var(--color-vc-mute)' } }}>%</InputAdornment>,
                                                     inputProps: { min: 0, max: 100 },
-                                                    sx: { borderRadius: '10px' }
+                                                    sx: inputStyles
                                                 }}
                                                 value={values.gstPercent}
                                                 onChange={handleChange}
@@ -362,17 +521,17 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                         </Card>
 
                         {/* Additional Settings Card */}
-                        <Card className="premium-card">
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                             <CardContent sx={{ p: 4 }}>
                                 <SectionHeader 
-                                    icon={<SettingsIcon />} 
+                                    icon={<SettingsIcon sx={{ fontSize: 18 }} />} 
                                     title="Additional Options" 
                                     subtitle="Course duration, certificates, and social proof"
                                 />
                                 <Grid container spacing={4}>
                                     <Grid item xs={12} sm={6}>
                                         <Stack spacing={1}>
-                                            <Typography variant="body2" fontWeight={600}>Course Valid For</Typography>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Course Valid For</Typography>
                                             <Stack direction="row" spacing={1}>
                                                 <TextField
                                                     fullWidth
@@ -383,14 +542,14 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                     value={values.durationValue || 0}
                                                     onChange={handleChange}
                                                     placeholder="0 = Forever"
-                                                    InputProps={{ sx: { borderRadius: '8px' } }}
+                                                    InputProps={{ sx: inputStyles }}
                                                 />
                                                 <Select
                                                     size="small"
                                                     name="durationUnit"
                                                     value={values.durationUnit || 'months'}
                                                     onChange={handleChange}
-                                                    sx={{ minWidth: 100, borderRadius: '8px' }}
+                                                    sx={{ ...inputStyles, minWidth: 100 }}
                                                 >
                                                     <MenuItem value="days">Days</MenuItem>
                                                     <MenuItem value="months">Months</MenuItem>
@@ -402,7 +561,7 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
 
                                     <Grid item xs={12} sm={6}>
                                         <Stack spacing={1}>
-                                            <Typography variant="body2" fontWeight={600}>Estimated Reading Time</Typography>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Estimated Reading Time</Typography>
                                             <Stack direction="row" spacing={1}>
                                                 <TextField
                                                     fullWidth
@@ -412,14 +571,14 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                     type="number"
                                                     value={values.readingDurationValue || 0}
                                                     onChange={handleChange}
-                                                    InputProps={{ sx: { borderRadius: '8px' } }}
+                                                    InputProps={{ sx: inputStyles }}
                                                 />
                                                 <Select
                                                     size="small"
                                                     name="readingDurationUnit"
                                                     value={values.readingDurationUnit || 'hours'}
                                                     onChange={handleChange}
-                                                    sx={{ minWidth: 100, borderRadius: '8px' }}
+                                                    sx={{ ...inputStyles, minWidth: 100 }}
                                                 >
                                                     <MenuItem value="hours">Hours</MenuItem>
                                                     <MenuItem value="days">Days</MenuItem>
@@ -429,20 +588,27 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                     </Grid>
 
                                     <Grid item xs={12}>
-                                        <Divider />
+                                        <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
                                     </Grid>
 
                                     <Grid item xs={12} sm={6}>
-                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ bgcolor: 'var(--color-vc-canvas-soft)', p: 2, borderRadius: '6px', border: '1px solid var(--color-vc-hairline)' }}>
                                             <Box>
-                                                <Typography variant="body2" fontWeight={700}>Certificate Issuance</Typography>
-                                                <Typography variant="caption" color="text.secondary">Offer a verified certificate on completion</Typography>
+                                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Certificate Issuance</Typography>
+                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', display: 'block', mt: 0.25 }}>Offer a verified certificate on completion</Typography>
                                             </Box>
                                             <Switch
                                                 name="isCertificate"
                                                 checked={values.isCertificate || false}
                                                 onChange={handleChange}
-                                                color="primary"
+                                                sx={{
+                                                    '& .MuiSwitch-thumb': {
+                                                        bgcolor: values.isCertificate ? 'var(--color-vc-ink)' : 'var(--color-vc-mute)'
+                                                    },
+                                                    '& .MuiSwitch-track': {
+                                                        bgcolor: values.isCertificate ? 'var(--color-vc-ink) !important' : 'var(--color-vc-hairline) !important'
+                                                    }
+                                                }}
                                             />
                                         </Stack>
                                     </Grid>
@@ -457,7 +623,8 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                 value={values.certificateName || ''}
                                                 onChange={handleChange}
                                                 placeholder="e.g. Certified Data Scientist"
-                                                InputProps={{ sx: { borderRadius: '10px' } }}
+                                                InputLabelProps={{ sx: labelStyles }}
+                                                InputProps={{ sx: inputStyles }}
                                             />
                                         </Grid>
                                     )}
@@ -471,11 +638,13 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             type="number"
                                             value={values.fakeLikes || 0}
                                             onChange={handleChange}
+                                            InputLabelProps={{ sx: labelStyles }}
                                             InputProps={{ 
-                                                startAdornment: <InputAdornment position="start">♥</InputAdornment>,
-                                                sx: { borderRadius: '10px' } 
+                                                startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { color: 'var(--color-vc-mute)' } }}>♥</InputAdornment>,
+                                                sx: inputStyles 
                                             }}
                                             helperText="Initial likes shown to prospective students"
+                                            FormHelperTextProps={{ sx: { color: 'var(--color-vc-mute)', fontSize: '11px', fontFamily: 'inherit' } }}
                                         />
                                     </Grid>
                                 </Grid>
@@ -488,16 +657,16 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                 <Grid item xs={12} md={4}>
                     <Stack spacing={3}>
                         {/* Course Thumbnail */}
-                        <Card className="premium-card">
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                             <CardContent sx={{ p: 3 }}>
-                                <SectionHeader icon={<CloudUploadIcon />} title="Course Thumbnail" subtitle="Ideal size: 1280x720 (16:9)" />
+                                <SectionHeader icon={<CloudUploadIcon sx={{ fontSize: 18 }} />} title="Course Thumbnail" subtitle="Ideal size: 1280x720 (16:9)" />
                                 
                                 <Box
                                     sx={{
                                         width: '100%',
                                         height: 200,
-                                        border: '2px dashed #cbd5e1',
-                                        borderRadius: '16px',
+                                        border: '2px dashed var(--color-vc-hairline)',
+                                        borderRadius: '8px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
@@ -505,26 +674,26 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                         cursor: 'pointer',
                                         overflow: 'hidden',
                                         position: 'relative',
-                                        transition: 'all 0.3s ease',
-                                        bgcolor: 'rgba(0,0,0,0.02)',
-                                        '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(99, 102, 241, 0.05)' }
+                                        transition: 'all 0.2s ease',
+                                        bgcolor: 'var(--color-vc-canvas-soft-2)',
+                                        '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' }
                                     }}
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     {uploading && (
                                         <Box sx={{
                                             position: 'absolute', inset: 0, zIndex: 10,
-                                            bgcolor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)',
+                                            bgcolor: 'var(--color-vc-canvas)',
                                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
                                         }}>
-                                            <CircularProgress size={40} thickness={4} />
-                                            <Typography variant="caption" fontWeight={800} color="primary" sx={{ mt: 2 }}>
+                                            <CircularProgress size={32} thickness={4} sx={{ color: 'var(--color-vc-ink)' }} />
+                                            <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-ink)', mt: 2, fontFamily: 'inherit' }}>
                                                 {uploadProgress < 100 ? `🚀 UPLOADING ${uploadProgress}%` : '⚙️ PROCESSING & ENCRYPTING...'}
                                             </Typography>
                                             <LinearProgress 
                                                 variant="determinate" 
                                                 value={uploadProgress} 
-                                                sx={{ width: '80%', mt: 1, borderRadius: 5, height: 6 }} 
+                                                sx={{ width: '80%', mt: 1, borderRadius: 5, height: 4, '& .MuiLinearProgress-bar': { bgcolor: 'var(--color-vc-ink)' } }} 
                                             />
                                         </Box>
                                     )}
@@ -536,11 +705,11 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                         />
                                     ) : (
                                         <Stack spacing={1} alignItems="center">
-                                            <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                                                <CloudUploadIcon color="primary" sx={{ fontSize: 32 }} />
+                                            <Box sx={{ p: 1.5, borderRadius: '50%', bgcolor: 'var(--color-vc-canvas)', border: '1px solid var(--color-vc-hairline)' }}>
+                                                <CloudUploadIcon sx={{ color: 'var(--color-vc-ink)', fontSize: 24 }} />
                                             </Box>
-                                            <Typography variant="body2" fontWeight={600}>Click to upload</Typography>
-                                            <Typography variant="caption" color="text.secondary">v. PNG, JPG or WEBP</Typography>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Click to upload</Typography>
+                                            <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>PNG, JPG or WEBP</Typography>
                                         </Stack>
                                     )}
                                     <input
@@ -565,24 +734,36 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             handleChange(e);
                                             setFieldValue('thumbnailPreview', e.target.value);
                                         }}
+                                        InputLabelProps={{ sx: labelStyles }}
                                         InputProps={{ 
-                                            sx: { borderRadius: '8px' },
+                                            sx: inputStyles,
                                             startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <CollectionsIcon fontSize="small" color="action" />
+                                                <InputAdornment position="start" sx={{ '& .MuiTypography-root': { color: 'var(--color-vc-mute)' } }}>
+                                                    <CollectionsIcon fontSize="small" />
                                                 </InputAdornment>
                                             )
                                         }}
                                         helperText="Paste a URL or use the buttons below"
+                                        FormHelperTextProps={{ sx: { color: 'var(--color-vc-mute)', fontSize: '11px', fontFamily: 'inherit' } }}
                                     />
 
-                                    <Stack direction="row" spacing={1}>
+                                    <Stack direction="row" spacing={1.5}>
                                         <Button
                                             fullWidth
                                             variant="contained"
                                             size="small"
-                                            startIcon={<CategoryIcon />}
-                                            sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: '#1e293b', '&:hover': { bgcolor: '#0f172a' } }}
+                                            startIcon={<CategoryIcon sx={{ fontSize: 14 }} />}
+                                            sx={{ 
+                                                borderRadius: '6px', 
+                                                textTransform: 'none', 
+                                                fontSize: '12px',
+                                                height: 32,
+                                                fontFamily: 'inherit',
+                                                boxShadow: 'none',
+                                                bgcolor: 'var(--color-vc-ink)',
+                                                color: 'var(--color-vc-on-primary)',
+                                                '&:hover': { bgcolor: 'var(--color-vc-ink)', opacity: 0.9, boxShadow: 'none' } 
+                                            }}
                                             onClick={() => handleOpenPicker('image', 'thumbnail')}
                                         >
                                             Library
@@ -591,8 +772,18 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             fullWidth
                                             variant="outlined"
                                             size="small"
-                                            startIcon={<CloudUploadIcon />}
-                                            sx={{ borderRadius: '8px', textTransform: 'none' }}
+                                            startIcon={<CloudUploadIcon sx={{ fontSize: 14 }} />}
+                                            sx={{ 
+                                                borderRadius: '6px', 
+                                                textTransform: 'none',
+                                                fontSize: '12px',
+                                                height: 32,
+                                                fontFamily: 'inherit',
+                                                borderColor: 'var(--color-vc-hairline)',
+                                                color: 'var(--color-vc-ink)',
+                                                bgcolor: 'var(--color-vc-canvas)',
+                                                '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' }
+                                            }}
                                             onClick={() => fileInputRef.current?.click()}
                                         >
                                             Upload
@@ -603,25 +794,25 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                         </Card>
 
                         {/* Demo/Promo Video */}
-                        <Card className="premium-card">
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                             <CardContent sx={{ p: 3 }}>
-                                <SectionHeader icon={<VideoLibraryIcon />} title="Course Teaser" subtitle="A short preview video for students" />
+                                <SectionHeader icon={<VideoLibraryIcon sx={{ fontSize: 18 }} />} title="Course Teaser" subtitle="A short preview video for students" />
                                 
-                                <Box sx={{ mb: 2, position: 'relative', borderRadius: '12px', overflow: 'hidden', minHeight: uploading ? 180 : 0 }}>
+                                <Box sx={{ mb: 2, position: 'relative', borderRadius: '6px', overflow: 'hidden', minHeight: uploading ? 180 : 0 }}>
                                     {uploading && (
                                         <Box sx={{
                                             position: 'absolute', inset: 0, zIndex: 10,
-                                            bgcolor: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(4px)',
+                                            bgcolor: 'var(--color-vc-canvas)',
                                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2
                                         }}>
-                                            <CircularProgress size={40} thickness={4} />
-                                            <Typography variant="caption" fontWeight={800} color="primary" sx={{ mt: 2 }}>
+                                            <CircularProgress size={32} thickness={4} sx={{ color: 'var(--color-vc-ink)' }} />
+                                            <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-ink)', mt: 2, fontFamily: 'inherit' }}>
                                                 {uploadProgress < 100 ? `🚀 UPLOADING ${uploadProgress}%` : '⚙️ PROCESSING & ENCRYPTING...'}
                                             </Typography>
                                             <LinearProgress 
                                                 variant="determinate" 
                                                 value={uploadProgress} 
-                                                sx={{ width: '80%', mt: 1, borderRadius: 5, height: 6 }} 
+                                                sx={{ width: '80%', mt: 1, borderRadius: 5, height: 4, '& .MuiLinearProgress-bar': { bgcolor: 'var(--color-vc-ink)' } }} 
                                             />
                                         </Box>
                                     )}
@@ -638,16 +829,27 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                         placeholder="Paste link here..."
                                         value={values.demoVideoUrl || ''}
                                         onChange={handleChange}
-                                        InputProps={{ sx: { borderRadius: '8px' } }}
+                                        InputLabelProps={{ sx: labelStyles }}
+                                        InputProps={{ sx: inputStyles }}
                                     />
-                                    <Divider><Typography variant="caption" color="text.disabled">OR</Typography></Divider>
-                                    <Stack direction="row" spacing={1}>
+                                    <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }}><Typography sx={{ fontSize: '10px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>OR</Typography></Divider>
+                                    <Stack direction="row" spacing={1.5}>
                                          <Button
                                             variant="outlined"
                                             size="small"
                                             component="label"
                                             fullWidth
-                                            sx={{ borderRadius: '8px' }}
+                                            sx={{ 
+                                                borderRadius: '6px',
+                                                textTransform: 'none',
+                                                fontSize: '12px',
+                                                height: 32,
+                                                fontFamily: 'inherit',
+                                                borderColor: 'var(--color-vc-hairline)',
+                                                color: 'var(--color-vc-ink)',
+                                                bgcolor: 'var(--color-vc-canvas)',
+                                                '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' }
+                                            }}
                                         >
                                             Upload File
                                             <input
@@ -668,7 +870,6 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                                                 toast.success('Video uploaded successfully');
                                                             }
                                                         } catch (error) {
-                                                            
                                                             toast.error('Upload failed');
                                                         } finally {
                                                             setUploading(false);
@@ -681,7 +882,17 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                                             variant="outlined"
                                             size="small"
                                             fullWidth
-                                            sx={{ borderRadius: '8px' }}
+                                            sx={{ 
+                                                borderRadius: '6px',
+                                                textTransform: 'none',
+                                                fontSize: '12px',
+                                                height: 32,
+                                                fontFamily: 'inherit',
+                                                borderColor: 'var(--color-vc-hairline)',
+                                                color: 'var(--color-vc-ink)',
+                                                bgcolor: 'var(--color-vc-canvas)',
+                                                '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' }
+                                            }}
                                             onClick={() => handleOpenPicker('video', 'demoVideoUrl')}
                                         >
                                             Media Hub
@@ -701,9 +912,37 @@ const BasicInfoStep = ({ values, errors, touched, handleChange, setFieldValue, c
                 type={pickerType}
                 onSelect={handleMediaSelect}
             />
+
+            {/* Dynamic Category Creation Dialog */}
+            <Dialog open={newCatOpen} onClose={() => setNewCatOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontFamily: 'inherit', fontWeight: 600 }}>Add New Category</DialogTitle>
+                <DialogContent>
+                    <TextField 
+                        autoFocus 
+                        margin="dense" 
+                        label="Category Name" 
+                        fullWidth 
+                        value={newCatName} 
+                        onChange={(e) => setNewCatName(e.target.value)} 
+                        sx={{ mt: 1 }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setNewCatOpen(false)} disabled={addingCat} sx={{ textTransform: 'none' }}>Cancel</Button>
+                    <Button 
+                        onClick={handleAddNewCategory} 
+                        variant="contained" 
+                        color="primary"
+                        disabled={addingCat}
+                        startIcon={addingCat ? <CircularProgress size={16} color="inherit" /> : null}
+                        sx={{ textTransform: 'none', boxShadow: 'none' }}
+                    >
+                        {addingCat ? 'Adding...' : 'Add'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
 
 export default BasicInfoStep;
-

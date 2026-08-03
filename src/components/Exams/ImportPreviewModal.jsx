@@ -15,51 +15,78 @@ import {
     Typography,
     Box,
     Chip,
-    Alert
+    Alert,
+    IconButton
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 
 const ImportPreviewModal = ({ open, onClose, data, onConfirm, loading }) => {
+    const validCount = data?.filter(row => row.isValid).length || 0;
+
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>
-                <Typography variant="h6" fontWeight={700}>Verify Questions ({data?.length || 0})</Typography>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{ sx: { borderRadius: '10px', bgcolor: 'var(--color-vc-canvas)', border: '1px solid var(--color-vc-hairline)' } }}
+        >
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '16px', color: 'var(--color-vc-ink)' }}>
+                    Verify Questions ({data?.length || 0})
+                </Typography>
+                <IconButton size="small" onClick={onClose} sx={{ color: 'var(--color-vc-mute)' }}>
+                    <CloseIcon fontSize="small" />
+                </IconButton>
             </DialogTitle>
-            <DialogContent dividers>
-                {data?.length === 0 ? (
-                    <Alert severity="warning">No valid questions found to import.</Alert>
+            <DialogContent sx={{ p: 2.5 }}>
+                {!data?.length ? (
+                    <Alert severity="warning">No rows found in this CSV file.</Alert>
                 ) : (
-                    <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary" gutterBottom>
-                            Please review the data below before final import. Once confirmed, these questions will be added to your bank.
+                    <Box>
+                        <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)', mb: 2 }}>
+                            {validCount} of {data.length} rows look valid. Review below before importing — invalid rows will be skipped.
                         </Typography>
-                        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', maxHeight: 400 }}>
+                        <TableContainer sx={{ border: '1px solid var(--color-vc-hairline)', borderRadius: '8px', maxHeight: 420 }}>
                             <Table size="small" stickyHeader>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Content</TableCell>
-                                        <TableCell>Type</TableCell>
-                                        <TableCell>Difficulty</TableCell>
-                                        <TableCell>Marks</TableCell>
+                                        {['Question', 'Options', 'Correct Answer', 'Marks', 'Category', 'Status'].map(h => (
+                                            <TableCell
+                                                key={h}
+                                                sx={{ bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-mute)', fontWeight: 700, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em' }}
+                                            >
+                                                {h}
+                                            </TableCell>
+                                        ))}
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {data?.map((row, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell sx={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {row.content}
+                                    {data.map((row, index) => (
+                                        <TableRow key={index} hover>
+                                            <TableCell sx={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', color: 'var(--color-vc-ink)' }}>
+                                                {row.text || <em>Missing</em>}
                                             </TableCell>
-                                            <TableCell>
-                                                <Chip label={row.type} size="small" sx={{ fontSize: '0.7rem' }} />
+                                            <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', color: 'var(--color-vc-mute)' }}>
+                                                {row.options?.join(' | ') || '—'}
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: '12px', color: 'var(--color-vc-ink)' }}>
+                                                {row.correctOption || '—'}
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: '12px', color: 'var(--color-vc-ink)' }}>
+                                                {row.marks || 1}
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: '12px', color: 'var(--color-vc-ink)' }}>
+                                                {row.category || '—'}
                                             </TableCell>
                                             <TableCell>
                                                 <Chip
-                                                    label={row.difficulty}
+                                                    label={row.isValid ? 'Valid' : 'Invalid'}
+                                                    color={row.isValid ? 'success' : 'error'}
                                                     size="small"
-                                                    color={row.difficulty === 'hard' ? 'error' : row.difficulty === 'easy' ? 'success' : 'warning'}
-                                                    sx={{ fontSize: '0.7rem' }}
+                                                    sx={{ fontWeight: 700, fontSize: '0.65rem', borderRadius: '6px' }}
                                                 />
                                             </TableCell>
-                                            <TableCell>{row.marks}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -68,16 +95,15 @@ const ImportPreviewModal = ({ open, onClose, data, onConfirm, loading }) => {
                     </Box>
                 )}
             </DialogContent>
-            <DialogActions sx={{ p: 2, gap: 1 }}>
-                <Button onClick={onClose} variant="outlined" color="inherit">Cancel</Button>
+            <DialogActions sx={{ p: 2, borderTop: '1px solid var(--color-vc-hairline)' }}>
+                <Button onClick={onClose} sx={{ textTransform: 'none', fontWeight: 600, color: 'var(--color-vc-mute)' }}>Cancel</Button>
                 <Button
                     onClick={onConfirm}
                     variant="contained"
-                    color="primary"
-                    disabled={loading || !data?.length}
-                    sx={{ fontWeight: 600, minWidth: 140 }}
+                    disabled={loading || !validCount}
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '8px', minWidth: 160 }}
                 >
-                    {loading ? 'Importing...' : 'Verify & Add'}
+                    {loading ? 'Importing...' : `Import ${validCount} Question${validCount === 1 ? '' : 's'}`}
                 </Button>
             </DialogActions>
         </Dialog>

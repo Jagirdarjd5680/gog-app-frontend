@@ -50,7 +50,7 @@ const BookingAdmin = () => {
 
     const submitAction = async () => {
         try {
-            const res = await api.put(`/booking/${selectedBooking._id}/status`, {
+            const res = await api.put(`/booking/${selectedBooking.id}/status`, {
                 status,
                 adminNotes
             });
@@ -71,7 +71,7 @@ const BookingAdmin = () => {
         : bookings.filter(b => b.status !== 'pending');
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box>
             <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>Seat Booking Requests</Typography>
 
             <Paper sx={{ mb: 3 }}>
@@ -102,7 +102,7 @@ const BookingAdmin = () => {
                                 </TableCell>
                             </TableRow>
                         ) : filteredBookings.map((b) => (
-                            <TableRow key={b._id}>
+                            <TableRow key={b.id}>
                                 <TableCell>{b.user?.name || 'N/A'}</TableCell>
                                 <TableCell>
                                     <Typography variant="body2">{b.user?.email}</Typography>

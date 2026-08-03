@@ -1,17 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Chip, IconButton, Tooltip } from '@mui/material';
-import DataTable from '../../components/Common/DataTable';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+    Box, Typography, IconButton, Stack, Chip, Avatar
+} from '@mui/material';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { format } from 'date-fns';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import AssignmentFormModal from '../../components/Assignments/AssignmentFormModal';
 import QuestionSelector from '../../components/Exams/QuestionSelector';
 import AssignmentSubmissionsModal from '../../components/Assignments/AssignmentSubmissionsModal';
+import { format } from 'date-fns';
 
 const AssignmentList = () => {
     const [assignments, setAssignments] = useState([]);
@@ -21,199 +28,228 @@ const AssignmentList = () => {
     const [questionSelectorOpen, setQuestionSelectorOpen] = useState(false);
     const [currentAssignmentId, setCurrentAssignmentId] = useState(null);
     const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    useEffect(() => {
-        fetchAssignments();
-    }, []);
-
-    const fetchAssignments = async () => {
+    const fetchAssignments = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('/assignments');
-            if (response.data.success) {
-                setAssignments(response.data.data);
-            }
+            const data = response.data?.data || response.data || [];
+            setAssignments(Array.isArray(data) ? data : []);
         } catch (error) {
+            console.error('Failed to load assignments:', error);
             toast.error('Failed to load assignments');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleEdit = (assignment) => {
-        setSelectedAssignment(assignment);
-        setModalOpen(true);
-    };
+    useEffect(() => {
+        fetchAssignments();
+    }, [fetchAssignments]);
 
     const handleCreate = () => {
         setSelectedAssignment(null);
         setModalOpen(true);
     };
 
+    const handleEdit = useCallback((assignment) => {
+        setSelectedAssignment(assignment);
+        setModalOpen(true);
+    }, []);
+
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this assignment?')) {
-            try {
-                await api.delete(`/assignments/${id}`);
-                toast.success('Assignment deleted successfully');
-                fetchAssignments();
-            } catch (error) {
-                toast.error('Failed to delete assignment');
-            }
+        if (!window.confirm('Delete this assignment?')) return;
+        try {
+            await api.delete(`/assignments/${id}`);
+            toast.success('Assignment deleted successfully');
+            fetchAssignments();
+        } catch (error) {
+            toast.error('Failed to delete assignment');
         }
     };
 
-    const handleOpenQuestionSelector = (assignmentId) => {
+    const handleOpenQuestionSelector = useCallback((assignmentId) => {
         setCurrentAssignmentId(assignmentId);
         setQuestionSelectorOpen(true);
-    };
+    }, []);
 
-    const handleViewSubmissions = (assignmentId) => {
+    const handleViewSubmissions = useCallback((assignmentId) => {
         setCurrentAssignmentId(assignmentId);
         setSubmissionsModalOpen(true);
-    };
+    }, []);
 
     const handleAddQuestions = async (questionIds) => {
         try {
             await api.put(`/assignments/${currentAssignmentId}/questions`, { questionIds });
             toast.success(`${questionIds.length} questions updated`);
-            
-            // Fast state update
-            setAssignments(prev => prev.map(a => 
-                a._id === currentAssignmentId ? { ...a, questions: questionIds } : a
-            ));
-            
-            // Then fetch for full data (including population if any)
             fetchAssignments();
         } catch (error) {
-            
             toast.error('Failed to add questions');
         }
     };
 
-    const columnDefs = [
-        { field: 'title', headerName: 'Title', flex: 1 },
+    const filteredAssignments = useMemo(() => {
+        return assignments.filter(a => {
+            const title = (a.title || '').toLowerCase();
+            const course = (a.course?.title || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
+
+            const matchesSearch = title.includes(term) || course.includes(term);
+            if (!matchesSearch) return false;
+
+            if (statusFilter !== 'all' && (a.status || 'published') !== statusFilter) return false;
+            return true;
+        });
+    }, [assignments, searchTerm, statusFilter]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Assignments', value: assignments.length, icon: <AssignmentIcon />, color: 'primary' },
+        { title: 'With Questions', value: assignments.filter(a => (a.questions?.length || 0) > 0).length, icon: <CheckCircleIcon />, color: 'success' },
+        { title: 'Pending Tasks', value: assignments.filter(a => (a.questions?.length || 0) === 0).length, icon: <PendingActionsIcon />, color: 'warning' }
+    ], [assignments]);
+
+    const filterConfigs = useMemo(() => [
         {
-            field: 'course',
-            headerName: 'Course',
-            valueGetter: (params) => params.data.course?.title || 'None',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            minWidth: 160,
+            options: [
+                { value: 'all', label: 'All Assignments' },
+                { value: 'published', label: 'Published' },
+                { value: 'draft', label: 'Drafts' }
+            ]
+        }
+    ], [statusFilter]);
+
+    const columns = useMemo(() => [
+        {
+            field: 'title',
+            headerName: 'ASSIGNMENT TITLE',
+            flex: 2,
+            minWidth: 240,
             cellRenderer: (params) => (
-                <Chip 
-                    label={params.value} 
-                    size="small" 
-                    variant="outlined" 
-                    sx={{ 
-                        color: 'text.primary', 
-                        fontWeight: 600,
-                        borderColor: 'rgba(0,0,0,0.12)',
-                        bgcolor: 'background.paper'
-                    }} 
-                />
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13, fontWeight: 700 }}>
+                        <AssignmentIcon fontSize="small" />
+                    </Avatar>
+                    <Box>
+                        <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                            {params.data.title || 'Course Homework'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                            {params.data.course?.title || 'General Course'}
+                        </Typography>
+                    </Box>
+                </Stack>
             )
         },
         {
-            field: 'deadline',
-            headerName: 'Deadline',
-            valueFormatter: (params) => format(new Date(params.value), 'PPp'),
+            field: 'batch',
+            headerName: 'TARGET BATCH',
+            width: 160,
+            valueGetter: (params) => params.data.batch?.name || 'All Batches'
         },
-        { field: 'totalMarks', headerName: 'Marks' },
         {
-            headerName: 'Questions',
+            field: 'dueDate',
+            headerName: 'DUE DATE',
+            width: 160,
+            valueGetter: (params) => {
+                const d = params.data.dueDate;
+                return d ? format(new Date(d), 'MMM dd, yyyy') : 'No Due Date';
+            }
+        },
+        {
             field: 'questions',
-            width: 120,
-            valueGetter: (params) => params.data.questions?.length || 0,
-            cellRenderer: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    color={params.value > 0 ? 'info' : 'default'}
-                />
-            )
-        },
-        {
-            field: 'submissions',
-            headerName: 'Submissions',
-            valueGetter: (params) => params.data.submissions?.length || 0,
-        },
-        {
-            field: 'isPublished',
-            headerName: 'Status',
-            cellRenderer: (params) => (
-                <Chip label={params.value ? 'Published' : 'Draft'} color={params.value ? 'success' : 'default'} size="small" />
-            ),
+            headerName: 'QUESTIONS',
+            width: 130,
+            cellRenderer: (params) => {
+                const count = params.data.questions?.length || 0;
+                return (
+                    <Chip
+                        label={`${count} Qs`}
+                        color={count > 0 ? 'success' : 'default'}
+                        size="small"
+                        sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                    />
+                );
+            }
         },
         {
             field: 'actions',
-            headerName: 'Actions',
-            sortable: false,
-            filter: false,
-            width: 220,
-            cellRenderer: (params) => (
-                <Box>
-                    <Tooltip title="View Submissions">
-                        <IconButton size="small" color="secondary" onClick={() => handleViewSubmissions(params.data._id)}>
+            headerName: 'ACTIONS',
+            width: 180,
+            cellRenderer: (params) => {
+                const id = params.data._id || params.data.id;
+                return (
+                    <Stack direction="row" spacing={1}>
+                        <IconButton size="small" onClick={() => handleViewSubmissions(id)} sx={{ color: 'var(--color-vc-link)' }} title="View Submissions">
                             <VisibilityIcon fontSize="small" />
                         </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Manage Questions">
-                        <IconButton size="small" color="info" onClick={() => handleOpenQuestionSelector(params.data._id)}>
+                        <IconButton size="small" onClick={() => handleOpenQuestionSelector(id)} sx={{ color: 'var(--color-vc-mute)' }} title="Manage Questions">
                             <SettingsIcon fontSize="small" />
                         </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Edit">
-                        <IconButton size="small" color="primary" onClick={() => handleEdit(params.data)}>
+                        <IconButton size="small" onClick={() => handleEdit(params.data)} sx={{ color: 'var(--color-vc-mute)' }} title="Edit">
                             <EditIcon fontSize="small" />
                         </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                        <IconButton size="small" color="error" onClick={() => handleDelete(params.data._id)}>
+                        <IconButton size="small" onClick={() => handleDelete(id)} sx={{ color: 'var(--color-vc-error)' }} title="Delete">
                             <DeleteIcon fontSize="small" />
                         </IconButton>
-                    </Tooltip>
-                </Box>
-            )
+                    </Stack>
+                );
+            }
         }
-    ];
+    ], [handleEdit, handleOpenQuestionSelector, handleViewSubmissions]);
 
     return (
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h4" fontWeight={700}>
-                    Assignments
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Assignments & Homework Tasks
                 </Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
-                    Create Assignment
-                </Button>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Create homework assignments, set submission due dates, and grade student answers
+                </Typography>
             </Box>
 
-            <DataTable
-                rowData={assignments}
-                columnDefs={columnDefs}
+            <GenericMetrics items={metricsItems} />
+
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search assignment title or course..."
+                filters={filterConfigs}
+                actionButtonText="Create Assignment"
+                actionButtonIcon={<AddIcon />}
+                onActionClick={handleCreate}
+            />
+
+            <TableUI
+                rowData={filteredAssignments}
+                columnDefs={columns}
                 loading={loading}
             />
 
-            {modalOpen && (
-                <AssignmentFormModal 
-                    open={modalOpen} 
-                    assignment={selectedAssignment}
-                    onClose={() => setModalOpen(false)} 
-                    onSuccess={fetchAssignments}
-                />
-            )}
+            <AssignmentFormModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSuccess={() => { setModalOpen(false); fetchAssignments(); }}
+                initialData={selectedAssignment}
+            />
 
             <QuestionSelector
                 open={questionSelectorOpen}
                 onClose={() => setQuestionSelectorOpen(false)}
                 onSelect={handleAddQuestions}
-                existingQuestionIds={assignments.find(a => a._id === currentAssignmentId)?.questions?.map(q => q._id || q) || []}
+                existingQuestionIds={assignments.find(a => (a._id || a.id) === currentAssignmentId)?.questions || []}
             />
 
-            {submissionsModalOpen && (
-                <AssignmentSubmissionsModal
-                    open={submissionsModalOpen}
-                    onClose={() => setSubmissionsModalOpen(false)}
-                    assignmentId={currentAssignmentId}
-                />
-            )}
+            <AssignmentSubmissionsModal
+                open={submissionsModalOpen}
+                onClose={() => setSubmissionsModalOpen(false)}
+                assignmentId={currentAssignmentId}
+            />
         </Box>
     );
 };

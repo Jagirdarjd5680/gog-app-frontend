@@ -1,15 +1,16 @@
 import api from './api';
 
 export const uploadFile = async (file, onUploadProgress, title, courseId) => {
-    // Generate a simple unique ID for the upload session
     const uploadId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     
-    // Threshold for chunked upload (10MB)
-    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk
+    // Threshold for chunked upload (5MB for granular chunks)
+    const CHUNK_SIZE = 5 * 1024 * 1024;
     const fileSize = file.size;
 
+    console.log(`📤 [UploadUtil] Initializing upload for file: "${file.name}" (${fileSize} bytes)`);
+
     if (fileSize < CHUNK_SIZE) {
-        // Simple upload for small files
+        console.log(`⚡ [UploadUtil] Using Direct Upload strategy (< 5MB)`);
         const formData = new FormData();
         formData.append('file', file);
         if (title) formData.append('title', title);
@@ -17,22 +18,26 @@ export const uploadFile = async (file, onUploadProgress, title, courseId) => {
 
         try {
             const response = await api.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (progressEvent) => {
-                    if (onUploadProgress) {
-                        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                        onUploadProgress(percentCompleted);
+                    if (onUploadProgress && progressEvent.total) {
+                        const rawPct = (progressEvent.loaded / progressEvent.total) * 100;
+                        const formattedPct = Number(rawPct.toFixed(1));
+                        console.log(`📊 [UploadUtil] Direct upload progress: ${formattedPct}%`);
+                        onUploadProgress(formattedPct);
                     }
                 }
             });
+            console.log(`✅ [UploadUtil] Direct upload completed successfully:`, response.data);
             return response.data;
         } catch (error) {
+            console.error(`❌ [UploadUtil] Direct upload error for "${file.name}":`, error);
             throw error;
         }
     }
 
-    // Chunked upload for large files
+    // Chunked upload for large files (>5MB)
     const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
+    console.log(`📦 [UploadUtil] Using Chunked Upload strategy (${totalChunks} total chunks)`);
     let result = null;
 
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
@@ -45,6 +50,8 @@ export const uploadFile = async (file, onUploadProgress, title, courseId) => {
         formData.append('fileName', file.name);
         formData.append('chunkIndex', chunkIndex);
         formData.append('totalChunks', totalChunks);
+        formData.append('chunkSize', CHUNK_SIZE);
+        formData.append('fileSize', fileSize);
         formData.append('uploadId', uploadId);
         if (title) formData.append('title', title);
         if (courseId) formData.append('courseId', courseId);
@@ -55,33 +62,43 @@ export const uploadFile = async (file, onUploadProgress, title, courseId) => {
 
         while (!chunkSuccess && retries <= MAX_RETRIES) {
             try {
+                console.log(`🧩 [UploadUtil] Uploading chunk ${chunkIndex + 1}/${totalChunks}...`);
                 const response = await api.post('/upload/chunk', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                    timeout: 300000, // 5 min per chunk
+                    timeout: 300000,
+                    onUploadProgress: (progressEvent) => {
+                        if (onUploadProgress && progressEvent.total) {
+                            const currentChunkProgress = progressEvent.loaded / progressEvent.total;
+                            const rawPct = ((chunkIndex + currentChunkProgress) / totalChunks) * 100;
+                            const formattedPct = Number(Math.min(rawPct, 99.9).toFixed(1));
+                            console.log(`📊 [UploadUtil] Granular Chunk Progress: ${formattedPct}%`);
+                            onUploadProgress(formattedPct);
+                        }
+                    }
                 });
 
                 if (onUploadProgress) {
-                    const overallProgress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-                    onUploadProgress(overallProgress);
+                    const rawPct = ((chunkIndex + 1) / totalChunks) * 100;
+                    const formattedPct = Number(Math.min(rawPct, 100).toFixed(1));
+                    onUploadProgress(formattedPct);
                 }
 
-                if (response.data.message === 'Upload complete') {
+                if (response.data.message === 'Upload complete' || chunkIndex === totalChunks - 1) {
                     result = response.data;
                 }
-                chunkSuccess = true; // Mark as success to exit retry loop
+                chunkSuccess = true;
             } catch (error) {
                 retries++;
-                console.warn(`⚠️ Chunk ${chunkIndex} failed (Attempt ${retries}/${MAX_RETRIES + 1}):`, error.message);
+                console.warn(`⚠️ [UploadUtil] Chunk ${chunkIndex + 1} attempt ${retries} failed:`, error.message);
                 if (retries > MAX_RETRIES) {
-                    console.error(`❌ Chunk ${chunkIndex} failed permanently after ${MAX_RETRIES} retries:`, error);
-                    throw new Error(`Upload failed at chunk ${chunkIndex + 1}/${totalChunks} due to network error or timeout. Please check your connection and try again.`);
+                    console.error(`❌ [UploadUtil] Chunk ${chunkIndex + 1}/${totalChunks} failed permanently`);
+                    throw new Error(`Chunk ${chunkIndex + 1}/${totalChunks} upload failed. Please try again.`);
                 }
-                // Wait briefly before retrying (exponential backoff: 2s, 4s, 8s...)
-                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+                await new Promise(resolve => setTimeout(resolve, 1000 * retries));
             }
         }
     }
 
+    if (onUploadProgress) onUploadProgress(100);
+    console.log(`🎉 [UploadUtil] Chunked upload completed successfully:`, result);
     return result;
 };
-

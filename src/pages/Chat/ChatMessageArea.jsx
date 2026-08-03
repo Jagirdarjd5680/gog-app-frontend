@@ -3,12 +3,20 @@ import { Box, useTheme } from '@mui/material';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
-import socket from '../../utils/socket';
+import socket from '../../realtime/socketClient';
+import { CHAT_EVENTS } from '../../realtime/events';
 
 import ChatHeader from './components/ChatHeader';
 import ChatMessageList from './components/ChatMessageList';
 import ChatInput from './components/ChatInput';
 import ImagePreviewModal from './components/ImagePreviewModal';
+
+// Backend responses go through two different paths that don't normalize IDs the
+// same way: REST responses get an `_id` mirror of `id` added by MongoIdInterceptor
+// (backend_nestjs/src/common/interceptors/mongo-id.interceptor.ts), but Socket.IO
+// `emit()` calls bypass that interceptor entirely, so live messages only ever have
+// `id`. Always read through this helper instead of `.{_id}` directly.
+const getId = (x) => (x?.id ?? x?._id ?? x)?.toString?.();
 
 const ChatMessageArea = ({ recipient: initialRecipient, onMessageSent, user: propUser }) => {
     const theme = useTheme();
@@ -40,66 +48,80 @@ const ChatMessageArea = ({ recipient: initialRecipient, onMessageSent, user: pro
     const fetchHistory = useCallback(async () => {
         if (!recipient) return;
         try {
-            const response = await api.get(`/chat/history/${recipient._id}`);
+            const response = await api.get(`/chat/history/${getId(recipient)}`);
             if (response.data.success) {
                 const normalized = response.data.data.map(m => ({
                     ...m,
-                    sender: m.sender?._id || m.sender,
-                    receiver: m.receiver?._id || m.receiver
+                    sender: getId(m.sender),
+                    receiver: getId(m.receiver)
                 }));
+                console.log('[Chat] history loaded:', normalized.length, 'messages with', getId(recipient));
                 setMessages(normalized);
             }
-        } catch {}
+        } catch (err) {
+            console.error('[Chat] fetchHistory failed:', err);
+        }
     }, [recipient]);
 
     useEffect(() => {
-        if (!user?._id) return;
+        if (!getId(user)) return;
         const handleMessageReceived = (newMsg) => {
-            const senderId = (newMsg.sender?._id || newMsg.sender)?.toString();
-            const receiverId = (newMsg.receiver?._id || newMsg.receiver)?.toString();
-            const currentRecipientId = recipientRef.current?._id?.toString();
+            const senderId = getId(newMsg.sender);
+            const receiverId = getId(newMsg.receiver);
+            const currentRecipientId = getId(recipientRef.current);
+            const myId = getId(userRef.current);
+            console.log('[Chat] message_received:', { id: newMsg.id, senderId, receiverId, currentRecipientId });
             if (currentRecipientId && (senderId === currentRecipientId || receiverId === currentRecipientId)) {
                 setMessages(prev => {
-                    if (newMsg._id && prev.some(m => m._id === newMsg._id)) return prev;
+                    if (newMsg.id != null && prev.some(m => (m.id ?? m._id) === newMsg.id)) return prev;
                     return [...prev, { ...newMsg, sender: senderId, receiver: receiverId }];
                 });
-                if (receiverId === userRef.current?._id?.toString()) receivedAudioRef.current.play().catch(() => {});
-            } else if (receiverId === userRef.current?._id?.toString()) {
+                if (receiverId === myId) receivedAudioRef.current.play().catch(() => {});
+            } else if (receiverId === myId) {
                 receivedAudioRef.current.play().catch(() => {});
             }
         };
-        const handleTyping = (data) => { if (recipientRef.current?._id?.toString() === data.senderId?.toString()) setRecipientTyping(true); };
-        const handleStopTyping = (data) => { if (recipientRef.current?._id?.toString() === data.senderId?.toString()) setRecipientTyping(false); };
-        const handleStatusChange = (data) => {
-            if (recipientRef.current?._id?.toString() === data.userId?.toString()) {
-                setRecipient(prev => ({ ...prev, isOnline: data.isOnline ?? prev.isOnline, lastSeen: data.lastSeen || prev.lastSeen, isBlockedFromChat: data.isBlockedFromChat ?? prev.isBlockedFromChat }));
+        const handleTypingStatus = (data) => {
+            if (getId(recipientRef.current) === getId(data.senderId)) {
+                console.log('[Chat] typing_status from recipient:', data.isTyping);
+                setRecipientTyping(!!data.isTyping);
             }
         };
-        socket.on('message_received', handleMessageReceived);
-        socket.on('typing', handleTyping);
-        socket.on('stop_typing', handleStopTyping);
-        socket.on('user_status_changed', handleStatusChange);
-        return () => {
-            socket.off('message_received', handleMessageReceived);
-            socket.off('typing', handleTyping);
-            socket.off('stop_typing', handleStopTyping);
-            socket.off('user_status_changed', handleStatusChange);
+        const handleMessagesRead = (data) => {
+            const readerId = getId(data.by);
+            if (readerId && readerId === getId(recipientRef.current)) {
+                console.log('[Chat] messages_read by recipient — flipping ticks');
+                setMessages(prev => prev.map(m => (getId(m.sender) === getId(userRef.current) ? { ...m, isRead: true } : m)));
+            }
         };
-    }, [user?._id]);
+        socket.on(CHAT_EVENTS.MESSAGE_RECEIVED, handleMessageReceived);
+        socket.on(CHAT_EVENTS.TYPING_STATUS, handleTypingStatus);
+        socket.on(CHAT_EVENTS.MESSAGES_READ, handleMessagesRead);
+        return () => {
+            socket.off(CHAT_EVENTS.MESSAGE_RECEIVED, handleMessageReceived);
+            socket.off(CHAT_EVENTS.TYPING_STATUS, handleTypingStatus);
+            socket.off(CHAT_EVENTS.MESSAGES_READ, handleMessagesRead);
+        };
+    }, [getId(user)]);
 
     useEffect(() => {
         setMessages([]);
         if (recipient) { setLoading(true); fetchHistory().finally(() => setLoading(false)); }
-    }, [recipient?._id, fetchHistory]);
+    }, [getId(recipient), fetchHistory]);
 
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, recipientTyping]);
+
+    const emitTyping = (isTypingNow) => {
+        if (!socket.connected || !recipient) return;
+        socket.emit(CHAT_EVENTS.TYPING_STATUS, { receiverId: getId(recipient), isTyping: isTypingNow });
+    };
 
     const typingHandler = (e) => {
         setNewMessage(e.target.value);
         if (!socket.connected || !recipient) return;
-        if (!isTyping) { setIsTyping(true); socket.emit('typing', { room: recipient._id, senderId: user._id }); }
+        if (!isTyping) { setIsTyping(true); emitTyping(true); }
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => { socket.emit('stop_typing', { room: recipient._id, senderId: user._id }); setIsTyping(false); }, 3000);
+        typingTimeoutRef.current = setTimeout(() => { emitTyping(false); setIsTyping(false); }, 3000);
     };
 
     const handleImageSelect = (e) => {
@@ -116,24 +138,29 @@ const ChatMessageArea = ({ recipient: initialRecipient, onMessageSent, user: pro
     const handleSend = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && !selectedImage) || !recipient || sending) return;
-        socket.emit('stop_typing', { room: recipient._id, senderId: user._id });
+        emitTyping(false);
         setIsTyping(false);
         setSending(true);
         try {
             const formData = new FormData();
-            formData.append('receiver', recipient._id);
+            formData.append('receiver', getId(recipient));
             if (newMessage.trim()) formData.append('message', newMessage);
             if (selectedImage) formData.append('image', selectedImage);
+            console.log('[Chat] sending message to', getId(recipient), selectedImage ? '(with image)' : '');
             const response = await api.post('/chat/send', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (response.data.success) {
                 const sentMsg = response.data.data;
                 setNewMessage(''); setSelectedImage(null); setImagePreview(null);
-                setMessages(prev => [...prev, sentMsg]);
+                // The backend broadcasts this to the receiver's socket room itself
+                // (see chat.service.ts broadcastMessage) — we just need to show it
+                // on our own side immediately, normalized the same way fetchHistory does.
+                setMessages(prev => [...prev, { ...sentMsg, sender: getId(sentMsg.sender), receiver: getId(sentMsg.receiver) }]);
                 sentAudioRef.current.play().catch(() => {});
-                socket.emit('new_message', sentMsg);
+                console.log('[Chat] send succeeded, message id:', sentMsg.id);
                 onMessageSent();
             }
         } catch (error) {
+            console.error('[Chat] send failed:', error);
             toast.error(error.response?.data?.message || 'Failed to send');
         } finally {
             setSending(false);
@@ -142,7 +169,7 @@ const ChatMessageArea = ({ recipient: initialRecipient, onMessageSent, user: pro
 
     const handleBlock = async () => {
         try {
-            const response = await api.put(`/chat/block/${recipient._id}`);
+            const response = await api.put(`/chat/block/${getId(recipient)}`);
             if (response.data.success) {
                 toast.success(response.data.message);
                 setRecipient(prev => ({ ...prev, isBlockedFromChat: !prev.isBlockedFromChat }));
@@ -154,7 +181,7 @@ const ChatMessageArea = ({ recipient: initialRecipient, onMessageSent, user: pro
     const handleClearChat = async () => {
         if (!window.confirm('Clear chat history?')) return;
         try {
-            const response = await api.delete(`/chat/clear/${recipient._id}`);
+            const response = await api.delete(`/chat/clear/${getId(recipient)}`);
             if (response.data.success) { setMessages([]); toast.success('Chat history cleared'); }
         } catch { toast.error('Failed to clear chat'); }
     };

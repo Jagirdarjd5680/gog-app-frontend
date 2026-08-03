@@ -15,7 +15,6 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import SchoolIcon from '@mui/icons-material/School';
-import VideoCallIcon from '@mui/icons-material/VideoCall';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PaymentIcon from '@mui/icons-material/Payment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -51,6 +50,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { fixUrl } from '../../utils/api';
+import { hasModulePermission } from '../../utils/permissions';
 
 const DRAWER_WIDTH = 260;
 
@@ -68,7 +68,7 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/', roles: ['admin', 'teacher', 'student'] },
         { text: 'Personal Info', icon: <AccountCircleIcon />, path: '/profile', roles: ['student'] },
         { text: user?.role === 'admin' ? 'Message Management' : 'Admin Support', icon: <ChatIcon />, path: '/chat', roles: ['admin', 'teacher', 'student'] },
-        { text: 'Users', icon: <PeopleIcon />, path: '/users', roles: ['admin'] },
+        { text: 'Users', icon: <PeopleIcon />, path: '/users', roles: ['admin', 'teacher'] },
         { text: 'Tutors', icon: <SupportAgentIcon />, path: '/tutors', roles: ['admin'] },
         { text: 'Leave Requests', icon: <ExitToAppIcon />, path: '/leave-requests', roles: ['admin'] },
         { text: 'My Leaves', icon: <ExitToAppIcon />, path: '/leaves', roles: ['student'] },
@@ -77,7 +77,6 @@ const Sidebar = ({ open, onClose }) => {
         { text: 'Exam Results', icon: <AssignmentTurnedInIcon />, path: '/exam-results', roles: ['admin', 'teacher'] },
         { text: 'Question Bank', icon: <CategoryIcon />, path: '/question-bank', roles: ['admin', 'teacher'] },
         { text: 'Media Library', icon: <PermMediaIcon />, path: '/media-library', roles: ['admin', 'teacher'] },
-        { text: 'Live Classes', icon: <VideoCallIcon />, path: '/live-classes', roles: ['admin', 'teacher'] },
         { text: 'Assignments', icon: <AssignmentIcon />, path: '/assignments', roles: ['admin', 'teacher'] },
         { text: 'Coupons', icon: <LocalOfferIcon />, path: '/coupons', roles: ['admin', 'teacher'] },
         { text: 'Payments', icon: <PaymentIcon />, path: '/payments', roles: ['admin'] },
@@ -117,25 +116,34 @@ const Sidebar = ({ open, onClose }) => {
         if (!user) return false;
         if (user.role === 'admin') return true;
 
-        // If teacher, check moduleAccess
+        // If teacher, check permissions
         if (user.role === 'teacher') {
-            const moduleMap = {
-                '/courses': 'courseManagement',
-                '/exam-management': 'examManagement',
-                '/exam-results': 'examManagement',
-                '/question-bank': 'questionManagement',
-                '/media-library': 'mediaAccess',
-                '/live-classes': 'liveClasses',
-                '/assignments': 'assignments',
-                '/notifications': 'notifications',
-                '/coupons': 'coupons',
-                '/chat': 'chatAccess',
-            };
-
-            const requiredModule = moduleMap[item.path];
             // Dashboard doesn't require module access
             if (item.path === '/') return true;
 
+            // Granular per-module view permission (courses/exams/students/chat) —
+            // shared source of truth with backend_nestjs's ModulePermissionsGuard.
+            const permissionModuleMap = {
+                '/courses': 'courses',
+                '/exam-management': 'exams',
+                '/exam-results': 'exams',
+                '/question-bank': 'exams',
+                '/chat': 'chat',
+                '/users': 'students',
+            };
+            const permModule = permissionModuleMap[item.path];
+            if (permModule) {
+                return hasModulePermission(user, permModule, 'view');
+            }
+
+            // Legacy moduleAccess gate for everything else — unrelated to the above.
+            const moduleMap = {
+                '/media-library': 'mediaAccess',
+                '/assignments': 'assignments',
+                '/notifications': 'notifications',
+                '/coupons': 'coupons',
+            };
+            const requiredModule = moduleMap[item.path];
             if (requiredModule && !user.moduleAccess?.includes(requiredModule)) {
                 return false;
             }

@@ -1,7 +1,7 @@
+import { useEffect } from 'react';
 import {
     Box,
     Typography,
-    Button,
     Card,
     CardMedia,
     CardContent,
@@ -12,10 +12,9 @@ import {
     Chip,
     Divider,
     CircularProgress,
-    useTheme
+    LinearProgress
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
@@ -26,13 +25,12 @@ import AudioFileIcon from '@mui/icons-material/AudioFile';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import { format } from 'date-fns';
-import VideoPreview from '../../components/Common/VideoPreview';
 import { fixUrl } from '../../utils/api';
-import { useEffect } from 'react';
 
 const formatSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+    if (!bytes || bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -42,20 +40,10 @@ const formatSize = (bytes) => {
 const getFileIcon = (file) => {
     if (file.type === 'video') return <VideoLibraryIcon color="primary" />;
     if (file.type === 'image') return <ImageIcon color="secondary" />;
-    if (file.format === 'pdf') return <PictureAsPdfIcon sx={{ color: '#f44336' }} />;
+    if (file.format === 'pdf') return <PictureAsPdfIcon sx={{ color: '#ef4444' }} />;
     if (file.type === 'audio') return <AudioFileIcon color="info" />;
-    if (['zip', 'rar', '7z'].includes(file.format)) return <ArchiveIcon sx={{ color: '#ff9800' }} />;
+    if (['zip', 'rar', '7z'].includes(file.format)) return <ArchiveIcon sx={{ color: '#f59e0b' }} />;
     return <InsertDriveFileIcon color="action" />;
-};
-
-const getVideoThumbnail = (file) => {
-    if (!file || !file.url) return '';
-    if (file.thumbnailUrl) return fixUrl(file.thumbnailUrl);
-    const videoId = file.url.match(/\/api\/media\/stream\/(video_[^\/]+)\//)?.[1];
-    if (videoId) {
-        return fixUrl(`/api/media/stream/${videoId}/thumbnail.jpg`);
-    }
-    return '';
 };
 
 const MediaCard = ({
@@ -67,144 +55,131 @@ const MediaCard = ({
     onSelect,
     onPreview
 }) => {
-    const theme = useTheme();
-
     useEffect(() => {
         if (file && ['failed', 'upload_failed'].includes(file.status)) {
-            console.error(`❌ [GOG] Media file "${file.name}" failed:`, file.failureReason || 'Unknown error');
+            console.error(`❌ Media file "${file.name}" failed:`, file.failureReason || 'Unknown error');
         }
     }, [file.status, file.failureReason, file.name]);
 
+    const isImage = file.mimetype?.startsWith('image') || file.type === 'image' || file.name?.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
+    const isVideo = file.type === 'video' || file.format === 'm3u8' || file.name?.match(/\.(mp4|mkv|mov|avi)$/i);
+    const isProcessing = ['processing', 'uploading', 'queued'].includes(file.status);
+
+    const fileUrl = fixUrl(file.url || file.fileUrl || `/uploads/${file.name}`);
+    const thumbnailUrl = file.thumbnailUrl ? fixUrl(file.thumbnailUrl) : (isImage ? fileUrl : null);
+    const progressPct = file.processingProgress || 0;
+
+    // When a form/modal is picking a file (onSelect provided), clicking the card should
+    // just select it for that field — not toggle the bulk-delete checkbox, which is what
+    // was happening before (onSelect was passed all the way down here but never called).
+    const isPickerMode = Boolean(onSelect);
+
     return (
         <Card
+            onClick={isPickerMode ? () => onSelect(file) : undefined}
             sx={{
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                borderRadius: 1, // Reduced rounding
+                borderRadius: '16px',
                 overflow: 'hidden',
-                border: `1px solid ${theme.palette.divider}`,
-                transition: 'all 0.2s ease',
+                bgcolor: 'var(--color-vc-canvas-soft)',
+                border: '1px solid var(--color-vc-hairline)',
+                position: 'relative',
+                cursor: isPickerMode ? 'pointer' : 'default',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
                     transform: 'translateY(-4px)',
-                    boxShadow: '0 10px 20px rgba(0,0,0,0.05)',
-                    borderColor: 'primary.main'
+                    boxShadow: '0 12px 24px -10px rgba(0,0,0,0.15)',
+                    borderColor: 'var(--color-vc-primary)'
                 }
             }}
         >
-            <Box sx={{ position: 'relative', pt: '65%', bgcolor: 'background.default', overflow: 'hidden' }}>
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        top: 12,
-                        left: 12,
-                        zIndex: 10
-                    }}
-                >
-                    <Checkbox
-                        checked={isSelected}
-                        onChange={() => onToggleSelection(file.name)}
-                        sx={{
-                            p: 0,
-                            color: 'white',
-                            '&.Mui-checked': { color: theme.palette.primary.main },
-                            '& .MuiSvgIcon-root': {
-                                filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))',
-                                fontSize: '1.8rem'
-                            }
-                        }}
-                        icon={<CheckBoxOutlineBlankIcon />}
-                        checkedIcon={<CheckBoxIcon />}
-                    />
-                </Box>
-
-                {(file.type === 'image' && !['heic', 'heif'].includes(file.format?.toLowerCase())) ? (
-                    <CardMedia
-                        component="img"
-                        image={`${fixUrl(file.url)}${fixUrl(file.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
-                        alt={file.name}
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            height: '100%',
-                            width: '100%',
-                            objectFit: 'cover'
-                        }}
-                    />
-                ) : ['heic', 'heif'].includes(file.format?.toLowerCase()) ? (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            height: '100%',
-                            width: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: 'linear-gradient(135deg, #E3F2FD 0%, #E8EAF6 100%)',
-                        }}
-                    >
-                        <ImageIcon sx={{ fontSize: '3rem', color: '#3f51b5', mb: 1, opacity: 0.8 }} />
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#3f51b5', bgcolor: 'rgba(63, 81, 181, 0.1)', px: 1.5, py: 0.5, borderRadius: 2 }}>
-                            HEIC PHOTO
-                        </Typography>
-                    </Box>
-                ) : (file.type === 'video' && (!file.status || file.status === 'ready')) ? (
-                    <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', bgcolor: '#000' }}>
-                        {getVideoThumbnail(file) ? (
-                            <CardMedia
-                                component="img"
-                                image={`${getVideoThumbnail(file)}${getVideoThumbnail(file).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
-                                alt={file.name}
-                                sx={{
-                                    height: '100%',
-                                    width: '100%',
-                                    objectFit: 'cover'
-                                }}
-                            />
-                        ) : (
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                                <VideoLibraryIcon color="primary" sx={{ fontSize: '3rem', opacity: 0.6 }} />
-                            </Box>
-                        )}
-                        <Box
+            <Box sx={{ position: 'relative', pt: '65%', bgcolor: 'rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                {/* Selection Checkbox — bulk-delete only, so hidden in picker mode */}
+                {!isPickerMode && (
+                    <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+                        <Checkbox
+                            checked={isSelected}
+                            onChange={onToggleSelection}
+                            onClick={(e) => e.stopPropagation()}
                             sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                bgcolor: 'rgba(0,0,0,0.15)',
-                                transition: 'background-color 0.2s',
-                                '&:hover': {
-                                    bgcolor: 'rgba(0,0,0,0.3)',
-                                    '& .play-icon': { transform: 'scale(1.15)' }
+                                p: 0,
+                                color: 'white',
+                                '&.Mui-checked': { color: 'var(--color-vc-primary)' },
+                                '& .MuiSvgIcon-root': {
+                                    filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))',
+                                    fontSize: '1.6rem'
                                 }
                             }}
-                        >
-                            <Box
-                                className="play-icon"
-                                sx={{
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: '50%',
-                                    bgcolor: 'primary.main',
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-                                    transition: 'transform 0.2s'
-                                }}
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M8 5v14l11-7z" />
-                                </svg>
+                            icon={<CheckBoxOutlineBlankIcon />}
+                            checkedIcon={<CheckBoxIcon />}
+                        />
+                    </Box>
+                )}
+
+                {/* HLS Processing Overlay */}
+                {isProcessing && (
+                    <Box sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        bgcolor: 'rgba(15, 23, 42, 0.85)',
+                        zIndex: 15,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: 2,
+                        textAlign: 'center',
+                        backdropFilter: 'blur(6px)'
+                    }}>
+                        <CircularProgress size={32} sx={{ color: '#38bdf8', mb: 1.5 }} />
+                        <Typography variant="caption" fontWeight={900} sx={{ color: '#f8fafc', letterSpacing: 0.5, mb: 1 }}>
+                            {file.status === 'uploading'
+                                ? 'UPLOADING...'
+                                : `CONVERTING HLS CHUNKS ${progressPct > 0 ? `${progressPct}%` : ''} ⚙️`}
+                        </Typography>
+                        {progressPct > 0 && (
+                            <Box sx={{ width: '80%' }}>
+                                <LinearProgress
+                                    variant="determinate"
+                                    value={progressPct}
+                                    sx={{
+                                        height: 6,
+                                        borderRadius: '4px',
+                                        bgcolor: 'rgba(255,255,255,0.2)',
+                                        '& .MuiLinearProgress-bar': { bgcolor: '#38bdf8' }
+                                    }}
+                                />
                             </Box>
-                        </Box>
+                        )}
+                    </Box>
+                )}
+
+                {thumbnailUrl && !isProcessing ? (
+                    <Box sx={{ position: 'absolute', inset: 0 }}>
+                        <CardMedia
+                            component="img"
+                            image={thumbnailUrl}
+                            alt={file.name}
+                            sx={{
+                                height: '100%',
+                                width: '100%',
+                                objectFit: 'cover'
+                            }}
+                        />
+                        {isVideo && (
+                            <Box sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                bgcolor: 'rgba(0,0,0,0.25)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <PlayCircleOutlineIcon sx={{ fontSize: '3rem', color: 'rgba(255,255,255,0.9)', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }} />
+                            </Box>
+                        )}
                     </Box>
                 ) : (
                     <Box
@@ -215,148 +190,53 @@ const MediaCard = ({
                             height: '100%',
                             width: '100%',
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            bgcolor: 'rgba(0,0,0,0.02)'
-                        }}
-                    >
-                        <Box sx={{ transform: 'scale(2.5)', opacity: 0.3 }}>
-                            {getFileIcon(file)}
-                        </Box>
-                    </Box>
-                )}
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        top: 12,
-                        right: 12,
-                        display: 'flex',
-                        gap: 0.5
-                    }}
-                >
-                    <Chip
-                        label={file.format.toUpperCase()}
-                        size="small"
-                        sx={{
-                            bgcolor: 'rgba(255,255,255,0.9)',
-                            color: 'text.primary',
-                            fontWeight: 800,
-                            fontSize: '0.65rem',
-                            backdropFilter: 'blur(8px)',
-                            border: '1px solid rgba(0,0,0,0.05)'
-                        }}
-                    />
-                </Box>
-                {['queued', 'processing', 'uploading', 'upload_failed', 'failed'].includes(file.status) && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            bgcolor: ['upload_failed', 'failed'].includes(file.status) ? 'rgba(211, 47, 47, 0.8)' : 'rgba(0,0,0,0.6)',
-                            display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            zIndex: 20,
-                            backdropFilter: 'blur(4px)',
-                            px: 1
+                            gap: 1
                         }}
                     >
-                        {!['upload_failed', 'failed'].includes(file.status) && <CircularProgress size={32} sx={{ mb: 1, color: 'white' }} />}
-                        <Tooltip title={file.failureReason || 'Unknown failure reason'} arrow>
-                            <Typography variant="caption" sx={{ color: 'white', fontWeight: 800, textAlign: 'center', cursor: 'help', textDecoration: 'underline dotted' }}>
-                                {file.status === 'queued' ? 'QUEUED...' : 
-                                 file.status === 'processing' ? 'PROCESSING...' : 
-                                 file.status === 'uploading' ? `UPLOADING (${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}%)` : 
-                                 'UPLOAD FAILED'}
-                            </Typography>
-                        </Tooltip>
-                        {(file.status === 'uploading' || file.status === 'upload_failed') && !!file.totalChunks && (
-                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.6rem', mt: 0.5 }}>
-                                {file.uploadedChunks} / {file.totalChunks} chunks
-                            </Typography>
-                        )}
+                        {getFileIcon(file)}
+                        <Chip
+                            label={(file.format || file.type || 'FILE').toUpperCase()}
+                            size="small"
+                            sx={{ fontWeight: 800, fontSize: '0.65rem', borderRadius: '6px' }}
+                        />
                     </Box>
                 )}
             </Box>
-            <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
-                <Typography
-                    variant="body2"
-                    noWrap
-                    fontWeight={700}
-                    title={file.name}
-                    sx={{ mb: 1, color: 'text.primary' }}
-                >
-                    {file.name}
+
+            <CardContent sx={{ p: 2, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <Typography variant="body2" fontWeight={700} noWrap sx={{ color: 'var(--color-vc-ink)' }} title={file.title || file.name}>
+                    {file.title || file.name}
                 </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Box component="span" sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'text.disabled' }} />
-                        {formatSize(file.size)}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                        {format(new Date(file.createdAt), 'dd MMM')}
-                    </Typography>
-                </Box>
+                <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)', mt: 0.5 }}>
+                    {formatSize(file.size)} • {file.createdAt ? format(new Date(file.createdAt), 'MMM dd, yyyy') : 'Recent'}
+                </Typography>
             </CardContent>
-            <Divider sx={{ opacity: 0.5 }} />
-            <CardActions sx={{ justifyContent: 'space-between', px: 2, py: 1.5, bgcolor: 'background.paper' }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    {onSelect && (
-                        <Button 
-                            variant="contained" 
-                            size="small" 
-                            onClick={() => onSelect(file)}
-                            sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Select
-                        </Button>
-                    )}
-                    <Tooltip title="Copy Public Link">
-                        <IconButton
-                            size="small"
-                            onClick={() => onCopy(fixUrl(file.url))}
-                            sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'primary.light', color: 'primary.main' } }}
-                        >
-                            <ContentCopyIcon fontSize="inherit" />
-                        </IconButton>
-                    </Tooltip>
 
-                    <Tooltip title="Download">
-                        <IconButton
-                            size="small"
-                            component="a"
-                            href={fixUrl(file.url)}
-                            download
-                            sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'success.light', color: 'success.main' } }}
-                        >
-                            <DownloadIcon fontSize="inherit" />
-                        </IconButton>
-                    </Tooltip>
+            <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
 
-                    <Tooltip title="Quick View">
-                        <IconButton
-                            size="small"
-                            onClick={() => onPreview(file)}
-                            sx={{ bgcolor: 'action.hover', '&:hover': { bgcolor: 'info.light', color: 'info.main' } }}
-                        >
-                            <VisibilityIcon fontSize="inherit" />
+            <CardActions sx={{ px: 1.5, py: 1, justifyContent: 'space-between' }}>
+                <Tooltip title={isProcessing ? "Processing HLS..." : "Preview Details"}>
+                    <span>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); onPreview(e); }} disabled={isProcessing} sx={{ color: 'var(--color-vc-link)' }}>
+                            <VisibilityIcon fontSize="small" />
                         </IconButton>
-                    </Tooltip>
-                </Box>
-                <Tooltip title="Delete Permanently">
-                    <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => onDelete(file)}
-                        sx={{ bgcolor: 'error.light', color: 'error.main', '&:hover': { bgcolor: 'error.main', color: 'white' } }}
-                    >
-                        <DeleteIcon fontSize="inherit" />
+                    </span>
+                </Tooltip>
+                <Tooltip title="Copy Link">
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); onCopy(e); }} sx={{ color: 'var(--color-vc-mute)' }}>
+                        <ContentCopyIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
+                {!isPickerMode && (
+                    <Tooltip title="Delete">
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDelete(e); }} sx={{ color: 'var(--color-vc-error)' }}>
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                )}
             </CardActions>
         </Card>
     );

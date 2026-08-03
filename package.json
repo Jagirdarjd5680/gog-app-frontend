@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:fresh": "powershell -Command \"$p = netstat -ano | Select-String ':5173 ' | Select-String 'LISTENING'; if ($p) { $pid = ($p -split '\\s+')[-1]; taskkill /PID $pid /F }; npm run dev\"",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

@@ -47,11 +47,11 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
     const renderHeader = () => {
         return (
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <IconButton onClick={prevMonth}><ChevronLeftIcon /></IconButton>
-                <Typography variant="h6" fontWeight={700}>
+                <IconButton onClick={prevMonth} sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-ink)' } }}><ChevronLeftIcon /></IconButton>
+                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                     {format(currentMonth, 'MMMM yyyy')}
                 </Typography>
-                <IconButton onClick={nextMonth}><ChevronRightIcon /></IconButton>
+                <IconButton onClick={nextMonth} sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-ink)' } }}><ChevronRightIcon /></IconButton>
             </Stack>
         );
     };
@@ -61,12 +61,12 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
         const startDate = startOfWeek(currentMonth);
         for (let i = 0; i < 7; i++) {
             days.push(
-                <Box key={i} sx={{ width: '14.28%', textAlign: 'center', fontWeight: 'bold', py: 1 }}>
+                <Box key={i} sx={{ width: '14.28%', textAlign: 'center', fontWeight: 600, py: 1, fontSize: '11px', color: 'var(--color-vc-mute)' }}>
                     {format(addDays(startDate, i), 'EEE')}
                 </Box>
             );
         }
-        return <Stack direction="row" sx={{ borderBottom: '1px solid #eee' }}>{days}</Stack>;
+        return <Stack direction="row" sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>{days}</Stack>;
     };
 
     const renderCells = () => {
@@ -88,7 +88,7 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
 
                 // Determine Day Status
                 let bgColor = 'transparent';
-                let textColor = '#000';
+                let textColor = 'var(--color-vc-ink)';
                 
                 const isSunday = getDay(day) === 0;
                 const isFuture = isAfter(day, today);
@@ -98,26 +98,26 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
                 const record = attendanceData.find(a => isSameDay(new Date(a.date), cloneDay));
 
                 if (isSunday) {
-                    bgColor = '#fff3cd'; // Yellow for Holiday/Sunday
-                    textColor = '#856404';
+                    bgColor = 'var(--color-vc-warning-soft)'; // Yellow for Holiday/Sunday
+                    textColor = 'var(--color-vc-warning-deep)';
                     status = 'holiday';
                 } else if (!isFuture) {
                     if (record) {
-                        bgColor = '#d4edda'; // Green for Present
-                        textColor = '#155724';
+                        bgColor = 'var(--color-vc-success-soft)'; // Green for Present
+                        textColor = 'var(--color-vc-success-deep)';
                         status = 'present';
                     } else if (enrolledDate && isAfter(day, new Date(enrolledDate))) {
-                        bgColor = '#f8d7da'; // Red for Absent
-                        textColor = '#721c24';
+                        bgColor = 'var(--color-vc-error-soft)'; // Red for Absent
+                        textColor = 'var(--color-vc-error-deep)';
                         status = 'absent';
                     } else if (!enrolledDate) {
-                        bgColor = '#f8d7da'; // Red for Absent if no enrolled date provided
-                        textColor = '#721c24';
+                        bgColor = 'var(--color-vc-error-soft)'; // Red for Absent if no enrolled date provided
+                        textColor = 'var(--color-vc-error-deep)';
                     }
                 }
 
                 if (!isSameMonth(day, monthStart)) {
-                    textColor = '#ccc';
+                    textColor = 'var(--color-vc-mute)';
                     bgColor = 'transparent';
                 }
 
@@ -126,24 +126,24 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
                         key={day}
                         sx={{
                             width: '14.28%',
-                            height: 80,
+                            height: 72,
                             p: 1,
-                            borderRight: '1px solid #eee',
-                            borderBottom: '1px solid #eee',
-                            bgcolor: isSameMonth(day, monthStart) ? bgColor : '#f9f9f9',
+                            borderRight: '1px solid var(--color-vc-hairline)',
+                            borderBottom: '1px solid var(--color-vc-hairline)',
+                            bgcolor: isSameMonth(day, monthStart) ? bgColor : 'var(--color-vc-canvas-soft)',
                             color: textColor,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            opacity: isSameMonth(day, monthStart) ? 1 : 0.4
+                            opacity: isSameMonth(day, monthStart) ? 1 : 0.35
                         }}
                     >
-                        <Typography variant="body2" fontWeight={isSameDay(day, today) ? 'bold' : 'normal'}>
+                        <Typography sx={{ fontSize: '11px', fontFamily: '"JetBrains Mono", monospace', fontWeight: isSameDay(day, today) ? 700 : 500 }}>
                             {formattedDate}
                         </Typography>
-                        {status === 'present' && <Typography variant="caption" sx={{ mt: 1, fontSize: '0.65rem', fontWeight: 'bold' }}>Present</Typography>}
-                        {status === 'absent' && <Typography variant="caption" sx={{ mt: 1, fontSize: '0.65rem', fontWeight: 'bold' }}>Absent</Typography>}
-                        {status === 'holiday' && <Typography variant="caption" sx={{ mt: 1, fontSize: '0.65rem', fontWeight: 'bold' }}>Sunday</Typography>}
+                        {status === 'present' && <Typography sx={{ mt: 1, fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Present</Typography>}
+                        {status === 'absent' && <Typography sx={{ mt: 1, fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Absent</Typography>}
+                        {status === 'holiday' && <Typography sx={{ mt: 1, fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Sunday</Typography>}
                     </Box>
                 );
                 day = addDays(day, 1);
@@ -155,29 +155,29 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
             );
             days = [];
         }
-        return <Box sx={{ borderLeft: '1px solid #eee', borderTop: '1px solid #eee' }}>{rows}</Box>;
+        return <Box sx={{ borderLeft: '1px solid var(--color-vc-hairline)', borderTop: '1px solid var(--color-vc-hairline)' }}>{rows}</Box>;
     };
 
-    if (loading) return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>;
+    if (loading) return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={24} sx={{ color: 'var(--color-vc-primary)' }} /></Box>;
 
     return (
-        <Paper elevation={0} sx={{ p: 3, border: '1px solid #eee', borderRadius: 2 }}>
+        <Paper elevation={0} sx={{ p: 3, border: '1px solid var(--color-vc-hairline)', borderRadius: '6px', bgcolor: 'var(--color-vc-canvas)' }}>
             {renderHeader()}
             {renderDays()}
             {renderCells()}
             
             <Stack direction="row" spacing={3} sx={{ mt: 3, justifyContent: 'center' }}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ w: 16, h: 16, width: 16, height: 16, bgcolor: '#d4edda', borderRadius: 1 }} />
-                    <Typography variant="caption">Present</Typography>
+                    <Box sx={{ width: 14, height: 14, bgcolor: 'var(--color-vc-success-soft)', border: '1px solid var(--color-vc-success-deep)', borderRadius: '3px' }} />
+                    <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)' }}>Present</Typography>
                 </Stack>
                 <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ w: 16, h: 16, width: 16, height: 16, bgcolor: '#f8d7da', borderRadius: 1 }} />
-                    <Typography variant="caption">Absent</Typography>
+                    <Box sx={{ width: 14, height: 14, bgcolor: 'var(--color-vc-error-soft)', border: '1px solid var(--color-vc-error-deep)', borderRadius: '3px' }} />
+                    <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)' }}>Absent</Typography>
                 </Stack>
                 <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ w: 16, h: 16, width: 16, height: 16, bgcolor: '#fff3cd', borderRadius: 1 }} />
-                    <Typography variant="caption">Holiday</Typography>
+                    <Box sx={{ width: 14, height: 14, bgcolor: 'var(--color-vc-warning-soft)', border: '1px solid var(--color-vc-warning-deep)', borderRadius: '3px' }} />
+                    <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)' }}>Sunday</Typography>
                 </Stack>
             </Stack>
         </Paper>

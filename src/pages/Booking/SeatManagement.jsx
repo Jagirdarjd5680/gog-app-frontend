@@ -55,7 +55,7 @@ const SeatManagement = () => {
 
     useEffect(() => {
         if (selectedBatch) {
-            fetchSeatStatus(selectedBatch._id);
+            fetchSeatStatus(selectedBatch.id);
         }
     }, [selectedBatch]);
 
@@ -73,7 +73,7 @@ const SeatManagement = () => {
 
     const fetchStudents = async () => {
         try {
-            const res = await api.get('/users?role=student');
+            const res = await api.get('/users', { params: { role: 'student', limit: 500 } });
             if (res.data.success) {
                 setAllStudents(res.data.data);
             }
@@ -99,21 +99,21 @@ const SeatManagement = () => {
     const handleOpenAssign = (seatNum = '', type = 'live', booking = null) => {
         if (booking) {
             setIsEditing(true);
-            setEditingBookingId(booking._id);
+            setEditingBookingId(booking.id);
             setAssignmentForm({
-                batchId: booking.batch?._id || selectedBatch?._id,
+                batchId: booking.batch?.id || selectedBatch?.id,
                 seatType: booking.zone === 'Practice Zone' ? 'practice' : 'live',
                 seatNumber: booking.seatNumber,
                 order: booking.seatNumber
             });
             // Try to find the student object
-            const student = allStudents.find(s => s.email === booking.user.email || s._id === booking.user.id);
-            setStudentToAssign(student || { name: booking.user.name, email: booking.user.email, _id: booking.user.id });
+            const student = allStudents.find(s => s.email === booking.user.email || s.id === booking.user.id);
+            setStudentToAssign(student || { name: booking.user.name, email: booking.user.email, id: booking.user.id });
         } else {
             setIsEditing(false);
             setEditingBookingId(null);
             setAssignmentForm({
-                batchId: selectedBatch?._id || '',
+                batchId: selectedBatch?.id || '',
                 seatType: type,
                 seatNumber: seatNum,
                 order: seatNum || 1
@@ -127,11 +127,12 @@ const SeatManagement = () => {
         try {
             const num = Number(assignmentForm.seatNumber);
             if (!num) return toast.error('Please enter a valid seat number');
+            if (!assignmentForm.batchId) return toast.error('Please select a batch');
 
             // 1. Update the batch's total seats if needed
             const updatedTotalSeats = Math.max(selectedBatch.totalSeats, num);
             if (updatedTotalSeats > selectedBatch.totalSeats) {
-                await api.put(`/booking/batches/${selectedBatch._id}`, {
+                await api.put(`/booking/batches/${selectedBatch.id}`, {
                     ...selectedBatch,
                     totalSeats: updatedTotalSeats
                 });
@@ -144,7 +145,7 @@ const SeatManagement = () => {
                         name: studentToAssign.name,
                         email: studentToAssign.email,
                         phone: studentToAssign.phone || 'N/A',
-                        id: studentToAssign._id
+                        id: studentToAssign.id
                     },
                     batchId: assignmentForm.batchId,
                     seatNumber: num,
@@ -161,7 +162,7 @@ const SeatManagement = () => {
                     // Create new booking
                     const res = await api.post('/booking/request', { ...payload });
                     if (res.data.success) {
-                        await api.put(`/booking/${res.data.data._id}/status`, { status: 'approved' });
+                        await api.put(`/booking/${res.data.data.id}/status`, { status: 'approved' });
                     }
                 }
             }
@@ -169,7 +170,7 @@ const SeatManagement = () => {
             toast.success(`Seat #${num} updated successfully`);
             setAssignDialogOpen(false);
             fetchBatches(); 
-            fetchSeatStatus(selectedBatch._id);
+            fetchSeatStatus(selectedBatch.id);
         } catch (error) {
             toast.error(error.response?.data?.message || 'Action failed');
         }
@@ -180,7 +181,7 @@ const SeatManagement = () => {
         try {
             await api.delete(`/booking/${id}`);
             toast.success('Assignment removed');
-            fetchSeatStatus(selectedBatch._id);
+            fetchSeatStatus(selectedBatch.id);
         } catch (error) {
             toast.error('Failed to remove assignment');
         }
@@ -201,7 +202,7 @@ const SeatManagement = () => {
                     border: '1.5px solid', 
                     borderColor: isOccupied ? 'divider' : 'rgba(0,0,0,0.05)',
                     cursor: 'pointer',
-                    bgcolor: isOccupied ? (booking.status === 'approved' ? 'black' : 'warning.light') : 'white',
+                    bgcolor: isOccupied ? (booking.status === 'approved' ? 'success.main' : 'warning.light') : 'white',
                     color: isOccupied && booking.status === 'approved' ? 'white' : 'text.primary',
                     transition: '0.2s',
                     position: 'relative',
@@ -227,7 +228,7 @@ const SeatManagement = () => {
                 {isOccupied && (
                     <IconButton 
                         size="small" 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking._id); }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteBooking(booking.id); }}
                         sx={{ position: 'absolute', bottom: 5, right: 5, color: booking.status === 'approved' ? 'rgba(255,255,255,0.5)' : 'error.main' }}
                     >
                         <DeleteIcon sx={{ fontSize: 14 }} />
@@ -243,15 +244,15 @@ const SeatManagement = () => {
             <Stack direction="row" spacing={1} mb={4} sx={{ overflowX: 'auto', pb: 1 }}>
                 {batches.map((batch) => (
                     <Button 
-                        key={batch._id}
+                        key={batch.id}
                         onClick={() => setSelectedBatch(batch)}
-                        variant={selectedBatch?._id === batch._id ? 'contained' : 'outlined'}
+                        variant={selectedBatch?.id === batch.id ? 'contained' : 'outlined'}
                         sx={{ 
                             borderRadius: 10, px: 3, py: 1, 
-                            bgcolor: selectedBatch?._id === batch._id ? 'black' : 'transparent',
-                            color: selectedBatch?._id === batch._id ? '#fbbf24' : 'text.secondary',
+                            bgcolor: selectedBatch?.id === batch.id ? 'black' : 'transparent',
+                            color: selectedBatch?.id === batch.id ? '#fbbf24' : 'text.secondary',
                             fontWeight: 800, textTransform: 'none',
-                            borderColor: selectedBatch?._id === batch._id ? 'black' : '#eee',
+                            borderColor: selectedBatch?.id === batch.id ? 'black' : '#eee',
                             flexShrink: 0
                         }}
                     >
@@ -345,7 +346,7 @@ const SeatManagement = () => {
                                 onChange={(e) => setAssignmentForm({...assignmentForm, batchId: e.target.value})}
                                 sx={{ mt: 1, borderRadius: 2 }}
                             >
-                                {batches.map(b => <MenuItem key={b._id} value={b._id}>{b.name}</MenuItem>)}
+                                {batches.map(b => <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>)}
                             </Select>
                         </Grid>
 
@@ -387,7 +388,11 @@ const SeatManagement = () => {
                 </DialogContent>
                 <DialogActions sx={{ p: 3, borderTop: '1px solid #eee' }}>
                     <Button onClick={() => setAssignDialogOpen(false)} sx={{ fontWeight: 800 }}>Cancel</Button>
-                    <Button variant="contained" onClick={confirmAssignment} sx={{ bgcolor: 'black', borderRadius: 2, px: 5, py: 1.2, fontWeight: 900 }}>
+                    <Button
+                        variant="contained"
+                        onClick={confirmAssignment}
+                        sx={{ bgcolor: 'black', borderRadius: 2, px: 5, py: 1.2, fontWeight: 900 }}
+                    >
                         {isEditing ? 'UPDATE ASSIGNMENT' : 'CONFIRM ASSIGNMENT'}
                     </Button>
                 </DialogActions>

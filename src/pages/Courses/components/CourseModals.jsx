@@ -5,6 +5,7 @@ import CourseViewModal from '../../../components/Courses/CourseViewModal';
 import AssignExamModal from '../../../components/Courses/AssignExamModal';
 import AssignAssignmentModal from '../../../components/Courses/AssignAssignmentModal';
 import ReviewModal from '../../../components/Courses/ReviewModal';
+import LiveClassManageModal from '../../../components/Courses/LiveClassManageModal';
 
 const CourseModals = ({
     deleteDialogOpen, setDeleteDialogOpen, confirmDelete, courseToDelete,
@@ -12,7 +13,8 @@ const CourseModals = ({
     viewModalOpen, setViewModalOpen, selectedCourseData,
     assignExamModalOpen, setAssignExamModalOpen, selectedCourseForAction, handleActionSuccess,
     assignAssignmentModalOpen, setAssignAssignmentModalOpen,
-    reviewModalOpen, setReviewModalOpen
+    reviewModalOpen, setReviewModalOpen,
+    liveClassesModalOpen, setLiveClassesModalOpen
 }) => {
     return (
         <>
@@ -25,13 +27,16 @@ const CourseModals = ({
             )}
             <CourseViewModal open={viewModalOpen} onClose={() => setViewModalOpen(false)} course={selectedCourseData} />
             {assignExamModalOpen && (
-                <AssignExamModal open={assignExamModalOpen} onClose={() => setAssignExamModalOpen(false)} courseId={selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
+                <AssignExamModal open={assignExamModalOpen} onClose={() => setAssignExamModalOpen(false)} courseId={selectedCourseForAction?.id || selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
             )}
             {assignAssignmentModalOpen && (
-                <AssignAssignmentModal open={assignAssignmentModalOpen} onClose={() => setAssignAssignmentModalOpen(false)} courseId={selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
+                <AssignAssignmentModal open={assignAssignmentModalOpen} onClose={() => setAssignAssignmentModalOpen(false)} courseId={selectedCourseForAction?.id || selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
             )}
             {reviewModalOpen && (
-                <ReviewModal open={reviewModalOpen} onClose={() => setReviewModalOpen(false)} courseId={selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
+                <ReviewModal open={reviewModalOpen} onClose={() => setReviewModalOpen(false)} courseId={selectedCourseForAction?.id || selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
+            )}
+            {liveClassesModalOpen && (
+                <LiveClassManageModal open={liveClassesModalOpen} onClose={() => setLiveClassesModalOpen(false)} courseId={selectedCourseForAction?.id || selectedCourseForAction?._id} courseTitle={selectedCourseForAction?.title} onSuccess={handleActionSuccess} />
             )}
         </>
     );

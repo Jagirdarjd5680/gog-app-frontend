@@ -14,6 +14,19 @@ import BasicDetails from './BasicDetails';
 import CourseBatchSelect from './CourseBatchSelect';
 import FeeManagement from './FeeManagement';
 
+const PERMISSION_MODULES = [
+    { key: 'exams', label: 'Exams' },
+    { key: 'courses', label: 'Courses' },
+    { key: 'students', label: 'Students' },
+    { key: 'chat', label: 'Chat' },
+];
+const PERMISSION_ACTIONS = [
+    { key: 'view', label: 'View' },
+    { key: 'add', label: 'Add' },
+    { key: 'edit', label: 'Edit' },
+    { key: 'delete', label: 'Delete' },
+];
+
 const validationSchema = Yup.object({
     name: Yup.string().required('Name is required'),
     email: Yup.string().email('Invalid email').required('Email is required'),
@@ -25,7 +38,7 @@ const validationSchema = Yup.object({
 const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [fetchingFees, setFetchingFees] = useState(false);
-    const [courses, setCourses] = useState([]);
+    const [courses, setCourses] = useState(null);
     const [allBatches, setAllBatches] = useState([]);
     const [autoGenPassword, setAutoGenPassword] = useState(!user);
     const [courseFees, setCourseFees] = useState({});
@@ -42,8 +55,10 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     const fetchCourses = async () => {
         try {
             const response = await api.get('/courses');
-            setCourses(response.data.data);
-        } catch (error) { }
+            setCourses(response.data.data || []);
+        } catch (error) {
+            setCourses([]);
+        }
     };
 
     const fetchAllBatches = async () => {
@@ -97,6 +112,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
         batches: user?.batches || (user?.batch ? [user.batch] : []),
         permissions: user?.permissions || 'fullControl',
         moduleAccess: user?.moduleAccess || [],
+        modulePermissions: user?.modulePermissions || {},
     };
 
     const handleSubmit = async (values) => {
@@ -105,16 +121,17 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
             // Validation & Submission Logic (extracted for brevity)
             // ... same as original logic ...
             let res;
-            if (user) {
+            const existingId = user ? (user._id || user.id) : null;
+            if (user && existingId) {
                 const updateValues = { ...values };
                 if (!updateValues.password) delete updateValues.password;
-                res = await api.put(`/users/${user._id}`, updateValues);
+                res = await api.put(`/users/${existingId}`, updateValues);
             } else {
                 const payload = { ...values, autoGeneratePassword: autoGenPassword, password: autoGenPassword ? undefined : values.password };
                 res = await api.post('/users', payload);
             }
 
-            const targetUserId = user ? user._id : res.data.data._id;
+            const targetUserId = user ? (user._id || user.id) : (res.data?.data?._id || res.data?.data?.id);
             // Handle Fee Records
             for (const courseId of values.enrolledCourses) {
                 const feeData = courseFees[courseId];
@@ -136,13 +153,35 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-            <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            maxWidth="md" 
+            fullWidth 
+            PaperProps={{ 
+                sx: { 
+                    borderRadius: '8px',
+                    bgcolor: 'var(--color-vc-canvas)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: '0px 32px 64px -12px rgba(0,0,0,0.16)',
+                } 
+            }}
+        >
+            <DialogTitle sx={{ 
+                fontSize: '16px', 
+                fontWeight: 600, 
+                color: 'var(--color-vc-ink)', 
+                fontFamily: 'inherit',
+                pb: 1.5,
+                borderBottom: '1px solid var(--color-vc-hairline)'
+            }}>
+                {user ? 'Edit User' : 'Add New User'}
+            </DialogTitle>
             <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit} enableReinitialize>
                 {({ values, errors, touched, handleChange, handleBlur, setFieldValue }) => (
                     <Form>
-                        <DialogContent dividers sx={{ minHeight: 400 }}>
-                            {(courses.length === 0 || (user && fetchingFees)) ? (
+                        <DialogContent sx={{ minHeight: 400, bgcolor: 'var(--color-vc-canvas)', py: 3 }}>
+                            {(courses === null || (user && fetchingFees)) ? (
                                 <UserFormSkeleton />
                             ) : (
                                 <>
@@ -150,7 +189,7 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                                         courses={courses} allBatches={allBatches} values={values}
                                         setFieldValue={setFieldValue} courseFees={courseFees} setCourseFees={setCourseFees}
                                     />
-                                    <Divider sx={{ my: 3 }} />
+                                    <Divider sx={{ my: 3, borderColor: 'var(--color-vc-hairline)' }} />
                                     <BasicDetails
                                         values={values} errors={errors} touched={touched}
                                         handleChange={handleChange} handleBlur={handleBlur}
@@ -165,10 +204,10 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                                         <FeeManagement courses={courses} values={values} courseFees={courseFees} setCourseFees={setCourseFees} />
                                     )}
 
-                                    {/* Permission / Module Access Section (Small enough to keep here or extract) */}
+                                    {/* Permission / Module Access Section */}
                                     {values.role === 'admin' && (
-                                        <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                                            <Typography variant="subtitle2" fontWeight={700}>Admin Module Access</Typography>
+                                        <Box sx={{ mt: 3, p: 2, bgcolor: 'var(--color-vc-canvas-soft)', border: '1px solid var(--color-vc-hairline)', borderRadius: '6px' }}>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', mb: 1 }}>Admin Module Access</Typography>
                                             <FormGroup row>
                                                 {['chatAccess', 'userManagement', 'courseManagement'].map(module => (
                                                     <FormControlLabel
@@ -183,12 +222,102 @@ const UserFormModal = ({ open, onClose, user, onSuccess }) => {
                                             </FormGroup>
                                         </Box>
                                     )}
+
+                                    {/* Teacher granular permissions: per-module View/Add/Edit/Delete grants,
+                                        enforced both here (sidebar/route visibility) and on the backend
+                                        (ModulePermissionsGuard) — see backend_nestjs/src/auth/module-permissions.guard.ts */}
+                                    {values.role === 'teacher' && (
+                                        <Box sx={{ mt: 3, p: 2, bgcolor: 'var(--color-vc-canvas-soft)', border: '1px solid var(--color-vc-hairline)', borderRadius: '6px' }}>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', mb: 1.5 }}>
+                                                Teacher Permissions
+                                            </Typography>
+                                            <Box sx={{ overflowX: 'auto' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th style={{ textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--color-vc-mute)', fontFamily: 'inherit', padding: '4px 8px' }}>
+                                                                Module
+                                                            </th>
+                                                            {PERMISSION_ACTIONS.map((action) => (
+                                                                <th key={action.key} style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-vc-mute)', fontFamily: 'inherit', padding: '4px 8px' }}>
+                                                                    {action.label}
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {PERMISSION_MODULES.map((mod) => (
+                                                            <tr key={mod.key}>
+                                                                <td style={{ fontSize: 13, color: 'var(--color-vc-ink)', fontFamily: 'inherit', padding: '4px 8px' }}>
+                                                                    {mod.label}
+                                                                </td>
+                                                                {PERMISSION_ACTIONS.map((action) => {
+                                                                    const checked = !!values.modulePermissions?.[mod.key]?.[action.key];
+                                                                    return (
+                                                                        <td key={action.key} style={{ textAlign: 'center', padding: '4px 8px' }}>
+                                                                            <Checkbox
+                                                                                size="small"
+                                                                                checked={checked}
+                                                                                onChange={(e) => {
+                                                                                    const next = {
+                                                                                        ...values.modulePermissions,
+                                                                                        [mod.key]: { ...values.modulePermissions?.[mod.key], [action.key]: e.target.checked },
+                                                                                    };
+                                                                                    setFieldValue('modulePermissions', next);
+                                                                                }}
+                                                                            />
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </Box>
+                                        </Box>
+                                    )}
                                 </>
                             )}
                         </DialogContent>
-                        <DialogActions sx={{ p: 2 }}>
-                            <Button onClick={onClose}>Cancel</Button>
-                            <Button type="submit" variant="contained" disabled={loading} sx={{ px: 4, borderRadius: 2 }}>
+                        <DialogActions sx={{ p: 2.5, borderTop: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', gap: 1 }}>
+                            <Button 
+                                onClick={onClose}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    color: 'var(--color-vc-mute)',
+                                    '&:hover': {
+                                        color: 'var(--color-vc-ink)',
+                                        bgcolor: 'var(--color-vc-canvas-soft)'
+                                    }
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                variant="contained" 
+                                disabled={loading} 
+                                sx={{ 
+                                    px: 3, 
+                                    borderRadius: '6px',
+                                    height: 36,
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    boxShadow: 'none',
+                                    bgcolor: 'var(--color-vc-primary)',
+                                    color: 'var(--color-vc-on-primary)',
+                                    '&:hover': {
+                                        bgcolor: 'var(--color-vc-primary)',
+                                        opacity: 0.9,
+                                        boxShadow: 'none'
+                                    }
+                                }}
+                            >
                                 {loading ? 'Saving...' : 'Save User'}
                             </Button>
                         </DialogActions>

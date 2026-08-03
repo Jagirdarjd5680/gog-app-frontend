@@ -1,348 +1,311 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-    Box,
-    Typography,
-    Chip,
-    Stack,
-    IconButton,
-    Tooltip,
-    Grid,
-    Card,
-    CardContent,
-    Button,
-    CardActionArea,
-    Breadcrumbs,
-    Link,
-    Paper,
-    Divider,
-    Avatar
-} from '@mui/material';
-import DataTable from '../../components/Common/DataTable';
+import { Box, Typography, Card, CardContent, IconButton, Stack, Chip, Avatar, Button, Grid } from '@mui/material';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import AssignmentIcon from '@mui/icons-material/Assignment';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import GroupsIcon from '@mui/icons-material/Groups';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import QuizIcon from '@mui/icons-material/Quiz';
+import PercentIcon from '@mui/icons-material/Percent';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
-import { useTheme } from '../../context/ThemeContext';
 
 const ExamResults = () => {
-    const { isDark } = useTheme();
     const navigate = useNavigate();
     const { examId } = useParams();
-    
+
     const [summary, setSummary] = useState([]);
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedExam, setSelectedExam] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const fetchSummary = async () => {
-        setLoading(true);
-        try {
-            const response = await api.get('/exam-results/summary');
-            const data = response.data || [];
-            setSummary(data);
-            
-            // If examId is in URL, set the selected exam from summary
-            if (examId) {
-                const found = data.find(e => e._id === examId);
-                if (found) {
-                    setSelectedExam(found);
-                    fetchResults(examId);
-                }
-            }
-        } catch (error) {
-            toast.error('Failed to load summary');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchResults = async (id) => {
+    const fetchResults = useCallback(async (id) => {
         setLoading(true);
         try {
             const response = await api.get(`/exam-results/exam/${id}`);
-            setResults(response.data || []);
+            const resData = response.data?.data || response.data || [];
+            setResults(Array.isArray(resData) ? resData : []);
         } catch (error) {
-            toast.error('Failed to load exam results');
+            console.error('Failed to load exam results:', error);
+            toast.error('Failed to load detailed exam results');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    const fetchSummary = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/exam-results/summary');
+            const data = response.data?.data || response.data || [];
+            setSummary(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to load summary:', error);
+            toast.error('Failed to load exam results summary');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         fetchSummary();
-    }, []);
+    }, [fetchSummary]);
 
-    // Watch for URL changes (back button support)
     useEffect(() => {
         if (!examId) {
             setSelectedExam(null);
             setResults([]);
+            setSearchTerm('');
         } else if (summary.length > 0) {
-            const found = summary.find(e => e._id === examId);
+            const found = summary.find(e => (e._id || e.id) === examId);
             if (found) {
                 setSelectedExam(found);
                 fetchResults(examId);
             }
         }
-    }, [examId, summary]);
+    }, [examId, summary, fetchResults]);
 
     const handleSelectExam = (exam) => {
-        navigate(`/exam-results/${exam._id}`);
+        const id = exam._id || exam.id;
+        navigate(`/exam-results/${id}`);
     };
 
     const handleBack = () => {
         navigate('/exam-results');
     };
 
-    const handleViewResult = (resultId) => {
-        navigate(`/exam-results/details/${resultId}`);
-    };
+    const filteredResults = useMemo(() => {
+        if (!searchTerm.trim()) return results;
+        const term = searchTerm.toLowerCase();
+        return results.filter(r => {
+            const name = (r.user?.name || r.student?.name || '').toLowerCase();
+            const email = (r.user?.email || r.student?.email || '').toLowerCase();
+            return name.includes(term) || email.includes(term);
+        });
+    }, [results, searchTerm]);
 
-    const StatusRenderer = (params) => {
-        const passed = params.data.passed;
-        return (
-            <Chip
-                label={passed ? 'PASSED' : 'FAILED'}
-                size="small"
-                color={passed ? 'success' : 'error'}
-                sx={{ fontWeight: 'bold', fontSize: '0.7rem', borderRadius: 0 }}
-            />
-        );
-    };
+    const summaryMetrics = useMemo(() => {
+        const totalSubmissions = summary.reduce((sum, e) => sum + (e.totalSubmissions || e.submissionsCount || 0), 0);
+        const avgScore = summary.length
+            ? Math.round(summary.reduce((sum, e) => sum + (e.avgScore || 0), 0) / summary.length)
+            : 0;
+        return [
+            { title: 'Total Exams', value: summary.length, icon: <QuizIcon />, color: 'primary' },
+            { title: 'Total Submissions', value: totalSubmissions, icon: <GroupsIcon />, color: 'info' },
+            { title: 'Avg Score', value: `${avgScore}%`, icon: <PercentIcon />, color: 'success' }
+        ];
+    }, [summary]);
 
-    const ActionsRenderer = (params) => (
-        <Stack direction="row" spacing={1}>
-            <Tooltip title="View Details">
-                <IconButton 
-                    size="small" 
-                    sx={{ bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 0 }}
-                    onClick={() => handleViewResult(params.data._id)}
+    const resultMetrics = useMemo(() => {
+        const passed = results.filter(r => r.passed || (r.score >= (r.passingMarks || 40))).length;
+        const avgScore = results.length
+            ? Math.round(results.reduce((sum, r) => sum + (r.score || 0), 0) / results.length)
+            : 0;
+        return [
+            { title: 'Total Submissions', value: results.length, icon: <GroupsIcon />, color: 'primary' },
+            { title: 'Passed', value: passed, icon: <TaskAltIcon />, color: 'success' },
+            { title: 'Failed', value: results.length - passed, icon: <QuizIcon />, color: 'error' },
+            { title: 'Avg Score', value: avgScore, icon: <EmojiEventsIcon />, color: 'warning' }
+        ];
+    }, [results]);
+
+    const resultColumns = useMemo(() => [
+        {
+            field: 'student',
+            headerName: 'STUDENT NAME',
+            flex: 1.5,
+            minWidth: 220,
+            cellRenderer: (params) => {
+                const name = params.data.user?.name || params.data.student?.name || 'N/A';
+                return (
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13, fontWeight: 700 }}>
+                            {name.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Box>
+                            <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                                {name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                                {params.data.user?.email || params.data.student?.email || 'N/A'}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                );
+            }
+        },
+        {
+            field: 'score',
+            headerName: 'SCORE',
+            width: 140,
+            cellRenderer: (params) => (
+                <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                    {params.data.score || 0} / {params.data.maxScore || 100}
+                </Typography>
+            )
+        },
+        {
+            field: 'passed',
+            headerName: 'RESULT',
+            width: 130,
+            cellRenderer: (params) => {
+                const passed = params.data.passed || (params.data.score >= (params.data.passingMarks || 40));
+                return (
+                    <Chip
+                        label={passed ? 'PASSED' : 'FAILED'}
+                        color={passed ? 'success' : 'error'}
+                        size="small"
+                        sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                    />
+                );
+            }
+        },
+        {
+            field: 'submitTime',
+            headerName: 'SUBMITTED ON',
+            width: 190,
+            valueGetter: (params) => {
+                const date = params.data.submitTime || params.data.createdAt;
+                return date ? format(new Date(date), 'MMM dd, yyyy - hh:mm a') : 'N/A';
+            }
+        },
+        {
+            field: 'actions',
+            headerName: 'ACTIONS',
+            width: 120,
+            cellRenderer: (params) => (
+                <IconButton
+                    size="small"
+                    onClick={() => navigate(`/exam-results/details/${params.data._id || params.data.id}`)}
+                    sx={{ color: 'var(--color-vc-mute)' }}
+                    title="View Answer Sheet"
                 >
                     <VisibilityIcon fontSize="small" />
                 </IconButton>
-            </Tooltip>
-        </Stack>
-    );
+            )
+        }
+    ], [navigate]);
 
-    const columnDefs = [
-        {
-            headerName: 'STUDENT',
-            field: 'user',
-            flex: 1.2,
-            minWidth: 150,
-            valueGetter: (params) => params.data.user?.name || 'Unknown'
-        },
-        {
-            headerName: 'ROLL NO',
-            field: 'user.rollNumber',
-            flex: 1,
-            minWidth: 120,
-            valueGetter: (params) => params.data.user?.rollNumber || 'N/A'
-        },
-        {
-            headerName: 'SCORE',
-            field: 'score',
-            width: 120,
-            valueGetter: (params) => `${params.data.score}/${params.data.maxScore}`
-        },
-        {
-            headerName: 'PERCENTAGE',
-            field: 'percentage',
-            width: 120,
-            valueGetter: (params) => `${params.data.percentage?.toFixed(1)}%`
-        },
-        {
-            headerName: 'ATTEMPT',
-            field: 'attemptNumber',
-            width: 100,
-        },
-        {
-            headerName: 'STATUS',
-            cellRenderer: StatusRenderer,
-            width: 120
-        },
-        {
-            headerName: 'DATE',
-            field: 'submitTime',
-            width: 160,
-            valueGetter: (params) => params.data.submitTime ? format(new Date(params.data.submitTime), 'MMM dd, yyyy HH:mm') : 'N/A'
-        },
-        {
-            headerName: 'ACTION',
-            cellRenderer: ActionsRenderer,
-            width: 100,
-            pinned: 'right'
-        },
-    ];
-
-    if (!selectedExam) {
-        return (
-            <Box sx={{ p: 4 }}>
-                <Box sx={{ mb: 4 }}>
-                    <Typography variant="h4" fontWeight={900} sx={{
-                        background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        mb: 1
-                    }}>
-                        Exam Results
+    return (
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                {selectedExam && (
+                    <IconButton onClick={handleBack} sx={{ color: 'var(--color-vc-mute)' }} title="Back to Summary">
+                        <ArrowBackIcon />
+                    </IconButton>
+                )}
+                <Box>
+                    <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                        {selectedExam ? selectedExam.title : 'Exam Performance & Analytics'}
                     </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                        Select an exam to view detailed student outcomes and performance metrics.
+                    <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                        {selectedExam
+                            ? 'Detailed student scores, evaluation records, and answer sheets'
+                            : 'Overview of student submissions across all published exams'}
                     </Typography>
                 </Box>
+            </Box>
 
-                <Grid container spacing={3}>
-                    {summary.length > 0 ? summary.map((item) => (
-                        <Grid item xs={12} sm={6} md={4} lg={3} key={item._id}>
-                            <Card sx={{
-                                borderRadius: 0,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.05)',
-                                transition: 'all 0.2s ease',
-                                '&:hover': {
-                                    transform: 'translateY(-4px)',
-                                    boxShadow: '0 12px 24px rgba(33, 150, 243, 0.1)',
-                                    borderColor: 'primary.light'
-                                }
-                            }}>
-                                <CardActionArea onClick={() => handleSelectExam(item)}>
-                                    <CardContent sx={{ p: 3 }}>
-                                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                                            <Avatar sx={{ 
-                                                bgcolor: 'rgba(33, 150, 243, 0.1)', 
-                                                color: 'primary.main',
-                                                width: 50,
-                                                height: 50,
-                                                borderRadius: 0
-                                            }}>
-                                                <AssignmentIcon />
-                                            </Avatar>
-                                            <Chip 
-                                                label={`${item.count} Attempts`} 
-                                                size="small" 
-                                                sx={{ 
-                                                    fontWeight: 800, 
-                                                    fontSize: '0.7rem', 
-                                                    bgcolor: 'primary.main', 
-                                                    color: 'white',
-                                                    borderRadius: 0
-                                                }} 
+            <GenericMetrics items={selectedExam ? resultMetrics : summaryMetrics} />
+
+            {!selectedExam ? (
+                <Grid container spacing={2}>
+                    {summary.map((exam) => {
+                        const totalSubmissions = exam.totalSubmissions || exam.submissionsCount || 0;
+                        const avgScore = exam.avgScore ? Math.round(exam.avgScore) : 0;
+                        return (
+                            <Grid item xs={12} sm={6} md={4} key={exam._id || exam.id}>
+                                <Card
+                                    onClick={() => handleSelectExam(exam)}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--color-vc-hairline)',
+                                        bgcolor: 'var(--color-vc-canvas)',
+                                        boxShadow: 'none',
+                                        transition: 'box-shadow 0.2s, border-color 0.2s',
+                                        '&:hover': {
+                                            boxShadow: '0px 4px 16px rgba(0,0,0,0.06)',
+                                            borderColor: 'var(--color-vc-hairline-strong)'
+                                        }
+                                    }}
+                                >
+                                    <CardContent sx={{ p: 2.5 }}>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
+                                            <Stack direction="row" spacing={1.5} alignItems="center">
+                                                <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
+                                                    <QuizIcon fontSize="small" />
+                                                </Avatar>
+                                                <Box>
+                                                    <Typography variant="body1" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                                                        {exam.title}
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                                                        Duration: {exam.duration || 60} mins
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                        </Stack>
+
+                                        <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+                                            <Chip
+                                                icon={<GroupsIcon sx={{ fontSize: '15px !important' }} />}
+                                                label={`${totalSubmissions} Submissions`}
+                                                size="small"
+                                                color="primary"
+                                                sx={{ fontWeight: 700, fontSize: '0.7rem', borderRadius: '6px' }}
                                             />
                                         </Stack>
 
-                                        <Typography variant="h6" fontWeight={800} gutterBottom sx={{ 
-                                            lineHeight: 1.2,
-                                            height: '2.4em',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: 2,
-                                            WebkitBoxOrient: 'vertical',
-                                        }}>
-                                            {item.name}
-                                        </Typography>
-
-                                        <Divider sx={{ my: 1.5, opacity: 0.5 }} />
-
-                                        <Stack direction="row" spacing={2} justifyContent="space-between">
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary" display="block">Success Rate</Typography>
-                                                <Typography variant="subtitle2" fontWeight={800}>
-                                                    {((item.passCount / item.count) * 100).toFixed(1)}%
-                                                </Typography>
+                                        <Stack direction="row" spacing={1.5} sx={{ pt: 1.5, borderTop: '1px solid var(--color-vc-hairline)' }}>
+                                            <Box sx={{ flex: 1, bgcolor: 'var(--color-vc-canvas-soft)', p: 1.25, borderRadius: '8px' }}>
+                                                <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>Average Score</Typography>
+                                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                                    <EmojiEventsIcon sx={{ fontSize: 16, color: 'warning.main' }} />
+                                                    <Typography variant="body2" fontWeight={800} sx={{ color: 'var(--color-vc-ink)' }}>{avgScore}%</Typography>
+                                                </Stack>
                                             </Box>
-                                            <Box sx={{ textAlign: 'right' }}>
-                                                <Typography variant="caption" color="text.secondary" display="block">Avg Score</Typography>
-                                                <Typography variant="subtitle2" fontWeight={800}>
-                                                    {item.avgPercentage.toFixed(1)}%
-                                                </Typography>
+                                            <Box sx={{ flex: 1, bgcolor: 'var(--color-vc-canvas-soft)', p: 1.25, borderRadius: '8px' }}>
+                                                <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>Total Marks</Typography>
+                                                <Typography variant="body2" fontWeight={800} sx={{ color: 'var(--color-vc-ink)' }}>{exam.totalMarks || 100} Pts</Typography>
                                             </Box>
                                         </Stack>
+
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{ mt: 2, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
+                                        >
+                                            View Full Report
+                                        </Button>
                                     </CardContent>
-                                </CardActionArea>
-                                <Box sx={{ p: 2, pt: 0 }}>
-                                    <Button 
-                                        fullWidth 
-                                        variant="outlined" 
-                                        color="primary"
-                                        endIcon={<VisibilityIcon />}
-                                        onClick={() => handleSelectExam(item)}
-                                        sx={{ borderRadius: 0, fontWeight: 700, textTransform: 'none' }}
-                                    >
-                                        See Results
-                                    </Button>
-                                </Box>
-                            </Card>
-                        </Grid>
-                    )) : !loading && (
-                        <Grid item xs={12}>
-                            <Box sx={{ py: 10, textAlign: 'center' }}>
-                                <GroupsIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                                <Typography variant="h5" color="text.secondary">No exam results found yet.</Typography>
-                            </Box>
-                        </Grid>
-                    )}
+                                </Card>
+                            </Grid>
+                        );
+                    })}
                 </Grid>
-            </Box>
-        );
-    }
-
-    // Results View
-    return (
-        <Box sx={{ p: 3 }}>
-            <Box sx={{ mb: 3 }}>
-                <Breadcrumbs sx={{ mb: 1.5 }}>
-                    <Link underline="hover" color="inherit" sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleBack}>
-                        <ArrowBackIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-                        All Exams
-                    </Link>
-                    <Typography color="text.primary">{selectedExam.name}</Typography>
-                </Breadcrumbs>
-
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-                    <Box>
-                        <Typography variant="h4" fontWeight={900}>{selectedExam.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Detailed score reports for and student performance metrics
-                        </Typography>
-                    </Box>
-                    <Stack direction="row" spacing={2}>
-                        <Paper variant="outlined" sx={{ px: 2, py: 1, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <GroupsIcon color="primary" />
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" display="block">Total Students</Typography>
-                                <Typography variant="subtitle2" fontWeight={800}>{selectedExam.count}</Typography>
-                            </Box>
-                        </Paper>
-                        <Paper variant="outlined" sx={{ px: 2, py: 1, borderRadius: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <EmojiEventsIcon color="success" />
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" display="block">Pass Rate</Typography>
-                                <Typography variant="subtitle2" fontWeight={800}>{((selectedExam.passCount / selectedExam.count) * 100).toFixed(1)}%</Typography>
-                            </Box>
-                        </Paper>
-                    </Stack>
-                </Stack>
-            </Box>
-
-            <Box sx={{ bgcolor: 'background.paper', borderRadius: 0, border: '1px solid', borderColor: 'divider' }}>
-                <DataTable
-                    rowData={results}
-                    columnDefs={columnDefs}
-                    loading={loading}
-                    pagination={true}
-                    paginationPageSize={10}
-                    borderRadius={0}
-                    height="auto"
-                />
-            </Box>
+            ) : (
+                <>
+                    <GenericTableHeader
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        searchPlaceholder="Search student name or email..."
+                        totalCount={filteredResults.length}
+                    />
+                    <TableUI
+                        rowData={filteredResults}
+                        columnDefs={resultColumns}
+                        loading={loading}
+                    />
+                </>
+            )}
         </Box>
     );
 };

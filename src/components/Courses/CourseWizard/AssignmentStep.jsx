@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Box, Typography, Button, Stack, Card, CardContent, 
-    IconButton, Chip, Tooltip, CircularProgress, Divider
+    IconButton, Chip, CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -73,79 +73,134 @@ const AssignmentStep = ({ values, setFieldValue, courseId }) => {
         return lecture ? lecture.title : 'All Lectures';
     };
 
+    const formatDeadline = (assignment) => {
+        if (assignment.deadlineDays > 0) return `${assignment.deadlineDays} Days after unlock`;
+        if (!assignment.deadline) return 'No deadline set';
+        const parsed = new Date(assignment.deadline);
+        return Number.isNaN(parsed.getTime()) ? 'No deadline set' : format(parsed, 'PPp');
+    };
+
     return (
-        <Box sx={{ p: 1 }}>
+        <Box sx={{ p: 0.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
                 <Box>
-                    <Typography variant="h5" fontWeight={800} sx={{ color: '#1e293b' }}>Course Assignments</Typography>
-                    <Typography variant="body2" color="text.secondary">Create and link assignments to specific modules for auto-unlocking.</Typography>
+                    <Typography sx={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-vc-ink)', letterSpacing: '-0.02em', fontFamily: 'inherit' }}>Course Assignments</Typography>
+                    <Typography sx={{ fontSize: '13px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 }}>Create and link assignments to specific modules for auto-unlocking.</Typography>
                 </Box>
                 <Button
-                    variant="contained" startIcon={<AddIcon />} onClick={handleCreate}
-                    sx={{ borderRadius: '10px', px: 3, py: 1, bgcolor: '#1e293b', '&:hover': { bgcolor: '#0f172a' }, textTransform: 'none', fontWeight: 600 }}
+                    variant="contained" 
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />} 
+                    onClick={handleCreate}
                     disabled={!courseId}
+                    sx={{ 
+                        borderRadius: '6px', 
+                        px: 3, 
+                        height: 36,
+                        boxShadow: 'none',
+                        bgcolor: 'var(--color-vc-primary)',
+                        color: 'var(--color-vc-on-primary)',
+                        textTransform: 'none', 
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        fontWeight: 500,
+                        '&:hover': { bgcolor: 'var(--color-vc-primary)', opacity: 0.9, boxShadow: 'none' },
+                        '&:disabled': {
+                            bgcolor: 'var(--color-vc-canvas-soft-2)',
+                            color: 'var(--color-vc-mute)',
+                            border: '1px solid var(--color-vc-hairline)'
+                        }
+                    }}
                 >
                     Create Assignment
                 </Button>
             </Box>
 
             {!courseId ? (
-                <Box sx={{ py: 8, textAlign: 'center', bgcolor: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '1px dashed rgba(0,0,0,0.1)' }}>
-                    <AssignmentOutlinedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">Save Course First</Typography>
-                    <Typography variant="body2" color="text.disabled">Please save the course details before adding assignments.</Typography>
+                <Box sx={{ py: 8, textAlign: 'center', bgcolor: 'var(--color-vc-canvas-soft)', borderRadius: '6px', border: '1px dashed var(--color-vc-hairline)' }}>
+                    <AssignmentOutlinedIcon sx={{ fontSize: 40, color: 'var(--color-vc-mute)', mb: 1.5 }} />
+                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Save Course First</Typography>
+                    <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.5 }}>Please save the course details before adding assignments.</Typography>
                 </Box>
             ) : loading ? (
                 <Box sx={{ py: 8, textAlign: 'center' }}>
-                    <CircularProgress />
+                    <CircularProgress size={32} thickness={4} sx={{ color: 'var(--color-vc-ink)' }} />
                 </Box>
             ) : assignments.length === 0 ? (
-                <Box sx={{ py: 8, textAlign: 'center', bgcolor: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '1px dashed rgba(0,0,0,0.1)' }}>
-                    <AssignmentOutlinedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">No Assignments Yet</Typography>
-                    <Typography variant="body2" color="text.disabled">Add your first assignment and link it to a curriculum module.</Typography>
-                    <Button variant="text" sx={{ mt: 2 }} onClick={handleCreate}>+ Add New Assignment</Button>
+                <Box sx={{ py: 8, textAlign: 'center', bgcolor: 'var(--color-vc-canvas-soft)', borderRadius: '6px', border: '1px dashed var(--color-vc-hairline)' }}>
+                    <AssignmentOutlinedIcon sx={{ fontSize: 40, color: 'var(--color-vc-mute)', mb: 1.5 }} />
+                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>No Assignments Yet</Typography>
+                    <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.5 }}>Add your first assignment and link it to a curriculum module.</Typography>
+                    <Button 
+                        variant="text" 
+                        sx={{ mt: 2, textTransform: 'none', fontSize: '13px', fontWeight: 500, fontFamily: 'inherit', color: 'var(--color-vc-link)', '&:hover': { color: 'var(--color-vc-link-deep)' } }} 
+                        onClick={handleCreate}
+                    >
+                        + Add New Assignment
+                    </Button>
                 </Box>
             ) : (
                 <Stack spacing={2}>
                     {assignments.map((assignment) => (
-                        <Card key={assignment._id} sx={{ borderRadius: '16px', border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.3s ease', '&:hover': { borderColor: 'primary.main', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
+                        <Card 
+                            key={assignment._id} 
+                            variant="outlined"
+                            sx={{ 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--color-vc-hairline-strong, rgba(0, 0, 0, 0.12))', 
+                                bgcolor: 'var(--color-vc-canvas)',
+                                boxShadow: 'none',
+                                '&:hover': { borderColor: 'var(--color-vc-hairline-strong, rgba(0, 0, 0, 0.18))', bgcolor: 'var(--color-vc-canvas-soft)' } 
+                            }}
+                        >
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                 <Stack direction="row" spacing={2} alignItems="center">
-                                    <Box sx={{ width: 48, height: 48, borderRadius: '12px', bgcolor: 'primary.light', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <AssignmentOutlinedIcon />
+                                    <Box sx={{ width: 40, height: 40, borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft-2)', color: 'var(--color-vc-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <AssignmentOutlinedIcon sx={{ fontSize: 18 }} />
                                     </Box>
                                     <Box sx={{ flexGrow: 1 }}>
-                                        <Typography variant="subtitle1" fontWeight={700}>{assignment.title}</Typography>
-                                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                                        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>{assignment.title}</Typography>
+                                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5, flexWrap: 'wrap', gap: 1 }}>
                                             <Chip 
-                                                icon={<LinkIcon sx={{ fontSize: '14px !important' }} />} 
+                                                icon={<LinkIcon sx={{ fontSize: '12px !important', color: 'inherit !important' }} />} 
                                                 label={assignment.moduleId ? getModuleName(assignment.moduleId) : 'Unlinked'} 
                                                 size="small" 
-                                                variant="outlined"
-                                                color={assignment.moduleId ? 'primary' : 'default'}
-                                                sx={{ height: 24, fontSize: '0.75rem' }}
+                                                sx={{ 
+                                                    height: 20, 
+                                                    fontSize: '10px',
+                                                    fontWeight: 500,
+                                                    borderRadius: '4px',
+                                                    bgcolor: assignment.moduleId ? 'var(--color-vc-link-bg-soft)' : 'var(--color-vc-canvas-soft-2)',
+                                                    color: assignment.moduleId ? 'var(--color-vc-link-deep)' : 'var(--color-vc-mute)',
+                                                    border: '1px solid transparent'
+                                                }}
                                             />
                                             {assignment.lectureId && (
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                                     • {getLectureName(assignment.moduleId, assignment.lectureId)}
                                                 </Typography>
                                             )}
-                                            <Divider orientation="vertical" flexItem sx={{ height: 12, my: 'auto' }} />
-                                            <Typography variant="caption" color="text.secondary">
-                                                Marks: {assignment.totalMarks}
+                                            <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
+                                                • Marks: {assignment.totalMarks}
                                             </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                • Deadline: {assignment.deadlineDays > 0 ? `${assignment.deadlineDays} Days after unlock` : format(new Date(assignment.deadline), 'PPp')}
+                                            <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
+                                                • Deadline: {formatDeadline(assignment)}
                                             </Typography>
                                         </Stack>
                                     </Box>
-                                    <Stack direction="row" spacing={1}>
-                                        <IconButton size="small" onClick={() => handleEdit(assignment)}>
-                                            <EditOutlinedIcon fontSize="small" />
+                                    <Stack direction="row" spacing={0.5}>
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={() => handleEdit(assignment)}
+                                            sx={{ color: 'var(--color-vc-body)', '&:hover': { color: 'var(--color-vc-ink)' } }}
+                                        >
+                                            <EditOutlinedIcon sx={{ fontSize: 16 }} />
                                         </IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleDelete(assignment._id)}>
-                                            <DeleteOutlineIcon fontSize="small" />
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={() => handleDelete(assignment._id)}
+                                            sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-error-deep)' } }}
+                                        >
+                                            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
                                         </IconButton>
                                     </Stack>
                                 </Stack>

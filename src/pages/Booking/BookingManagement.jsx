@@ -1,419 +1,241 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Box,
-    Typography,
-    Tabs,
-    Tab,
-    Paper,
-    Grid,
-    Card,
-    Stack,
-    IconButton,
-    Button,
-    Chip,
-    Avatar,
-    TextField,
-    InputAdornment,
-    MenuItem,
-    Select,
-    CircularProgress,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions
+    Box, Typography, Button, IconButton, Stack, Chip, Avatar,
+    Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import GroupsIcon from '@mui/icons-material/Groups';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
-import SearchIcon from '@mui/icons-material/Search';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { toast } from 'react-toastify';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import api from '../../utils/api';
-import { useTheme } from '../../context/ThemeContext';
-
-// Import sub-components
-import BatchManagement from './BatchManagement';
-import SeatManagement from './SeatManagement';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import ReserveSeatModal from '../../components/Booking/ReserveSeatModal';
 
 const BookingManagement = () => {
-    const { isDark } = useTheme();
-    const [tabValue, setTabValue] = useState(0);
-    const [loading, setLoading] = useState(false);
     const [bookings, setBookings] = useState([]);
-    const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
+    const [loading, setLoading] = useState(true);
+    const [selectedBooking, setSelectedBooking] = useState(null);
+    const [viewDialogOpen, setViewDialogOpen] = useState(false);
+    const [reserveModalOpen, setReserveModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchBookings = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await api.get('/booking/all');
-            if (res.data.success) {
-                setBookings(res.data.data);
-                calculateStats(res.data.data);
-            }
+            const res = await api.get('/seat-bookings');
+            const data = res.data?.data || res.data || [];
+            setBookings(Array.isArray(data) ? data : []);
         } catch (error) {
-            
-            toast.error('Failed to load bookings');
+            console.error('Failed to load bookings:', error);
+            toast.error('Failed to load seat bookings');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const calculateStats = (data) => {
-        const s = {
-            total: data.length,
-            pending: data.filter(b => b.status === 'pending').length,
-            approved: data.filter(b => b.status === 'approved').length,
-            rejected: data.filter(b => b.status === 'rejected').length
-        };
-        setStats(s);
-    };
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
 
-    const [viewDialogOpen, setViewDialogOpen] = useState(false);
-    const [selectedBooking, setSelectedBooking] = useState(null);
-
-    const handleViewDetails = (booking) => {
-        setSelectedBooking(booking);
-        setViewDialogOpen(true);
+    const handleUpdateStatus = async (id, status) => {
+        try {
+            await api.patch(`/seat-bookings/${id}`, { status });
+            toast.success(`Booking ${status} successfully`);
+            fetchBookings();
+            setViewDialogOpen(false);
+        } catch (error) {
+            toast.error('Failed to update booking status');
+        }
     };
 
     const handleDeleteBooking = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this booking? This will allow the student to request again.')) return;
+        if (!window.confirm('Delete this seat booking?')) return;
         try {
-            const res = await api.delete(`/booking/${id}`);
-            if (res.data.success) {
-                toast.success('Booking deleted successfully');
-                if (viewDialogOpen) setViewDialogOpen(false);
-                fetchData();
-            }
+            await api.delete(`/seat-bookings/${id}`);
+            toast.success('Booking deleted');
+            fetchBookings();
         } catch (error) {
             toast.error('Failed to delete booking');
         }
     };
 
-    const handleStatusUpdate = async (id, status) => {
-        try {
-            const res = await api.put(`/booking/${id}/status`, { status });
-            if (res.data.success) {
-                toast.success(`Booking ${status} successfully`);
-                if (viewDialogOpen) setViewDialogOpen(false);
-                fetchData();
-            }
-        } catch (error) {
-            toast.error('Failed to update status');
-        }
-    };
+    const filteredBookings = useMemo(() => {
+        return bookings.filter(b => {
+            const name = (b.user?.name || '').toLowerCase();
+            const email = (b.user?.email || '').toLowerCase();
+            const seat = (b.seatNumber || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
 
-    const StatCard = ({ title, value, color, icon, subtitle }) => (
-        <Card sx={{ 
-            p: 2.5, 
-            borderRadius: 4, 
-            boxShadow: 'none', 
-            border: '1px solid', 
-            borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-            bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'white',
-            position: 'relative',
-            overflow: 'hidden'
-        }}>
-            <Box sx={{ position: 'relative', zIndex: 1 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            const matchesSearch = name.includes(term) || email.includes(term) || seat.includes(term);
+            if (!matchesSearch) return false;
+
+            if (statusFilter !== 'all' && (b.status || 'pending') !== statusFilter) return false;
+            return true;
+        });
+    }, [bookings, searchTerm, statusFilter]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Bookings', value: bookings.length, icon: <EventSeatIcon />, color: 'primary' },
+        { title: 'Pending Approval', value: bookings.filter(b => b.status === 'pending').length, icon: <PendingActionsIcon />, color: 'warning' },
+        { title: 'Confirmed Seats', value: bookings.filter(b => b.status === 'approved' || b.status === 'confirmed').length, icon: <CheckCircleIcon />, color: 'success' },
+        { title: 'Cancelled', value: bookings.filter(b => b.status === 'rejected' || b.status === 'cancelled').length, icon: <CancelIcon />, color: 'error' }
+    ], [bookings]);
+
+    const filters = useMemo(() => [
+        {
+            value: statusFilter,
+            onChange: setStatusFilter,
+            minWidth: 170,
+            options: [
+                { value: 'all', label: 'All Bookings' },
+                { value: 'pending', label: 'Pending Approval' },
+                { value: 'approved', label: 'Confirmed' },
+                { value: 'rejected', label: 'Cancelled' }
+            ]
+        }
+    ], [statusFilter]);
+
+    const columns = useMemo(() => [
+        {
+            field: 'name',
+            headerName: 'STUDENT NAME',
+            flex: 2,
+            minWidth: 240,
+            cellRenderer: (params) => (
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13, fontWeight: 700 }}>
+                        {(params.data.user?.name || 'S').charAt(0).toUpperCase()}
+                    </Avatar>
                     <Box>
-                        <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-                            {title}
+                        <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                            {params.data.user?.name || 'Student'}
                         </Typography>
-                        <Typography variant="h4" fontWeight={800} sx={{ mt: 0.5, color: color }}>
-                            {value}
+                        <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                            {params.data.user?.email || 'N/A'}
                         </Typography>
                     </Box>
-                    <Avatar sx={{ bgcolor: `${color}15`, color: color, borderRadius: 2 }}>
-                        {icon}
-                    </Avatar>
                 </Stack>
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    {subtitle}
-                </Typography>
-            </Box>
-            <Box sx={{ 
-                position: 'absolute', 
-                right: -20, 
-                bottom: -20, 
-                opacity: 0.05, 
-                transform: 'rotate(-15deg)',
-                color: color 
-            }}>
-                {React.cloneElement(icon, { sx: { fontSize: 100 } })}
-            </Box>
-        </Card>
-    );
+            )
+        },
+        {
+            field: 'seatNumber',
+            headerName: 'SEAT / BATCH',
+            width: 180,
+            valueGetter: (params) => params.data.seatNumber
+                ? `Seat: ${params.data.seatNumber}`
+                : (params.data.batch?.name || 'Unassigned')
+        },
+        {
+            field: 'status',
+            headerName: 'STATUS',
+            width: 140,
+            cellRenderer: (params) => {
+                const status = params.data.status || 'pending';
+                const color = status === 'approved' || status === 'confirmed' ? 'success' : status === 'rejected' ? 'error' : 'warning';
+                return (
+                    <Chip
+                        label={status.toUpperCase()}
+                        color={color}
+                        size="small"
+                        sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                    />
+                );
+            }
+        },
+        {
+            field: 'createdAt',
+            headerName: 'BOOKING DATE',
+            width: 160,
+            valueGetter: (params) => {
+                const d = params.data.createdAt;
+                return d ? format(new Date(d), 'MMM dd, yyyy') : 'N/A';
+            }
+        },
+        {
+            field: 'actions',
+            headerName: 'ACTIONS',
+            width: 140,
+            cellRenderer: (params) => {
+                const id = params.data._id || params.data.id;
+                return (
+                    <Stack direction="row" spacing={1}>
+                        <IconButton size="small" onClick={() => { setSelectedBooking(params.data); setViewDialogOpen(true); }} sx={{ color: 'var(--color-vc-link)' }} title="View Details">
+                            <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDeleteBooking(id)} sx={{ color: 'var(--color-vc-error)' }} title="Delete">
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                );
+            }
+        }
+    ], []);
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 } }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
-                <Box>
-                    <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.5px' }}>
-                        All Batches Overview
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        SYSTEM-WIDE BOOKING OVERVIEW
-                    </Typography>
-                </Box>
-                <IconButton onClick={fetchData} sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'white', boxShadow: 1 }}>
-                    <RefreshIcon />
-                </IconButton>
-            </Stack>
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Seat Booking & Reservations
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Review, approve, and manage classroom seat reservations and student batch allocations
+                </Typography>
+            </Box>
 
-            <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard title="Total" value={stats.total} color="#6366f1" icon={<TrendingUpIcon />} subtitle="Total seat requests" />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard title="Pending" value={stats.pending} color="#f59e0b" icon={<AccessTimeIcon />} subtitle="Awaiting review" />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard title="Approved" value={stats.approved} color="#10b981" icon={<CheckCircleIcon />} subtitle="Seats confirmed" />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard title="Rejected" value={stats.rejected} color="#ef4444" icon={<CancelIcon />} subtitle="Requests denied" />
-                </Grid>
-            </Grid>
+            <GenericMetrics items={metricsItems} />
 
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2, bgcolor: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)' }}>
-                    <Tabs 
-                        value={tabValue} 
-                        onChange={(e, v) => setTabValue(v)}
-                        sx={{
-                            '& .MuiTab-root': {
-                                textTransform: 'none',
-                                fontWeight: 700,
-                                minHeight: 64,
-                                fontSize: '0.95rem'
-                            }
-                        }}
-                    >
-                        <Tab icon={<DashboardIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Dashboard" />
-                        <Tab icon={<GroupsIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Manage Batches" />
-                        <Tab icon={<EventSeatIcon sx={{ fontSize: 20 }} />} iconPosition="start" label="Manage Seats" />
-                    </Tabs>
-                </Box>
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search student name, email, or seat..."
+                filters={filters}
+                totalCount={filteredBookings.length}
+                actionButtonText="Reserve Seat"
+                actionButtonIcon={<AddIcon fontSize="small" />}
+                onActionClick={() => setReserveModalOpen(true)}
+            />
 
-                <Box sx={{ p: 3 }}>
-                    {tabValue === 0 && (
-                        <Box>
-                            <Stack direction="row" spacing={2} mb={3} alignItems="center">
-                                <TextField
-                                    placeholder="Quick search..."
-                                    size="small"
-                                    fullWidth
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <SearchIcon sx={{ color: 'text.secondary' }} />
-                                            </InputAdornment>
-                                        ),
-                                        sx: { borderRadius: 3, bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'grey.50' }
-                                    }}
-                                />
-                                <Select
-                                    value="all"
-                                    size="small"
-                                    sx={{ minWidth: 150, borderRadius: 3, fontWeight: 700 }}
-                                >
-                                    <MenuItem value="all">All Status</MenuItem>
-                                    <MenuItem value="pending">Pending</MenuItem>
-                                    <MenuItem value="approved">Approved</MenuItem>
-                                    <MenuItem value="rejected">Rejected</MenuItem>
-                                </Select>
-                            </Stack>
+            <ReserveSeatModal
+                open={reserveModalOpen}
+                onClose={() => setReserveModalOpen(false)}
+                onSuccess={fetchBookings}
+            />
 
-                            {loading ? (
-                                <Box sx={{ py: 10, textAlign: 'center' }}>
-                                    <CircularProgress />
-                                </Box>
-                            ) : (
-                                <Box sx={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-                                                <th style={{ textAlign: 'left', padding: '16px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Student Details</th>
-                                                <th style={{ textAlign: 'left', padding: '16px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Batch & Seat</th>
-                                                <th style={{ textAlign: 'left', padding: '16px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Status</th>
-                                                <th style={{ textAlign: 'right', padding: '16px', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {bookings.map((booking) => (
-                                                <tr key={booking._id} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-                                                    <td style={{ padding: '16px' }}>
-                                                        <Stack direction="row" spacing={2} alignItems="center">
-                                                            <Avatar sx={{ bgcolor: 'primary.main', fontWeight: 700 }}>{booking.user.name[0]}</Avatar>
-                                                            <Box>
-                                                                <Typography variant="body2" fontWeight={800}>{booking.user.name}</Typography>
-                                                                <Typography variant="caption" color="text.secondary">{booking.user.phone} • {booking.user.email}</Typography>
-                                                            </Box>
-                                                        </Stack>
-                                                    </td>
-                                                    <td style={{ padding: '16px' }}>
-                                                        <Typography variant="body2" fontWeight={700}>{booking.batch?.name || 'Batch'}</Typography>
-                                                        <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase' }}>
-                                                            SEAT #{booking.seatNumber} ({booking.zone})
-                                                        </Typography>
-                                                    </td>
-                                                    <td style={{ padding: '16px' }}>
-                                                        <Chip 
-                                                            label={booking.status.toUpperCase()} 
-                                                            size="small"
-                                                            color={booking.status === 'approved' ? 'success' : booking.status === 'rejected' ? 'error' : 'warning'}
-                                                            sx={{ fontWeight: 800, fontSize: '0.65rem', borderRadius: 1.5 }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ padding: '16px', textAlign: 'right' }}>
-                                                            <IconButton 
-                                                                size="small" 
-                                                                onClick={() => handleDeleteBooking(booking._id)}
-                                                                sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
-                                                            >
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                            <IconButton 
-                                                                size="small" 
-                                                                onClick={() => handleViewDetails(booking)}
-                                                                sx={{ bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'grey.100' }}
-                                                            >
-                                                                <VisibilityIcon fontSize="small" />
-                                                            </IconButton>
-                                                            {booking.status === 'pending' ? (
-                                                                <>
-                                                                    <IconButton 
-                                                                        size="small" 
-                                                                        onClick={() => handleStatusUpdate(booking._id, 'approved')}
-                                                                        sx={{ bgcolor: 'success.light', color: 'success.contrastText' }}
-                                                                    >
-                                                                        <CheckCircleIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                    <IconButton 
-                                                                        size="small"
-                                                                        onClick={() => handleStatusUpdate(booking._id, 'rejected')}
-                                                                        sx={{ bgcolor: 'error.light', color: 'error.contrastText' }}
-                                                                    >
-                                                                        <CancelIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </>
-                                                            ) : (
-                                                                booking.status === 'approved' && (
-                                                                    <IconButton 
-                                                                        size="small"
-                                                                        onClick={() => handleStatusUpdate(booking._id, 'rejected')}
-                                                                        sx={{ bgcolor: 'error.light', color: 'error.contrastText' }}
-                                                                        title="Reject Approved Booking"
-                                                                    >
-                                                                        <CancelIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                )
-                                                            )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </Box>
-                            )}
+            <TableUI
+                rowData={filteredBookings}
+                columnDefs={columns}
+                loading={loading}
+            />
+
+            {/* Booking Details Modal */}
+            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>Seat Reservation Details</DialogTitle>
+                <DialogContent dividers>
+                    {selectedBooking && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={800}>{selectedBooking.user?.name || 'Student'}</Typography>
+                            <Typography variant="body2" color="text.secondary">Email: {selectedBooking.user?.email || 'N/A'}</Typography>
+                            <Typography variant="body2" fontWeight={700}>Seat Number: {selectedBooking.seatNumber || selectedBooking.batch?.name || 'Unassigned'}</Typography>
+                            <Typography variant="body2">Status: <strong>{(selectedBooking.status || 'pending').toUpperCase()}</strong></Typography>
                         </Box>
                     )}
-                    
-                    {tabValue === 1 && (
-                        <BatchManagement />
-                    )}
-
-                    {tabValue === 2 && (
-                        <SeatManagement />
-                    )}
-                </Box>
-            </Paper>
-
-            {/* View Details Dialog */}
-            <Dialog 
-                open={viewDialogOpen} 
-                onClose={() => setViewDialogOpen(false)}
-                maxWidth="xs"
-                fullWidth
-                PaperProps={{ sx: { borderRadius: 4 } }}
-            >
-                <DialogTitle sx={{ fontWeight: 900 }}>Booking Details</DialogTitle>
-                <DialogContent>
-                    {selectedBooking && (
-                        <Stack spacing={3} sx={{ mt: 1 }}>
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight={700}>STUDENT</Typography>
-                                <Typography variant="body1" fontWeight={800}>{selectedBooking.user.name}</Typography>
-                                <Typography variant="body2" color="text.secondary">{selectedBooking.user.email}</Typography>
-                                <Typography variant="body2" color="text.secondary">{selectedBooking.user.phone}</Typography>
-                            </Box>
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight={700}>BATCH & SEAT</Typography>
-                                <Typography variant="body1" fontWeight={800}>{selectedBooking.batch?.name || 'Batch'}</Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Seat #{selectedBooking.seatNumber} ({selectedBooking.zone})
-                                </Typography>
-                            </Box>
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight={700}>STATUS</Typography>
-                                <Box sx={{ mt: 0.5 }}>
-                                    <Chip 
-                                        label={selectedBooking.status.toUpperCase()} 
-                                        color={selectedBooking.status === 'approved' ? 'success' : selectedBooking.status === 'rejected' ? 'error' : 'warning'}
-                                        size="small"
-                                        sx={{ fontWeight: 800, borderRadius: 1.5 }}
-                                    />
-                                </Box>
-                            </Box>
-                        </Stack>
-                    )}
                 </DialogContent>
-                <DialogActions sx={{ p: 3, justifyContent: 'space-between' }}>
-                    <Box>
-                        <Button 
-                            variant="outlined" 
-                            color="error"
-                            onClick={() => handleDeleteBooking(selectedBooking._id)}
-                            startIcon={<DeleteIcon />}
-                            sx={{ borderRadius: 2, fontWeight: 700 }}
-                        >
-                            Delete
-                        </Button>
-                    </Box>
-                    <Stack direction="row" spacing={1}>
-                        <Button onClick={() => setViewDialogOpen(false)} sx={{ fontWeight: 700 }}>Close</Button>
-                        {selectedBooking?.status === 'pending' && (
-                            <Button 
-                                variant="contained" 
-                                color="success"
-                                onClick={() => handleStatusUpdate(selectedBooking._id, 'approved')}
-                                sx={{ borderRadius: 2, fontWeight: 700 }}
-                            >
-                                Approve
-                            </Button>
-                        )}
-                        {selectedBooking?.status !== 'rejected' && (
-                            <Button 
-                                variant="contained" 
-                                color="error"
-                                onClick={() => handleStatusUpdate(selectedBooking._id, 'rejected')}
-                                sx={{ borderRadius: 2, fontWeight: 700 }}
-                            >
-                                Reject
-                            </Button>
-                        )}
-                    </Stack>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button onClick={() => setViewDialogOpen(false)} variant="outlined" color="inherit">Close</Button>
+                    {selectedBooking?.status === 'pending' && (
+                        <>
+                            <Button onClick={() => handleUpdateStatus(selectedBooking._id || selectedBooking.id, 'rejected')} variant="contained" color="error">Reject</Button>
+                            <Button onClick={() => handleUpdateStatus(selectedBooking._id || selectedBooking.id, 'approved')} variant="contained" color="success">Approve Seat</Button>
+                        </>
+                    )}
                 </DialogActions>
             </Dialog>
         </Box>

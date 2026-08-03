@@ -12,6 +12,8 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import StarsIcon from '@mui/icons-material/Stars';
+import LockIcon from '@mui/icons-material/Lock';
+import HistoryIcon from '@mui/icons-material/History';
 
 import api from '../../../utils/api';
 import { toast } from 'react-toastify';
@@ -26,6 +28,8 @@ import TokenTab from './TokenTab';
 import UserAttendanceCalendar from '../Attendance/UserAttendanceCalendar';
 import FaceCapture from '../FaceCaptureFolder/FaceCapture';
 import UserFeeHistory from '../Payment/UserFeeHistory';
+import AccountBlockingTab from './AccountBlockingTab';
+import AccountActivitiesTab from './AccountActivitiesTab';
 
 const TabPanel = (props) => {
     const { children, value, index, ...other } = props;
@@ -195,37 +199,95 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 2 }}>
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            maxWidth="lg" 
+            fullWidth
+            PaperProps={{ 
+                sx: { 
+                    borderRadius: '8px',
+                    bgcolor: 'var(--color-vc-canvas)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: '0px 32px 64px -12px rgba(0,0,0,0.16)'
+                } 
+            }}
+        >
+            <DialogTitle sx={{ borderBottom: '1px solid var(--color-vc-hairline)', pb: 2.5, bgcolor: 'var(--color-vc-canvas)' }}>
                 <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar src={user?.avatar} sx={{ width: 50, height: 50, bgcolor: 'primary.main' }}>
-                        {user?.name?.charAt(0)}
+                    <Avatar 
+                        src={user?.avatar} 
+                        sx={{ 
+                            width: 48, 
+                            height: 48, 
+                            bgcolor: 'var(--color-vc-canvas-soft)', 
+                            border: '1px solid var(--color-vc-hairline)',
+                            color: 'var(--color-vc-ink)',
+                            fontWeight: 600,
+                            fontSize: '18px'
+                        }}
+                    >
+                        {user?.name?.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box>
-                        <Typography variant="h6" fontWeight={700}>{user?.name || 'Loading...'}</Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography sx={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
+                            {user?.name || 'Loading...'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: '"JetBrains Mono", monospace' }}>
                             Student ID: {user?.rollNumber || 'N/A'}
                         </Typography>
                     </Box>
                 </Stack>
             </DialogTitle>
 
-            <DialogContent sx={{ p: 0 }}>
+            <DialogContent sx={{ p: 0, bgcolor: 'var(--color-vc-canvas)' }}>
                 {(!user && loading) ? (
                     <UserDetailsSkeleton />
                 ) : (
                     <>
-                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                            <Tabs value={value} onChange={(e, v) => setValue(v)} sx={{ px: 2 }}>
-                                <Tab label="General" icon={<PersonIcon size="small" />} iconPosition="start" />
-                                <Tab label="Course" icon={<MenuBookIcon size="small" />} iconPosition="start" />
-                                <Tab label="Exam" icon={<AssignmentIcon size="small" />} iconPosition="start" />
-                                <Tab label="Payment" icon={<PaymentIcon size="small" />} iconPosition="start" />
-                                <Tab label="Personal Info" icon={<BadgeIcon size="small" />} iconPosition="start" />
-                                <Tab label="Assignments" icon={<ListAltIcon size="small" />} iconPosition="start" />
-                                <Tab label="Face ID" icon={<CameraAltIcon size="small" />} iconPosition="start" />
-                                <Tab label="Attendance" icon={<EventAvailableIcon size="small" />} iconPosition="start" />
-                                <Tab label="Tokens" icon={<StarsIcon size="small" />} iconPosition="start" />
+                        <Box sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                            <Tabs 
+                                value={value} 
+                                onChange={(e, v) => setValue(v)} 
+                                variant="scrollable"
+                                scrollButtons="auto"
+                                sx={{ 
+                                    px: 2.5,
+                                    bgcolor: 'var(--color-vc-canvas)',
+                                    '& .MuiTabs-indicator': {
+                                        bgcolor: 'var(--color-vc-primary)',
+                                        height: '2px'
+                                    },
+                                    '& .MuiTab-root': {
+                                        textTransform: 'none',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        fontFamily: 'inherit',
+                                        color: 'var(--color-vc-mute)',
+                                        minHeight: 48,
+                                        gap: 0.75,
+                                        '&.Mui-selected': {
+                                            color: 'var(--color-vc-ink)',
+                                            fontWeight: 600
+                                        },
+                                        '&:hover': {
+                                            color: 'var(--color-vc-ink)',
+                                            opacity: 0.9
+                                        }
+                                    }
+                                }}
+                            >
+                                <Tab label="General" icon={<PersonIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Course" icon={<MenuBookIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Exam" icon={<AssignmentIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Payment" icon={<PaymentIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Personal Info" icon={<BadgeIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Assignments" icon={<ListAltIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Face ID" icon={<CameraAltIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Attendance" icon={<EventAvailableIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Tokens" icon={<StarsIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Account Blocking" icon={<LockIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
+                                <Tab label="Account Activities" icon={<HistoryIcon sx={{ fontSize: 16 }} />} iconPosition="start" />
                             </Tabs>
                         </Box>
 
@@ -265,12 +327,40 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                                 tokenHistory={tokenHistory} handleSyncTokens={handleSyncTokens} actionLoading={actionLoading}
                             />
                         </TabPanel>
+                        <TabPanel value={value} index={9}>
+                            <AccountBlockingTab userId={userId} />
+                        </TabPanel>
+                        <TabPanel value={value} index={10}>
+                            <AccountActivitiesTab userId={userId} />
+                        </TabPanel>
                     </>
                 )}
             </DialogContent>
 
-            <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                <Button onClick={onClose} variant="contained" sx={{ borderRadius: 2, textTransform: 'none', px: 4 }}>Close</Button>
+            <DialogActions sx={{ p: 2.5, borderTop: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', gap: 1 }}>
+                <Button 
+                    onClick={onClose} 
+                    variant="contained" 
+                    sx={{ 
+                        px: 4, 
+                        borderRadius: '6px', 
+                        height: 36,
+                        textTransform: 'none', 
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        boxShadow: 'none',
+                        bgcolor: 'var(--color-vc-primary)',
+                        color: 'var(--color-vc-on-primary)',
+                        '&:hover': {
+                            bgcolor: 'var(--color-vc-primary)',
+                            opacity: 0.9,
+                            boxShadow: 'none'
+                        }
+                    }}
+                >
+                    Close
+                </Button>
             </DialogActions>
         </Dialog>
     );

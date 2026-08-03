@@ -64,60 +64,62 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
     };
 
     return (
-        <Box sx={{ p: 1 }}>
-            <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-                <AssignmentIcon color="primary" fontSize="small" /> Review Course Details
+        <Box sx={{ p: 0.5 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.02em', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AssignmentIcon sx={{ color: 'var(--color-vc-mute)', fontSize: 18 }} /> Review Course Details
             </Typography>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ borderColor: 'var(--color-vc-hairline)', mb: 3 }} />
 
-            <Grid container spacing={2}>
+            <Grid container spacing={3}>
                 {/* Course Summary */}
                 <Grid item xs={12} md={8}>
-                    <Card variant="outlined" sx={{ borderRadius: 1, mb: 2 }}>
-                        <CardContent>
-                            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    <Card variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none', mb: 3 }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.02em', mb: 1.5 }}>
                                 {values.title || 'Untitled Course'}
                             </Typography>
                             <Box 
                                 sx={{ 
-                                    color: 'text.secondary',
-                                    fontSize: '0.875rem',
-                                    '& p': { mb: 1.5 },
-                                    '& ul, & ol': { mb: 1.5, pl: 2 },
+                                    color: 'var(--color-vc-body)',
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    lineHeight: 1.55,
+                                    '& p': { mb: 1.25 },
+                                    '& ul, & ol': { mb: 1.25, pl: 2.5 },
                                     '& li': { mb: 0.5 },
-                                    '& strong': { fontWeight: 700, color: 'text.primary' },
-                                    mb: 2
+                                    '& strong': { fontWeight: 600, color: 'var(--color-vc-ink)' },
+                                    mb: 2.5
                                 }}
                                 dangerouslySetInnerHTML={{ __html: values.description || 'No description provided.' }}
                             />
 
-                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                                 <Table size="small">
                                     <TableBody>
-                                        <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)', width: '30%' }}>Category</TableCell>
-                                            <TableCell>{categoryName}</TableCell>
+                                        <TableRow sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', width: '30%', fontFamily: 'inherit', fontSize: '13px' }}>Category</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>{categoryName}</TableCell>
                                         </TableRow>
-                                        <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Level</TableCell>
-                                            <TableCell sx={{ textTransform: 'capitalize' }}>{values.level}</TableCell>
+                                        <TableRow sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>Level</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px', textTransform: 'capitalize' }}>{values.level}</TableCell>
                                         </TableRow>
-                                        <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Price</TableCell>
-                                            <TableCell sx={{ fontWeight: 600, color: 'primary.main' }}>
+                                        <TableRow sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>Price</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>
                                                 {values.price > 0 ? `₹${values.price}` : 'Free'}
                                             </TableCell>
                                         </TableRow>
-                                        <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Course Duration</TableCell>
-                                            <TableCell>
+                                        <TableRow sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>Course Duration</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>
                                                 {values.durationValue || 0} {values.durationUnit}
                                                 {values.durationValue === 0 && ' (Lifetime)'}
                                             </TableCell>
                                         </TableRow>
                                         <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Reading Duration</TableCell>
-                                            <TableCell>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>Reading Duration</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>
                                                 {values.readingDurationValue || 0} {values.readingDurationUnit}
                                             </TableCell>
                                         </TableRow>
@@ -127,46 +129,75 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                         </CardContent>
                     </Card>
 
-                    <Card variant="outlined" sx={{ borderRadius: 1 }}>
-                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                            <Tabs value={tabIndex} onChange={handleTabChange} aria-label="course contents tabs">
-                                <Tab label="Curriculum Structure" sx={{ textTransform: 'none', fontWeight: 600 }} />
-                                <Tab label="Assignments" sx={{ textTransform: 'none', fontWeight: 600 }} />
-                                <Tab label="Quizzes" sx={{ textTransform: 'none', fontWeight: 600 }} />
+                    <Card variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
+                        <Box sx={{ borderBottom: 1, borderColor: 'var(--color-vc-hairline)' }}>
+                            <Tabs 
+                                value={tabIndex} 
+                                onChange={handleTabChange} 
+                                TabIndicatorProps={{ sx: { bgcolor: 'var(--color-vc-ink)' } }}
+                                sx={{
+                                    '& .MuiTab-root': {
+                                        color: 'var(--color-vc-body)',
+                                        textTransform: 'none',
+                                        fontWeight: 500,
+                                        fontFamily: 'inherit',
+                                        fontSize: '13px',
+                                        py: 1.5,
+                                        '&.Mui-selected': {
+                                            color: 'var(--color-vc-ink)',
+                                            fontWeight: 600
+                                        }
+                                    }
+                                }}
+                            >
+                                <Tab label="Curriculum Structure" />
+                                <Tab label="Assignments" />
+                                <Tab label="Quizzes" />
                             </Tabs>
                         </Box>
 
-                        <CardContent>
+                        <CardContent sx={{ p: 3 }}>
                             {tabIndex === 0 && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                     {values.modules.length > 0 ? (
                                         values.modules.map((module, index) => (
-                                            <Accordion key={index} variant="outlined" sx={{ borderRadius: 1, '&:before': { display: 'none' } }}>
-                                                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
-                                                    <Typography variant="subtitle2" fontWeight={600}>
+                                            <Accordion 
+                                                key={index} 
+                                                variant="outlined" 
+                                                elevation={0}
+                                                sx={{ 
+                                                    borderRadius: '6px !important', 
+                                                    overflow: 'hidden', 
+                                                    border: '1px solid var(--color-vc-hairline)', 
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    '&:before': { display: 'none' } 
+                                                }}
+                                            >
+                                                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'var(--color-vc-mute)', fontSize: 18 }} />} sx={{ bgcolor: 'var(--color-vc-canvas-soft)' }}>
+                                                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                                                         {index + 1}. {module.title}
                                                     </Typography>
-                                                    <Typography variant="caption" sx={{ ml: 'auto', mr: 2, color: 'text.secondary' }}>
+                                                    <Typography sx={{ ml: 'auto', mr: 2, fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                                         {module.videos?.length || 0} items
                                                     </Typography>
                                                 </AccordionSummary>
                                                 <AccordionDetails sx={{ p: 0 }}>
                                                     <List disablePadding>
                                                         {module.videos && module.videos.map((item, idx) => (
-                                                            <ListItem key={idx} divider={idx < module.videos.length - 1} sx={{ py: 0.5 }}>
+                                                            <ListItem key={idx} divider={idx < module.videos.length - 1} sx={{ py: 1.25, px: 2, borderColor: 'var(--color-vc-hairline)' }}>
                                                                 <ListItemIcon sx={{ minWidth: 32 }}>
-                                                                    {item.type === 'video' ? <PlayCircleOutlineIcon fontSize="small" color="primary" /> :
-                                                                     item.type === 'pdf' ? <DescriptionIcon fontSize="small" color="error" /> :
-                                                                     item.type === 'audio' ? <AudiotrackIcon fontSize="small" color="warning" /> :
-                                                                     item.type === 'exam' ? <ReceiptLongIcon fontSize="small" color="error" /> :
-                                                                     item.type === 'assignment' ? <AssignmentIcon fontSize="small" color="secondary" /> :
-                                                                     <FolderZipIcon fontSize="small" color="info" />}
+                                                                    {item.type === 'video' ? <PlayCircleOutlineIcon sx={{ color: 'var(--color-vc-cyan-deep)', fontSize: 16 }} /> :
+                                                                     item.type === 'pdf' ? <DescriptionIcon sx={{ color: 'var(--color-vc-error-deep)', fontSize: 16 }} /> :
+                                                                     item.type === 'audio' ? <AudiotrackIcon sx={{ color: 'var(--color-vc-violet-deep)', fontSize: 16 }} /> :
+                                                                     item.type === 'exam' ? <ReceiptLongIcon sx={{ color: 'var(--color-vc-error-deep)', fontSize: 16 }} /> :
+                                                                     item.type === 'assignment' ? <AssignmentIcon sx={{ color: 'var(--color-vc-link-deep)', fontSize: 16 }} /> :
+                                                                     <FolderZipIcon sx={{ color: 'var(--color-vc-link-deep)', fontSize: 16 }} />}
                                                                 </ListItemIcon>
                                                                 <ListItemText 
                                                                     primary={item.title} 
-                                                                    primaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
+                                                                    primaryTypographyProps={{ sx: { fontSize: '12px', fontWeight: 500, color: 'var(--color-vc-ink)', fontFamily: 'inherit' } }}
                                                                     secondary={item.type.toUpperCase()}
-                                                                    secondaryTypographyProps={{ variant: 'caption', sx: { fontSize: '0.6rem' } }}
+                                                                    secondaryTypographyProps={{ sx: { fontSize: '10px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 } }}
                                                                 />
                                                             </ListItem>
                                                         ))}
@@ -175,7 +206,7 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                                             </Accordion>
                                         ))
                                     ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit', fontStyle: 'italic', py: 2, textAlign: 'center' }}>
                                             No topics added yet.
                                         </Typography>
                                     )}
@@ -183,30 +214,30 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                             )}
 
                             {tabIndex === 1 && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                     {!courseId ? (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit', fontStyle: 'italic', py: 2, textAlign: 'center' }}>
                                             Save the course to view assignments.
                                         </Typography>
                                     ) : loadingAssignments ? (
                                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                                            <CircularProgress size={24} />
+                                            <CircularProgress size={24} thickness={4} sx={{ color: 'var(--color-vc-ink)' }} />
                                         </Box>
                                     ) : assignments.length > 0 ? (
                                         assignments.map((assignment, index) => (
-                                            <Card key={assignment._id || index} variant="outlined" sx={{ borderRadius: 2 }}>
+                                            <Card key={assignment._id || index} variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                                                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                                     <Stack direction="row" spacing={2} alignItems="center">
-                                                        <Box sx={{ width: 40, height: 40, borderRadius: '8px', bgcolor: 'primary.light', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                            <AssignmentIcon fontSize="small" />
+                                                        <Box sx={{ width: 40, height: 40, borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft-2)', color: 'var(--color-vc-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <AssignmentIcon sx={{ fontSize: 18 }} />
                                                         </Box>
                                                         <Box sx={{ flexGrow: 1 }}>
-                                                            <Typography variant="subtitle2" fontWeight={700}>{assignment.title}</Typography>
-                                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                                                                <Typography variant="caption" color="text.secondary">
+                                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>{assignment.title}</Typography>
+                                                            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.25 }}>
+                                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                                                     Marks: {assignment.totalMarks}
                                                                 </Typography>
-                                                                <Typography variant="caption" color="text.secondary">
+                                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                                                     • Type: {assignment.assignmentType.replace('_', ' ').toUpperCase()}
                                                                 </Typography>
                                                             </Stack>
@@ -216,7 +247,7 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                                             </Card>
                                         ))
                                     ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit', fontStyle: 'italic', py: 2, textAlign: 'center' }}>
                                             No assignments added yet.
                                         </Typography>
                                     )}
@@ -224,31 +255,31 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                             )}
 
                             {tabIndex === 2 && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                     {!courseId ? (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit', fontStyle: 'italic', py: 2, textAlign: 'center' }}>
                                             Save the course to view quizzes.
                                         </Typography>
                                     ) : loadingExams ? (
                                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                                            <CircularProgress size={24} />
+                                            <CircularProgress size={24} thickness={4} sx={{ color: 'var(--color-vc-ink)' }} />
                                         </Box>
                                     ) : exams.length > 0 ? (
                                         exams.map((exam, index) => (
-                                            <Card key={exam._id || index} variant="outlined" sx={{ borderRadius: 2 }}>
+                                            <Card key={exam._id || index} variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                                                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                                     <Stack direction="row" spacing={2} alignItems="center">
-                                                        <Box sx={{ width: 40, height: 40, borderRadius: '8px', bgcolor: 'warning.light', color: 'warning.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                            <QuizIcon fontSize="small" />
+                                                        <Box sx={{ width: 40, height: 40, borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft-2)', color: 'var(--color-vc-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <QuizIcon sx={{ fontSize: 18 }} />
                                                         </Box>
                                                         <Box sx={{ flexGrow: 1 }}>
-                                                            <Typography variant="subtitle2" fontWeight={700}>{exam.title}</Typography>
-                                                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>{exam.title}</Typography>
+                                                            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.25 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', color: 'var(--color-vc-mute)' }}>
                                                                     <TimerOutlinedIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                                                                    <Typography variant="caption">{exam.duration} Mins</Typography>
+                                                                    <Typography sx={{ fontSize: '11px', fontFamily: 'inherit' }}>{exam.duration} Mins</Typography>
                                                                 </Box>
-                                                                <Typography variant="caption" color="text.secondary">
+                                                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                                                     • Marks: {exam.totalMarks}
                                                                 </Typography>
                                                             </Stack>
@@ -258,7 +289,7 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                                             </Card>
                                         ))
                                     ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', py: 2, textAlign: 'center' }}>
+                                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit', fontStyle: 'italic', py: 2, textAlign: 'center' }}>
                                             No quizzes added yet.
                                         </Typography>
                                     )}
@@ -270,17 +301,18 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
 
                 {/* Media Preview */}
                 <Grid item xs={12} md={4}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Card variant="outlined" sx={{ borderRadius: 1 }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" gutterBottom>Thumbnail</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Card variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
+                            <CardContent sx={{ p: 2.5 }}>
+                                <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1, fontFamily: 'inherit' }}>Thumbnail</Typography>
                                 <Box
                                     sx={{
                                         width: '100%',
                                         height: 160,
-                                        borderRadius: 1,
+                                        borderRadius: '6px',
                                         overflow: 'hidden',
-                                        bgcolor: 'background.default',
+                                        bgcolor: 'var(--color-vc-canvas-soft-2)',
+                                        border: '1px solid var(--color-vc-hairline)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center'
@@ -293,16 +325,18 @@ const ReviewStep = ({ values, categories = [], courseId }) => {
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     ) : (
-                                        <Typography variant="caption" color="text.secondary">No Image</Typography>
+                                        <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>No Image</Typography>
                                     )}
                                 </Box>
                             </CardContent>
                         </Card>
 
-                        <Card variant="outlined" sx={{ borderRadius: 1 }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" gutterBottom>Demo Video</Typography>
-                                <VideoPreview url={values.demoVideoUrl} height={160} />
+                        <Card variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', p: 0.5, boxShadow: 'none' }}>
+                            <CardContent sx={{ p: 2 }}>
+                                <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1, fontFamily: 'inherit' }}>Demo Video</Typography>
+                                <Box sx={{ borderRadius: '6px', overflow: 'hidden' }}>
+                                    <VideoPreview url={values.demoVideoUrl} height={160} />
+                                </Box>
                             </CardContent>
                         </Card>
                     </Box>

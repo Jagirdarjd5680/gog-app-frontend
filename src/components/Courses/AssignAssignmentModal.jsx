@@ -31,13 +31,12 @@ const AssignAssignmentModal = ({ open, onClose, courseId, courseTitle, onSuccess
             // Use large limit and timestamp to avoid stale cache or missing items
             const { data } = await api.get(`/assignments?limit=1000&t=${Date.now()}`);
             const allAssignments = data.data || [];
-            
-            // Pre-select assignments already belonging to this course
+
+            // Pre-select assignments already belonging to this course. `Assignment.courseId`
+            // is a bare nullable int on the current API — not the Mongo-era `course` object
+            // this used to check, which no field on the real response ever matches.
             const assigned = allAssignments
-                .filter(a => {
-                    const cid = typeof a.course === 'object' ? a.course?._id : a.course;
-                    return cid?.toString() === courseId?.toString();
-                })
+                .filter(a => a.courseId?.toString() === courseId?.toString())
                 .map(a => a._id);
             
             setAssignments(allAssignments);
@@ -62,13 +61,16 @@ const AssignAssignmentModal = ({ open, onClose, courseId, courseTitle, onSuccess
         // Update local assignments text for "Current Course"
         setAssignments(prev => prev.map(a => {
             if (a._id === id) {
-                return { ...a, course: isAdding ? { _id: courseId, title: courseTitle } : null };
+                return { ...a, courseId: isAdding ? Number(courseId) : null };
             }
             return a;
         }));
 
         try {
-            await api.put(`/assignments/${id}`, { course: isAdding ? courseId : null });
+            // `courseId`, not `course` — the real field on the current (Prisma-backed) API.
+            // The old `course` key doesn't exist on UpdateAssignmentDto, so it was silently
+            // stripped by the validation pipe and this never actually linked/unlinked anything.
+            await api.put(`/assignments/${id}`, { courseId: isAdding ? Number(courseId) : null });
             toast.success(isAdding ? 'Linked successfully' : 'Unlinked successfully');
             if (onSuccess) onSuccess(); // Refresh background table
         } catch (error) {
@@ -113,9 +115,15 @@ const AssignAssignmentModal = ({ open, onClose, courseId, courseTitle, onSuccess
                                                     disableRipple
                                                 />
                                             </ListItemIcon>
-                                            <ListItemText 
-                                                primary={a.title} 
-                                                secondary={`Current Course: ${a.course?.title || 'None'} | Marks: ${a.totalMarks}`}
+                                            <ListItemText
+                                                primary={a.title}
+                                                secondary={
+                                                    a.courseId == null
+                                                        ? `Unassigned | Marks: ${a.totalMarks}`
+                                                        : a.courseId.toString() === courseId?.toString()
+                                                            ? `Assigned to this course | Marks: ${a.totalMarks}`
+                                                            : `Assigned to another course | Marks: ${a.totalMarks}`
+                                                }
                                             />
                                         </ListItemButton>
                                     </ListItem>

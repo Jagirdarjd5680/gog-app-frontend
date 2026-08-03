@@ -1,22 +1,4 @@
-import { io } from 'socket.io-client';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend.godofgraphics.in/api';
-const ENDPOINT = API_BASE_URL.replace('/api', '');
-const socket = io(ENDPOINT, {
-    autoConnect: false,
-    withCredentials: true,
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 1000,
-});
-
-// Re-join user room after reconnection
-socket.on('reconnect', () => {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (user?._id) {
-        socket.emit('setup', user._id);
-    }
-});
-
-export default socket;
+// Real-time socket implementation lives in src/realtime/ now (see that folder
+// for the auth/debug-logging details). Kept as a re-export so existing
+// `import socket from '../../utils/socket'` call sites don't need to change.
+export { default, connectSocket, disconnectSocket } from '../realtime/socketClient';

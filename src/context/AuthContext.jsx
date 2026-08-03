@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
-import socket from '../utils/socket';
+import socket, { connectSocket } from '../utils/socket';
+import { connectSessionSocket, disconnectSessionSocket } from '../realtime/sessionSocket';
 import { toast } from 'react-toastify';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, CircularProgress } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, CircularProgress, TextField } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +23,11 @@ const AuthProvider = ({ children }) => {
     const [forceLogoutData, setForceLogoutData] = useState(null);
     const [countdown, setCountdown] = useState(5);
     const timerRef = useRef(null);
+    // Mirrors native-app/src/screens/auth/referralCode/Screen.tsx — web signup never
+    // asked new users for a referral code, only the mobile OTP flow did.
+    const [needsReferralPrompt, setNeedsReferralPrompt] = useState(false);
+    const [referralCodeInput, setReferralCodeInput] = useState('');
+    const [applyingReferral, setApplyingReferral] = useState(false);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -55,23 +62,30 @@ const AuthProvider = ({ children }) => {
         checkAuth();
     }, []);
 
-    // ─── Socket Listener for Single Device Login ───────────────────────────
+    // ─── Session socket: real-time force-logout when this account signs in ──
+    // elsewhere (another browser, or the mobile app — single-device-login is
+    // enforced per account, not per platform). Separate namespace/socket from
+    // the one below on purpose: session.gateway.ts lives on '/session' and
+    // emits 'force-logout' (hyphen), while the default-namespace `socket`
+    // below only carries chat + realtime_update toasts.
     useEffect(() => {
-        if (!user?._id || user.role !== 'student') {
-            if (socket.connected) socket.disconnect();
+        const userId = user?.id || user?._id;
+        const token = localStorage.getItem('token');
+        if (!userId || user.role !== 'student' || !token) {
+            disconnectSessionSocket();
             return;
         }
 
-        if (!socket.connected) {
-            socket.connect();
-        }
-        socket.emit('setup', user._id);
+        const REASON_MESSAGES = {
+            new_device_login: 'You have been logged out because your account was just signed in from another device or the mobile app.',
+            device_revoked_by_you: 'This device was signed out from your account settings.',
+            session_revoked: 'You have been logged out because your session ended.',
+        };
 
-        const handleForceLogout = (data) => {
-            
-            setForceLogoutData(data);
+        const handleForceLogout = (reason) => {
+            setForceLogoutData({ message: REASON_MESSAGES[reason] });
             setCountdown(5);
-            
+
             // Start countdown
             if (timerRef.current) clearInterval(timerRef.current);
             timerRef.current = setInterval(() => {
@@ -86,7 +100,23 @@ const AuthProvider = ({ children }) => {
             }, 1000);
         };
 
-        socket.on('force_logout', handleForceLogout);
+        connectSessionSocket(token, handleForceLogout);
+
+        return () => {
+            disconnectSessionSocket();
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, [user?.id, user?._id, user?.role]);
+
+    // ─── Default-namespace socket: chat + generic realtime_update toasts ───
+    useEffect(() => {
+        const userId = user?.id || user?._id;
+        if (!userId || user.role !== 'student') {
+            if (socket.connected) socket.disconnect();
+            return;
+        }
+
+        connectSocket();
 
         socket.on('realtime_update', (data) => {
             const { type } = data;
@@ -104,17 +134,21 @@ const AuthProvider = ({ children }) => {
         });
 
         return () => {
-            socket.off('force_logout', handleForceLogout);
             socket.off('realtime_update');
-            if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [user?._id, user?.role]);
+    }, [user?.id, user?._id, user?.role]);
 
     const login = async (email, password, recaptchaToken = '') => {
         try {
             const response = await api.post('/auth/login', { email, password, recaptchaToken });
 
             if (response.data.success) {
+                // 2FA-enabled accounts: password was correct but login() withheld the token and
+                // emailed an OTP instead — the caller must show that step and call verifyTwoFactor.
+                if (response.data.requiresTwoFactor) {
+                    return { success: true, requiresTwoFactor: true, email: response.data.email };
+                }
+
                 // Backend returns { success, token, user } at the top level
                 const { token, user: userData } = response.data;
 
@@ -133,9 +167,72 @@ const AuthProvider = ({ children }) => {
         }
     };
 
+    /** Completes login for a 2FA-enabled account after login() returned requiresTwoFactor. */
+    const verifyTwoFactor = async (email, otp) => {
+        try {
+            const response = await api.post('/auth/2fa/verify', { email, otp });
+            if (response.data.success) {
+                const { token, user: userData } = response.data;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(userData));
+                setUser(userData);
+                return { success: true };
+            }
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Invalid or expired code'
+            };
+        }
+    };
+
+    /** Step 1 of mobile-number login — mirrors native-app's useSendOtp (src/api/auth/hooks.ts). */
+    const sendOtp = async (phone) => {
+        try {
+            await api.post('/auth/send-otp', { phone });
+            return { success: true };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to send OTP'
+            };
+        }
+    };
+
+    /** Step 2 — verifying the code logs the account in (creating it on first use), same as native-app's OTP flow. */
+    const verifyOtpLogin = async (phone, otp) => {
+        try {
+            const response = await api.post('/auth/verify-otp', { phone, otp });
+            if (response.data.success) {
+                const { token, user: userData, needsReferralPrompt: needsReferral } = response.data;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(userData));
+                setUser(userData);
+                if (needsReferral) setNeedsReferralPrompt(true);
+                return { success: true };
+            }
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Invalid or expired OTP'
+            };
+        }
+    };
+
     const googleLogin = async (credential) => {
         try {
-            const response = await api.post('/auth/google-login', { credential });
+            // Backend only exposes POST /auth/google, which expects a passport-style
+            // profile object rather than the raw id_token credential @react-oauth/google
+            // hands back — decode the token's claims into that shape here (see the
+            // matching comment in native-app/src/api/auth/useGoogleLogin.ts).
+            const claims = JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            const profile = {
+                emails: [{ value: claims.email }],
+                displayName: claims.name,
+                name: { givenName: claims.given_name, familyName: claims.family_name },
+                photos: [{ value: claims.picture }],
+            };
+            const response = await api.post('/auth/google', { profile });
 
             if (response.data.success) {
                 const { token, user: userData } = response.data;
@@ -174,6 +271,7 @@ const AuthProvider = ({ children }) => {
                 localStorage.setItem('user', JSON.stringify(user));
 
                 setUser(user);
+                if (response.data.needsReferralPrompt) setNeedsReferralPrompt(true);
                 return { success: true };
             }
         } catch (error) {
@@ -181,6 +279,26 @@ const AuthProvider = ({ children }) => {
                 success: false,
                 message: error.response?.data?.message || 'Registration failed'
             };
+        }
+    };
+
+    const applyReferralCode = async () => {
+        const code = referralCodeInput.trim();
+        if (!code) {
+            setNeedsReferralPrompt(false);
+            return;
+        }
+        setApplyingReferral(true);
+        try {
+            const response = await api.post('/auth/apply-referral', { code });
+            if (response.data.success) {
+                toast.success('Referral code applied!');
+            }
+            setNeedsReferralPrompt(false);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Invalid referral code');
+        } finally {
+            setApplyingReferral(false);
         }
     };
 
@@ -228,8 +346,11 @@ const AuthProvider = ({ children }) => {
     const value = {
         user,
         login,
+        verifyTwoFactor,
         register,
         googleLogin,
+        sendOtp,
+        verifyOtpLogin,
         logout,
         updateUser,
         refreshToken,
@@ -308,6 +429,46 @@ const AuthProvider = ({ children }) => {
                         sx={{ py: 1.2, fontWeight: 'bold' }}
                     >
                         Logout Now
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Referral Code Prompt — shown once after a fresh signup with no referral recorded yet */}
+            <Dialog
+                open={needsReferralPrompt}
+                maxWidth="xs"
+                fullWidth
+                onClose={() => setNeedsReferralPrompt(false)}
+                PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+                    <CardGiftcardIcon color="primary" fontSize="large" />
+                    <Typography variant="h6" fontWeight="bold">Got a referral code?</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                        Enter it now to help a friend earn their reward, or skip for now.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Referral code (optional)"
+                        value={referralCodeInput}
+                        onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                        inputProps={{ style: { textTransform: 'uppercase' } }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+                    <Button onClick={() => setNeedsReferralPrompt(false)} disabled={applyingReferral}>
+                        Skip
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={applyReferralCode}
+                        disabled={applyingReferral}
+                        sx={{ fontWeight: 'bold' }}
+                    >
+                        {applyingReferral ? <CircularProgress size={20} color="inherit" /> : referralCodeInput.trim() ? 'Apply' : 'Continue'}
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -36,7 +36,7 @@ const PublicSeatBooking = () => {
 
     useEffect(() => {
         if (selectedBatch) {
-            fetchSeatStatus(selectedBatch._id);
+            fetchSeatStatus(selectedBatch.id);
         }
     }, [selectedBatch]);
 
@@ -91,14 +91,14 @@ const PublicSeatBooking = () => {
         try {
             const res = await api.post('/booking/request', {
                 user: userForm,
-                batchId: selectedBatch._id,
+                batchId: selectedBatch.id,
                 seatNumber: selectedSeat,
                 zone: selectedSeat <= 7 ? 'Main Training Area' : 'Practice Zone'
             });
             if (res.data.success) {
                 toast.success('Booking request sent successfully!');
                 setBookingDialogOpen(false);
-                fetchSeatStatus(selectedBatch._id);
+                fetchSeatStatus(selectedBatch.id);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Booking failed');
@@ -218,7 +218,7 @@ const PublicSeatBooking = () => {
 
                     <Grid container spacing={1.5} mb={4}>
                         {batches.map((batch) => (
-                            <Grid item xs={4} key={batch._id}>
+                            <Grid item xs={4} key={batch.id}>
                                 <Paper 
                                     onClick={() => setSelectedBatch(batch)}
                                     sx={{ 
@@ -226,12 +226,12 @@ const PublicSeatBooking = () => {
                                         textAlign: 'center', 
                                         borderRadius: 2, 
                                         cursor: 'pointer',
-                                        bgcolor: selectedBatch?._id === batch._id ? 'black' : 'white',
-                                        color: selectedBatch?._id === batch._id ? '#fbbf24' : 'text.primary',
+                                        bgcolor: selectedBatch?.id === batch.id ? 'black' : 'white',
+                                        color: selectedBatch?.id === batch.id ? '#fbbf24' : 'text.primary',
                                         border: '1.5px solid',
-                                        borderColor: selectedBatch?._id === batch._id ? '#fbbf24' : '#eee',
+                                        borderColor: selectedBatch?.id === batch.id ? '#fbbf24' : '#eee',
                                         transition: '0.3s',
-                                        boxShadow: selectedBatch?._id === batch._id ? '0 0 15px rgba(251, 191, 36, 0.2)' : 'none'
+                                        boxShadow: selectedBatch?.id === batch.id ? '0 0 15px rgba(251, 191, 36, 0.2)' : 'none'
                                     }}
                                 >
                                     <Typography variant="caption" fontWeight={900} display="block" sx={{ fontSize: '0.65rem' }}>{batch.name}</Typography>

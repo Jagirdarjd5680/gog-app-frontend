@@ -42,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { Badge } from '@mui/material';
+import socket, { connectSocket } from '../../realtime/socketClient';
 
 const ReferralDashboard = () => {
     const theme = useTheme();
@@ -54,6 +55,15 @@ const ReferralDashboard = () => {
 
     useEffect(() => {
         fetchData();
+
+        // Live-refresh whenever a referral gets recorded/approved/rejected or a
+        // withdrawal is processed, instead of only reflecting it on next page load.
+        connectSocket();
+        const handleRealtimeUpdate = (payload) => {
+            if (payload?.type === 'REFERRAL_UPDATED') fetchData();
+        };
+        socket.on('realtime_update', handleRealtimeUpdate);
+        return () => socket.off('realtime_update', handleRealtimeUpdate);
     }, []);
 
     const fetchData = async () => {

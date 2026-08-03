@@ -30,54 +30,74 @@ const AppReviewSection = () => {
 
     if (loading) {
         return (
-            <Paper sx={{ p: 3, borderRadius: 3, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <CircularProgress />
+            <Paper sx={{ 
+                p: 3, 
+                borderRadius: '8px', 
+                height: '100%', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                bgcolor: 'var(--color-vc-canvas)',
+                border: '1px solid var(--color-vc-hairline)',
+                boxShadow: 'none'
+            }}>
+                <CircularProgress size={20} sx={{ color: 'var(--color-vc-primary)' }} />
             </Paper>
         );
     }
 
     return (
-        <Paper sx={{ p: 3, borderRadius: 3, height: '100%', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+        <Paper sx={{ 
+            p: 3, 
+            borderRadius: '8px', 
+            height: '100%', 
+            bgcolor: 'var(--color-vc-canvas)',
+            border: '1px solid var(--color-vc-hairline)',
+            boxShadow: '0px 1px 1px rgba(0,0,0,0.02)',
+        }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <StarIcon color="primary" />
-                    <Typography variant="h6" fontWeight={800}>
+                    <StarIcon sx={{ color: 'var(--color-vc-mute)', fontSize: 18 }} />
+                    <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                         App Reviews
                     </Typography>
                 </Box>
                 <Tooltip title="Manage Reviews">
-                    <IconButton size="small" onClick={() => navigate('/app-reviews')}>
+                    <IconButton size="small" onClick={() => navigate('/app-reviews')} sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-ink)' } }}>
                         <ArrowForwardIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
             </Box>
 
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 2, borderColor: 'var(--color-vc-hairline)' }} />
 
             {reviews.length === 0 ? (
                 <Box sx={{ py: 4, textAlign: 'center' }}>
-                    <Typography color="text.secondary">No reviews found.</Typography>
+                    <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit' }}>No reviews found.</Typography>
                 </Box>
             ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {reviews.map((r) => (
-                        <Box key={r._id} sx={{ display: 'flex', gap: 2 }}>
-                            <Avatar src={r.profileImage} sx={{ width: 40, height: 40 }}>
+                        <Box key={r._id} sx={{ display: 'flex', gap: 1.5 }}>
+                            <Avatar src={r.profileImage} sx={{ width: 32, height: 32, border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' }}>
                                 {r.name.charAt(0)}
                             </Avatar>
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2" fontWeight={700} noWrap>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                    <Typography sx={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }} noWrap>
                                         {r.name}
                                     </Typography>
                                     <Rating value={r.rating} readOnly size="small" />
                                 </Box>
-                                <Typography variant="caption" color="text.secondary" sx={{
+                                <Typography sx={{
                                     display: '-webkit-box',
                                     WebkitLineClamp: 2,
                                     WebkitBoxOrient: 'vertical',
                                     overflow: 'hidden',
-                                    lineHeight: 1.4
+                                    lineHeight: 1.4,
+                                    fontSize: '11px',
+                                    color: 'var(--color-vc-body)',
+                                    fontFamily: 'inherit'
                                 }}>
                                     {r.review}
                                 </Typography>
@@ -88,11 +108,16 @@ const AppReviewSection = () => {
             )}
 
             {reviews.length > 0 && (
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
                     <Typography
-                        variant="caption"
-                        color="primary"
-                        sx={{ cursor: 'pointer', fontWeight: 700 }}
+                        sx={{ 
+                            cursor: 'pointer', 
+                            fontWeight: 500, 
+                            color: 'var(--color-vc-link)', 
+                            fontSize: '12px', 
+                            fontFamily: 'inherit',
+                            '&:hover': { color: 'var(--color-vc-link-deep)' }
+                        }}
                         onClick={() => navigate('/app-reviews')}
                     >
                         View All Reviews

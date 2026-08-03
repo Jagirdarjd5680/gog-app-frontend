@@ -30,7 +30,7 @@ import { format } from 'date-fns';
 import { useState } from 'react';
 import UserSelector, { MODES } from './UserSelector';
 
-const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) => {
+const ChatSidebar = ({ users = [], selectedUser, onSelectUser, loading, onRefresh }) => {
     const theme = useTheme();
     const [searchTerm, setSearchTerm] = useState('');
     const [showUserSelector, setShowUserSelector] = useState(false);
@@ -47,8 +47,8 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
     };
 
     const filteredUsers = users.filter(u =>
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -56,18 +56,18 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
             elevation={0}
             sx={{
                 width: 320,
-                borderRadius: 3,
-                bgcolor: 'background.paper',
+                borderRadius: '8px',
+                bgcolor: 'var(--color-vc-canvas)',
                 display: 'flex',
                 flexDirection: 'column',
-                border: `1px solid ${theme.palette.divider}`,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                border: '1px solid var(--color-vc-hairline)',
+                boxShadow: 'none',
                 overflow: 'hidden'
             }}
         >
-            <Box sx={{ p: 2.5, pb: 1.5 }}>
+            <Box sx={{ p: 2, pb: 1.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="h6" fontWeight={800} color="primary">
+                    <Typography variant="h6" fontWeight={800} sx={{ color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.5px' }}>
                         Messages
                     </Typography>
                     <Box>
@@ -77,37 +77,50 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
                             onClick={handleMenuOpen}
                             startIcon={<MoreVertIcon fontSize="small" />}
                             sx={{
-                                borderRadius: 2,
+                                borderRadius: '6px',
                                 textTransform: 'none',
                                 fontWeight: 600,
                                 px: 1.5,
-                                border: '1px solid',
-                                borderColor: 'primary.100',
-                                bgcolor: 'primary.50',
-                                '&:hover': { bgcolor: 'primary.100', borderColor: 'primary.200' }
+                                py: 0.5,
+                                border: '1px solid var(--color-vc-hairline)',
+                                color: 'var(--color-vc-body)',
+                                bgcolor: 'var(--color-vc-canvas)',
+                                '&:hover': { 
+                                    bgcolor: 'var(--color-vc-canvas-soft-2)', 
+                                    borderColor: 'var(--color-vc-hairline-strong)', 
+                                    color: 'var(--color-vc-ink)' 
+                                }
                             }}
                         >
                             Broadcast
                         </Button>
-
+ 
                         <Menu
                             anchorEl={anchorEl}
                             open={Boolean(anchorEl)}
                             onClose={handleMenuClose}
-                            PaperProps={{ sx: { borderRadius: 2, minWidth: 180, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } }}
+                            PaperProps={{ 
+                                sx: { 
+                                    borderRadius: '6px', 
+                                    minWidth: 180, 
+                                    border: '1px solid var(--color-vc-hairline)', 
+                                    boxShadow: 'none',
+                                    bgcolor: 'var(--color-vc-canvas)'
+                                } 
+                            }}
                         >
-                            <MenuItem onClick={() => handleSelectOption(MODES.SINGLE)}>
-                                <ListItemIcon><PersonAddIcon fontSize="small" /></ListItemIcon>
-                                <ListItemText primary="New Chat" />
+                            <MenuItem onClick={() => handleSelectOption(MODES.SINGLE)} sx={{ fontSize: '13px' }}>
+                                <ListItemIcon sx={{ '& .MuiSvgIcon-root': { fontSize: 18 } }}><PersonAddIcon fontSize="small" /></ListItemIcon>
+                                <ListItemText primary="New Chat" primaryTypographyProps={{ fontSize: '13px', fontFamily: 'inherit' }} />
                             </MenuItem>
-                            <Divider />
-                            <MenuItem onClick={() => handleSelectOption(MODES.BULK_ALL)}>
-                                <ListItemIcon><CampaignIcon fontSize="small" color="primary" /></ListItemIcon>
-                                <ListItemText primary="Broadcast to All" />
+                            <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
+                            <MenuItem onClick={() => handleSelectOption(MODES.BULK_ALL)} sx={{ fontSize: '13px' }}>
+                                <ListItemIcon sx={{ '& .MuiSvgIcon-root': { fontSize: 18 } }}><CampaignIcon fontSize="small" color="primary" /></ListItemIcon>
+                                <ListItemText primary="Broadcast to All" primaryTypographyProps={{ fontSize: '13px', fontFamily: 'inherit' }} />
                             </MenuItem>
-                            <MenuItem onClick={() => handleSelectOption(MODES.BULK_SPECIFIC)}>
-                                <ListItemIcon><GroupAddIcon fontSize="small" color="primary" /></ListItemIcon>
-                                <ListItemText primary="Select Recipients" />
+                            <MenuItem onClick={() => handleSelectOption(MODES.BULK_SPECIFIC)} sx={{ fontSize: '13px' }}>
+                                <ListItemIcon sx={{ '& .MuiSvgIcon-root': { fontSize: 18 } }}><GroupAddIcon fontSize="small" color="primary" /></ListItemIcon>
+                                <ListItemText primary="Select Recipients" primaryTypographyProps={{ fontSize: '13px', fontFamily: 'inherit' }} />
                             </MenuItem>
                         </Menu>
                     </Box>
@@ -121,23 +134,28 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
-                                <SearchIcon fontSize="small" color="action" />
+                                <SearchIcon fontSize="small" sx={{ color: 'var(--color-vc-mute)' }} />
                             </InputAdornment>
                         ),
-                        sx: { borderRadius: 2, bgcolor: 'action.hover', '& fieldset': { border: 'none' } }
+                        sx: { 
+                            borderRadius: '6px', 
+                            bgcolor: 'var(--color-vc-canvas-soft)', 
+                            '& fieldset': { border: 'none' },
+                            height: 36
+                        }
                     }}
                 />
             </Box>
-
-            <Divider />
-
+ 
+            <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
+ 
             <List sx={{ flexGrow: 1, overflowY: 'auto', p: 1, gap: 0.5, display: 'flex', flexDirection: 'column' }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                         <CircularProgress size={24} />
                     </Box>
                 ) : filteredUsers.length === 0 ? (
-                    <Typography variant="body2" color="text.disabled" textAlign="center" sx={{ p: 4 }}>
+                    <Typography variant="body2" color="text.disabled" textAlign="center" sx={{ p: 4, fontFamily: 'inherit' }}>
                         No conversations found
                     </Typography>
                 ) : (
@@ -148,14 +166,23 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
                             onClick={() => onSelectUser(user)}
                             selected={selectedUser?._id === user._id}
                             sx={{
-                                borderRadius: 2,
+                                borderRadius: '6px',
                                 transition: 'all 0.2s',
+                                py: 1,
+                                px: 1.5,
+                                color: 'var(--color-vc-body)',
                                 '&.Mui-selected': {
-                                    bgcolor: 'primary.50',
-                                    '&:hover': { bgcolor: 'primary.100' },
-                                    '& .MuiListItemText-primary': { color: 'primary.main', fontWeight: 700 }
+                                    bgcolor: 'var(--color-vc-canvas-soft-2) !important',
+                                    borderLeft: '3px solid var(--color-vc-primary)',
+                                    borderRadius: '0 6px 6px 0',
+                                    color: 'var(--color-vc-ink) !important',
+                                    '&:hover': { bgcolor: 'var(--color-vc-canvas-soft-2)' },
+                                    '& .MuiListItemText-primary': { fontWeight: 700, color: 'var(--color-vc-ink)' }
                                 },
-                                '&:hover': { bgcolor: 'action.hover' }
+                                '&:hover': { 
+                                    bgcolor: 'var(--color-vc-canvas-soft)',
+                                    color: 'var(--color-vc-ink)'
+                                }
                             }}
                         >
                             <ListItemAvatar>
@@ -172,7 +199,7 @@ const ChatSidebar = ({ users, selectedUser, onSelectUser, loading, onRefresh }) 
                                     }}
                                 >
                                     <Avatar src={user.avatar} sx={{ width: 45, height: 45 }}>
-                                        {user.name.charAt(0)}
+                                        {(user.name || '?').charAt(0)}
                                     </Avatar>
                                 </Badge>
                             </ListItemAvatar>

@@ -177,8 +177,10 @@ const FaceCapture = ({ userId, user, onComplete }) => {
 
     if (!modelsLoaded) return (
         <Box sx={{ textAlign: 'center', py: 5 }}>
-            <CircularProgress size={30} />
-            <Typography variant="caption" display="block" mt={1}>AI Initializing...</Typography>
+            <CircularProgress size={24} sx={{ color: 'var(--color-vc-primary)' }} />
+            <Typography sx={{ fontSize: '12px', color: 'var(--color-vc-mute)', mt: 1.5, fontFamily: 'inherit' }}>
+                AI Biometric Initializing...
+            </Typography>
         </Box>
     );
 
@@ -188,12 +190,12 @@ const FaceCapture = ({ userId, user, onComplete }) => {
                 {/* Registered Face Preview */}
                 {registeredFace && step === -1 && !finalStep && (
                     <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1}>
+                        <Typography sx={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5, display: 'block' }}>
                             Currently Registered
                         </Typography>
                         <Box sx={{
-                            width: 150, height: 150, borderRadius: '50%', overflow: 'hidden',
-                            border: '3px solid #eee', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                            width: 140, height: 140, borderRadius: '50%', overflow: 'hidden',
+                            border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)'
                         }}>
                             <img src={fixUrl(registeredFace)} alt="Registered" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </Box>
@@ -207,8 +209,8 @@ const FaceCapture = ({ userId, user, onComplete }) => {
                                 position: 'relative',
                                 width: 200, height: 200, mx: 'auto',
                                 borderRadius: '50%', overflow: 'hidden', bgcolor: '#000',
-                                border: '4px solid',
-                                borderColor: holdProgress > 0 ? 'success.main' : (step === -1 ? 'grey.300' : 'primary.main'),
+                                border: '1px solid var(--color-vc-hairline)',
+                                borderColor: holdProgress > 0 ? 'var(--color-vc-success)' : (step === -1 ? 'var(--color-vc-hairline)' : 'var(--color-vc-primary)'),
                                 transition: 'border-color 0.2s'
                             }}>
                                 <Webcam
@@ -223,16 +225,16 @@ const FaceCapture = ({ userId, user, onComplete }) => {
                                 {holdProgress > 0 && (
                                     <Box sx={{
                                         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                                        border: '8px solid rgba(76, 175, 80, 0.4)',
+                                        border: '6px solid var(--color-vc-success-soft)',
                                         borderRadius: '50%',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
                                         <CircularProgress
                                             variant="determinate"
                                             value={holdProgress}
-                                            size={184}
+                                            size={188}
                                             thickness={2}
-                                            sx={{ color: 'success.main' }}
+                                            sx={{ color: 'var(--color-vc-success)' }}
                                         />
                                     </Box>
                                 )}
@@ -240,28 +242,61 @@ const FaceCapture = ({ userId, user, onComplete }) => {
                                 {isCapturing && (
                                     <Box sx={{
                                         position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                                        bgcolor: 'rgba(26, 115, 232, 0.2)',
+                                        bgcolor: 'rgba(0,0,0,0.4)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
-                                        <CircularProgress color="inherit" />
+                                        <CircularProgress size={24} sx={{ color: 'var(--color-vc-on-primary)' }} />
                                     </Box>
                                 )}
                             </Box>
 
                             <Stack spacing={2} sx={{ mt: 3, alignItems: 'center' }}>
                                 {step === -1 ? (
-                                    <Button variant="contained" onClick={startAutoScan} sx={{ borderRadius: 5, px: 4 }}>Start Smart Scan</Button>
+                                    <Button 
+                                        variant="contained" 
+                                        onClick={startAutoScan}
+                                        sx={{ 
+                                            textTransform: 'none',
+                                            fontSize: '13px',
+                                            fontWeight: 500,
+                                            fontFamily: 'inherit',
+                                            borderRadius: '6px',
+                                            boxShadow: 'none',
+                                            bgcolor: 'var(--color-vc-primary)',
+                                            color: 'var(--color-vc-on-primary)',
+                                            px: 4,
+                                            height: 36,
+                                            '&:hover': {
+                                                bgcolor: 'var(--color-vc-primary)',
+                                                opacity: 0.9,
+                                                boxShadow: 'none'
+                                            }
+                                        }}
+                                    >
+                                        Start Smart Scan
+                                    </Button>
                                 ) : (
                                     <>
-                                        <Typography variant="subtitle1" fontWeight={700} color={holdProgress > 0 ? 'success.main' : 'primary.main'}>
+                                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: holdProgress > 0 ? 'var(--color-vc-success-deep)' : 'var(--color-vc-primary)' }}>
                                             {status}
                                         </Typography>
-                                        <Paper elevation={0} sx={{ p: 1, bgcolor: 'rgba(26, 115, 232, 0.05)', borderRadius: '50%' }}>
+                                        <Paper elevation={0} sx={{ p: 1, bgcolor: 'var(--color-vc-canvas-soft)', border: '1px solid var(--color-vc-hairline)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-vc-ink)' }}>
                                             {steps[step]?.icon}
                                         </Paper>
                                         <Box sx={{ width: '100%', px: 4 }}>
-                                            <LinearProgress variant="determinate" value={overallProgress} sx={{ height: 4, borderRadius: 2 }} />
-                                            <Typography variant="caption" color="text.secondary">Total Progress: {Math.round(overallProgress)}%</Typography>
+                                            <LinearProgress 
+                                                variant="determinate" 
+                                                value={overallProgress} 
+                                                sx={{ 
+                                                    height: 4, 
+                                                    borderRadius: '2px',
+                                                    bgcolor: 'var(--color-vc-hairline)',
+                                                    '& .MuiLinearProgress-bar': { bgcolor: 'var(--color-vc-primary)' }
+                                                }} 
+                                            />
+                                            <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', mt: 1 }}>
+                                                Total Progress: {Math.round(overallProgress)}%
+                                            </Typography>
                                         </Box>
                                     </>
                                 )}
@@ -269,18 +304,62 @@ const FaceCapture = ({ userId, user, onComplete }) => {
                         </Box>
                     ) : (
                         <Box sx={{ textAlign: 'center' }}>
-                            <Box sx={{ position: 'relative', width: 200, height: 200, mx: 'auto', borderRadius: '50%', overflow: 'hidden', border: '4px solid #2e7d32', mb: 2 }}>
+                            <Box sx={{ position: 'relative', width: 200, height: 200, mx: 'auto', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--color-vc-hairline)', mb: 2, bgcolor: 'var(--color-vc-canvas-soft)' }}>
                                 <img src={capturedImages[0]} alt="Captured" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(46, 125, 50, 0.1)' }}>
-                                    <CheckCircleIcon sx={{ fontSize: 60, color: 'success.main' }} />
+                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(76, 175, 80, 0.15)' }}>
+                                    <CheckCircleIcon sx={{ fontSize: 50, color: 'var(--color-vc-success-deep)' }} />
                                 </Box>
                             </Box>
-                            <Typography variant="subtitle1" fontWeight={700} color="success.main">Scan Successful!</Typography>
-                            <Typography variant="caption" display="block">4 Angles Captured for Smart Attendance</Typography>
+                            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-success-deep)' }}>Scan Successful!</Typography>
+                            <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', display: 'block', mt: 0.5 }}>4 Angles Captured for Smart Attendance</Typography>
                             <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-                                <Button fullWidth size="small" variant="outlined" onClick={resetCapture}>Retake</Button>
-                                <Button fullWidth size="small" variant="contained" color="success" onClick={handleSave} disabled={loading}>
-                                    {loading ? <CircularProgress size={16} color="inherit" /> : 'Register Face'}
+                                <Button 
+                                    fullWidth 
+                                    size="small" 
+                                    variant="outlined" 
+                                    onClick={resetCapture}
+                                    sx={{
+                                        textTransform: 'none',
+                                        fontSize: '12px',
+                                        fontWeight: 500,
+                                        fontFamily: 'inherit',
+                                        borderRadius: '6px',
+                                        color: 'var(--color-vc-ink)',
+                                        borderColor: 'var(--color-vc-hairline)',
+                                        bgcolor: 'var(--color-vc-canvas)',
+                                        height: 32,
+                                        '&:hover': {
+                                            bgcolor: 'var(--color-vc-canvas-soft)',
+                                            borderColor: 'var(--color-vc-hairline-strong)'
+                                        }
+                                    }}
+                                >
+                                    Retake
+                                </Button>
+                                <Button 
+                                    fullWidth 
+                                    size="small" 
+                                    variant="contained" 
+                                    onClick={handleSave} 
+                                    disabled={loading}
+                                    sx={{
+                                        textTransform: 'none',
+                                        fontSize: '12px',
+                                        fontWeight: 500,
+                                        fontFamily: 'inherit',
+                                        borderRadius: '6px',
+                                        boxShadow: 'none',
+                                        bgcolor: 'var(--color-vc-success)',
+                                        color: '#fff',
+                                        height: 32,
+                                        '&:hover': {
+                                            bgcolor: 'var(--color-vc-success)',
+                                            opacity: 0.9,
+                                            boxShadow: 'none'
+                                        }
+                                    }}
+                                >
+                                    {loading ? <CircularProgress size={14} color="inherit" /> : 'Register Face'}
                                 </Button>
                             </Box>
                         </Box>

@@ -1,6 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Vercel Design System Tokens - Light Mode */
+  --color-vc-primary: #171717;
+  --color-vc-on-primary: #ffffff;
+  --color-vc-ink: #171717;
+  --color-vc-body: #4d4d4d;
+  --color-vc-mute: #888888;
+  --color-vc-hairline: #ebebeb;
+  --color-vc-hairline-strong: #a1a1a1;
+  --color-vc-canvas: #ffffff;
+  --color-vc-canvas-soft: #fafafa;
+  --color-vc-canvas-soft-2: #f5f5f5;
+  --color-vc-link: #0070f3;
+  --color-vc-link-deep: #0761d1;
+  --color-vc-link-bg-soft: #d3e5ff;
+  --color-vc-success: #0070f3;
+  --color-vc-error: #ee0000;
+  --color-vc-error-soft: #f7d4d6;
+  --color-vc-error-deep: #c50000;
+  --color-vc-warning: #f5a623;
+  --color-vc-warning-soft: #ffefcf;
+  --color-vc-warning-deep: #ab570a;
+  --color-vc-violet: #7928ca;
+  --color-vc-violet-soft: #d8ccf1;
+  --color-vc-violet-deep: #4c2889;
+  --color-vc-cyan: #50e3c2;
+  --color-vc-cyan-soft: #aaffec;
+  --color-vc-cyan-deep: #29bc9b;
+  --color-vc-highlight-pink: #ff0080;
+  --color-vc-highlight-magenta: #eb367f;
+
+  /* Gradients */
+  --gradient-develop-start: #007cf0;
+  --gradient-develop-end: #00dfd8;
+  --gradient-preview-start: #7928ca;
+  --gradient-preview-end: #ff0080;
+  --gradient-ship-start: #ff4d4d;
+  --gradient-ship-end: #f9cb28;
+}
+
+.dark {
+  /* Vercel Design System Tokens - Dark Mode */
+  --color-vc-primary: #ffffff;
+  --color-vc-on-primary: #171717;
+  --color-vc-ink: #ffffff;
+  --color-vc-body: #a1a1a1;
+  --color-vc-mute: #666666;
+  --color-vc-hairline: #333333;
+  --color-vc-hairline-strong: #666666;
+  --color-vc-canvas: #0a0a0a;
+  --color-vc-canvas-soft: #000000;
+  --color-vc-canvas-soft-2: #111111;
+  --color-vc-link: #3291ff;
+  --color-vc-link-deep: #0070f3;
+  --color-vc-link-bg-soft: #002554;
+  --color-vc-success: #0070f3;
+  --color-vc-error: #ff0000;
+  --color-vc-error-soft: #3f0e11;
+  --color-vc-error-deep: #ee0000;
+  --color-vc-warning: #f5a623;
+  --color-vc-warning-soft: #3a2200;
+  --color-vc-warning-deep: #ffb84d;
+}
+
+/* Stacked box shadows mapping from Vercel specification */
+.vc-shadow-l1 {
+  box-shadow: 0 0 0 1px var(--color-vc-hairline);
+}
+.vc-shadow-l2 {
+  box-shadow: 0px 1px 1px rgba(0,0,0,0.05), 0px 2px 2px rgba(0,0,0,0.08), inset 0 0 0 1px var(--color-vc-hairline);
+}
+.vc-shadow-l3 {
+  box-shadow: 0px 2px 2px rgba(0,0,0,0.05), 0px 8px 8px -8px rgba(0,0,0,0.08), inset 0 0 0 1px var(--color-vc-hairline);
+}
+.vc-shadow-l4 {
+  box-shadow: 0px 2px 2px rgba(0,0,0,0.05), 0px 8px 16px -4px rgba(0,0,0,0.08), inset 0 0 0 1px var(--color-vc-hairline);
+}
+.vc-shadow-l5 {
+  box-shadow: 0px 1px 1px rgba(0,0,0,0.02), 0px 8px 16px -4px rgba(0,0,0,0.08), 0px 24px 32px -8px rgba(0,0,0,0.1), inset 0 0 0 1px var(--color-vc-hairline);
+}
+
+/* Float Animations for mesh blobs */
+@keyframes float-blob-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+@keyframes float-blob-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(-40px, 40px) scale(1.05); }
+}
+@keyframes float-blob-3 {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(-20px, -30px) scale(0.9); }
+  66% { transform: translate(30px, 40px) scale(1.1); }
+}
+.animate-blob-1 {
+  animation: float-blob-1 20s infinite ease-in-out;
+}
+.animate-blob-2 {
+  animation: float-blob-2 25s infinite ease-in-out;
+}
+.animate-blob-3 {
+  animation: float-blob-3 22s infinite ease-in-out;
+}
 
 /* Premium LMS Styles */
 :root {
@@ -72,4 +180,9 @@ body {
 
 .animate-slide-up {
   animation: slideUp 0.5s ease forwards;
+}
+
+/* Custom asterisk class for MUI label fields */
+.MuiFormLabel-asterisk {
+  color: var(--color-vc-error) !important;
 }

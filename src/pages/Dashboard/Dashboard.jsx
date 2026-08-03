@@ -118,29 +118,55 @@ const Dashboard = () => {
 
     return (
         <Box>
-            <Box mb={4} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+            <Box mb={4} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
-                    <Typography variant="h4" fontWeight={800} color="primary" sx={{ mb: 1 }}>
+                    <Typography sx={{ fontSize: '24px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.02em', mb: 0.5 }}>
                         Dashboard Overview
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography sx={{ fontSize: '14px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                         Real-time analytics for your learning management system.
                     </Typography>
                 </Box>
 
-                <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                    <FilterListIcon color="action" />
+                <Paper sx={{ 
+                    p: 1.5, 
+                    borderRadius: '8px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1.5, 
+                    flexWrap: 'wrap',
+                    bgcolor: 'var(--color-vc-canvas)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: 'none'
+                }}>
+                    <FilterListIcon sx={{ color: 'var(--color-vc-mute)', fontSize: 18 }} />
                     <FormControl size="small" sx={{ minWidth: 150 }}>
-                        <InputLabel>Date Range</InputLabel>
+                        <InputLabel sx={{ fontSize: '13px', fontFamily: 'inherit', color: 'var(--color-vc-mute)', '&.Mui-focused': { color: 'var(--color-vc-ink)' } }}>Date Range</InputLabel>
                         <Select
                             value={dateRange}
                             label="Date Range"
                             onChange={(e) => setDateRange(e.target.value)}
+                            sx={{
+                                height: 36,
+                                fontSize: '13px',
+                                fontFamily: 'inherit',
+                                borderRadius: '6px',
+                                color: 'var(--color-vc-ink)',
+                                '& .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--color-vc-hairline)',
+                                },
+                                '&:hover .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--color-vc-hairline-strong)',
+                                },
+                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                    borderColor: 'var(--color-vc-hairline-strong)',
+                                }
+                            }}
                         >
-                            <MenuItem value="7">Last 7 Days</MenuItem>
-                            <MenuItem value="30">Last 30 Days</MenuItem>
-                            <MenuItem value="90">Last 90 Days</MenuItem>
-                            <MenuItem value="custom">Custom Range</MenuItem>
+                            <MenuItem value="7" sx={{ fontSize: '13px', fontFamily: 'inherit' }}>Last 7 Days</MenuItem>
+                            <MenuItem value="30" sx={{ fontSize: '13px', fontFamily: 'inherit' }}>Last 30 Days</MenuItem>
+                            <MenuItem value="90" sx={{ fontSize: '13px', fontFamily: 'inherit' }}>Last 90 Days</MenuItem>
+                            <MenuItem value="custom" sx={{ fontSize: '13px', fontFamily: 'inherit' }}>Custom Range</MenuItem>
                         </Select>
                     </FormControl>
 
@@ -153,6 +179,18 @@ const Dashboard = () => {
                                 InputLabelProps={{ shrink: true }}
                                 value={customRange.start}
                                 onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+                                sx={{
+                                    '& .MuiInputBase-root': {
+                                        height: 36,
+                                        fontSize: '13px',
+                                        borderRadius: '6px',
+                                        color: 'var(--color-vc-ink)',
+                                        bgcolor: 'var(--color-vc-canvas)',
+                                    },
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'var(--color-vc-hairline)',
+                                    }
+                                }}
                             />
                             <TextField
                                 size="small"
@@ -161,8 +199,40 @@ const Dashboard = () => {
                                 InputLabelProps={{ shrink: true }}
                                 value={customRange.end}
                                 onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+                                sx={{
+                                    '& .MuiInputBase-root': {
+                                        height: 36,
+                                        fontSize: '13px',
+                                        borderRadius: '6px',
+                                        color: 'var(--color-vc-ink)',
+                                        bgcolor: 'var(--color-vc-canvas)',
+                                    },
+                                    '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'var(--color-vc-hairline)',
+                                    }
+                                }}
                             />
-                            <Button variant="contained" size="small" onClick={handleCustomFilter}>
+                            <Button 
+                                variant="contained" 
+                                size="small" 
+                                onClick={handleCustomFilter}
+                                sx={{
+                                    height: 36,
+                                    bgcolor: 'var(--color-vc-primary)',
+                                    color: 'var(--color-vc-on-primary)',
+                                    borderRadius: '6px',
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    px: 2,
+                                    boxShadow: 'none',
+                                    '&:hover': {
+                                        bgcolor: 'var(--color-vc-primary)',
+                                        opacity: 0.9,
+                                        boxShadow: 'none'
+                                    }
+                                }}
+                            >
                                 Apply
                             </Button>
                         </>
@@ -174,51 +244,51 @@ const Dashboard = () => {
             <Grid container spacing={3} mb={3}>
                 {loading ? (
                     // Skeleton Loaders
-                    [...Array(4)].map((_, i) => (
-                        <Grid item xs={12} sm={6} md={3} key={i}>
+                    [...Array(5)].map((_, i) => (
+                        <Grid item xs={12} sm={6} md={2.4} key={i}>
                             <MetricsCardSkeleton />
                         </Grid>
                     ))
                 ) : (
                     <>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={2.4}>
                             <MetricsCard
                                 title="Total Students"
                                 value={stats.totalStudents}
-                                icon={<PeopleIcon sx={{ fontSize: 32 }} />}
+                                icon={<PeopleIcon />}
                                 color="primary"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={2.4}>
                             <MetricsCard
                                 title="Total Users"
                                 value={stats.totalTeachers}
-                                icon={<PeopleIcon sx={{ fontSize: 32 }} />}
+                                icon={<PeopleIcon />}
                                 color="success"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={2.4}>
                             <MetricsCard
                                 title="Total Courses"
                                 value={stats.totalCourses}
-                                icon={<SchoolIcon sx={{ fontSize: 32 }} />}
+                                icon={<SchoolIcon />}
                                 color="info"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={2.4}>
                             <MetricsCard
                                 title="Pending Payouts"
                                 value={stats.pendingWithdrawals}
-                                icon={<AttachMoneyIcon sx={{ fontSize: 32 }} />}
+                                icon={<AttachMoneyIcon />}
                                 color="error"
-                                onClick={() => window.location.href='/tutors'}
+                                onClick={() => navigate('/withdrawal-requests')}
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item xs={12} sm={6} md={2.4}>
                             <MetricsCard
                                 title="Total Revenue"
                                 value={`₹${stats.totalRevenue?.toLocaleString()}`}
-                                icon={<AttachMoneyIcon sx={{ fontSize: 32 }} />}
+                                icon={<AttachMoneyIcon />}
                                 color="warning"
                             />
                         </Grid>

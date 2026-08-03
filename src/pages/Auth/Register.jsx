@@ -34,6 +34,7 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [allowGoogleLogin, setAllowGoogleLogin] = useState(false);
+    const [allowEmailLogin, setAllowEmailLogin] = useState(true);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -50,6 +51,7 @@ const Register = () => {
                 navigate('/login');
             }
             setAllowGoogleLogin(settings.auth.allowGoogleLogin ?? false);
+            setAllowEmailLogin(settings.auth.allowEmailLogin ?? true);
         }
     }, [navigate, settings]);
 
@@ -214,130 +216,136 @@ const Register = () => {
                     )}
 
                     <form onSubmit={handleSubmit}>
-                        <Box sx={{ mb: 1.5 }}>
-                            <TextField
-                                fullWidth
-                                placeholder="Full Name"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleChange}
-                                required
-                                variant="outlined"
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '10px',
-                                        backgroundColor: '#f8fafc',
-                                        height: '48px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                        {allowEmailLogin && (
+                            <>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Full Name"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        required
+                                        variant="outlined"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
 
-                        <Box sx={{ mb: 1.5 }}>
-                            <TextField
-                                fullWidth
-                                placeholder="Email Address"
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                variant="outlined"
-                                autoComplete="email"
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '10px',
-                                        backgroundColor: '#f8fafc',
-                                        height: '48px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Email Address"
+                                        name="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                        variant="outlined"
+                                        autoComplete="email"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
 
-                        <Box sx={{ mb: 1.5 }}>
-                            <TextField
-                                fullWidth
-                                placeholder="Phone Number"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                variant="outlined"
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '10px',
-                                        backgroundColor: '#f8fafc',
-                                        height: '48px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Phone Number"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                        variant="outlined"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
 
-                        <Box sx={{ mb: 2 }}>
-                            <TextField
-                                fullWidth
-                                placeholder="Password"
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                value={formData.password}
-                                onChange={handleChange}
-                                required
-                                variant="outlined"
-                                autoComplete="new-password"
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                                size="small"
-                                            >
-                                                {showPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        borderRadius: '10px',
-                                        backgroundColor: '#f8fafc',
-                                        height: '48px',
-                                    }
-                                }}
-                            />
-                        </Box>
+                                <Box sx={{ mb: 2 }}>
+                                    <TextField
+                                        fullWidth
+                                        placeholder="Password"
+                                        name="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        required
+                                        variant="outlined"
+                                        autoComplete="new-password"
+                                        InputProps={{
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        edge="end"
+                                                        size="small"
+                                                    >
+                                                        {showPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '10px',
+                                                backgroundColor: '#f8fafc',
+                                                height: '48px',
+                                            }
+                                        }}
+                                    />
+                                </Box>
 
-                        <Button
-                            type="submit"
-                            fullWidth
-                            variant="contained"
-                            size="large"
-                            disabled={loading}
-                            sx={{ 
-                                py: 1.6, 
-                                borderRadius: '12px', 
-                                bgcolor: primaryColor,
-                                fontWeight: 700,
-                                fontSize: '1rem',
-                                textTransform: 'none',
-                                boxShadow: `0 10px 15px -3px ${primaryColor}44`,
-                                '&:hover': {
-                                    bgcolor: primaryColor,
-                                    filter: 'brightness(0.9)',
-                                    boxShadow: `0 20px 25px -5px ${primaryColor}55`,
-                                }
-                            }}
-                        >
-                            {loading ? 'Creating Account...' : 'Sign Up'}
-                        </Button>
+                                <Button
+                                    type="submit"
+                                    fullWidth
+                                    variant="contained"
+                                    size="large"
+                                    disabled={loading}
+                                    sx={{
+                                        py: 1.6,
+                                        borderRadius: '12px',
+                                        bgcolor: primaryColor,
+                                        fontWeight: 700,
+                                        fontSize: '1rem',
+                                        textTransform: 'none',
+                                        boxShadow: `0 10px 15px -3px ${primaryColor}44`,
+                                        '&:hover': {
+                                            bgcolor: primaryColor,
+                                            filter: 'brightness(0.9)',
+                                            boxShadow: `0 20px 25px -5px ${primaryColor}55`,
+                                        }
+                                    }}
+                                >
+                                    {loading ? 'Creating Account...' : 'Sign Up'}
+                                </Button>
+                            </>
+                        )}
 
                         {allowGoogleLogin && settings?.integrations?.googleClientId && (
                             <>
-                                <Box sx={{ display: 'flex', alignItems: 'center', my: 2.5 }}>
-                                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
-                                    <Typography variant="body2" sx={{ px: 2, color: '#94a3b8', fontWeight: 500 }}>OR</Typography>
-                                    <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                {allowEmailLogin && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', my: 2.5 }}>
+                                        <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
+                                        <Typography variant="body2" sx={{ px: 2, color: '#94a3b8', fontWeight: 500 }}>OR</Typography>
+                                        <Box sx={{ flex: 1, height: '1px', bgcolor: '#e2e8f0' }} />
+                                    </Box>
+                                )}
+                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: allowEmailLogin ? 0 : 1 }}>
                                     <GoogleLogin
                                         onSuccess={handleGoogleSuccess}
                                         onError={() => toast.error('Google registration failed')}
@@ -345,10 +353,16 @@ const Register = () => {
                                         shape="pill"
                                         size="large"
                                         text="signup_with"
-                                        width="100%"
+                                        width="320"
                                     />
                                 </Box>
                             </>
+                        )}
+
+                        {!allowEmailLogin && !allowGoogleLogin && (
+                            <Alert severity="warning" sx={{ borderRadius: '12px', fontSize: '0.85rem' }}>
+                                No registration method is currently enabled. Please contact the administrator.
+                            </Alert>
                         )}
 
                         <Box sx={{ mt: 3, textAlign: 'center' }}>

@@ -3,23 +3,31 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const EnrollmentChart = ({ data = [] }) => {
     return (
-        <Card sx={{ height: '100%', borderRadius: 2 }}>
-            <CardContent>
-                <Typography variant="h6" fontWeight={700} gutterBottom color="primary">
+        <Card sx={{ 
+            height: '100%', 
+            bgcolor: 'var(--color-vc-canvas)',
+            border: '1px solid var(--color-vc-hairline)',
+            borderRadius: '8px',
+            boxShadow: '0px 1px 1px rgba(0,0,0,0.02)',
+        }}>
+            <CardContent sx={{ p: '24px !important' }}>
+                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', mb: 2 }}>
                     Course Enrollments
                 </Typography>
 
                 {data.length === 0 ? (
                     <Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Typography color="text.secondary">No enrollment data for this range</Typography>
+                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '14px', fontFamily: 'inherit' }}>No enrollment data for this range</Typography>
                     </Box>
                 ) : (
                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={data}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                        <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-vc-hairline)" />
                             <XAxis
                                 dataKey="date"
-                                tick={{ fontSize: 12 }}
+                                tick={{ fontSize: 11, fill: 'var(--color-vc-mute)', fontFamily: 'inherit' }}
+                                axisLine={{ stroke: 'var(--color-vc-hairline)' }}
+                                tickLine={{ stroke: 'var(--color-vc-hairline)' }}
                                 tickFormatter={(str) => {
                                     try {
                                         return new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -28,15 +36,27 @@ const EnrollmentChart = ({ data = [] }) => {
                                     }
                                 }}
                             />
-                            <YAxis tick={{ fontSize: 12 }} />
+                            <YAxis 
+                                tick={{ fontSize: 11, fill: 'var(--color-vc-mute)', fontFamily: 'inherit' }}
+                                axisLine={{ stroke: 'var(--color-vc-hairline)' }}
+                                tickLine={{ stroke: 'var(--color-vc-hairline)' }}
+                            />
                             <Tooltip
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                contentStyle={{ 
+                                    backgroundColor: 'var(--color-vc-canvas)', 
+                                    border: '1px solid var(--color-vc-hairline)', 
+                                    borderRadius: '4px',
+                                    boxShadow: '0px 8px 16px -4px rgba(0,0,0,0.08)',
+                                    fontFamily: 'inherit',
+                                    fontSize: '12px',
+                                    color: 'var(--color-vc-ink)'
+                                }}
                                 labelFormatter={(label) => new Date(label).toDateString()}
                             />
-                            <Legend />
+                            <Legend wrapperStyle={{ fontFamily: 'inherit', fontSize: '12px', color: 'var(--color-vc-body)' }} />
                             <Bar
                                 dataKey="students"
-                                fill="#ffc107"
+                                fill="var(--color-vc-violet)"
                                 radius={[4, 4, 0, 0]}
                                 name="Students Enrolled"
                             />

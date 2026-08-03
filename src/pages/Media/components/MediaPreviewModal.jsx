@@ -6,25 +6,37 @@ import {
     IconButton,
     Button,
     Divider,
-    useTheme,
-    alpha
+    Stack,
+    useTheme
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ImageIcon from '@mui/icons-material/Image';
 import VideoPreview from '../../../components/Common/VideoPreview';
 import { fixUrl } from '../../../utils/api';
 import toast from 'react-hot-toast';
 
-const MediaPreviewModal = ({ previewFile, setPreviewFile, formatSize, onDelete }) => {
+const defaultFormatSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const MediaPreviewModal = (props) => {
     const theme = useTheme();
+    const targetFile = props.file || props.previewFile;
+    const handleClose = props.onClose || (() => props.setPreviewFile && props.setPreviewFile(null));
+    const formatSizeFn = props.formatSize || defaultFormatSize;
 
     return (
         <Drawer
             anchor="right"
-            open={!!previewFile}
-            onClose={() => setPreviewFile(null)}
+            open={Boolean(targetFile)}
+            onClose={handleClose}
             sx={{
                 '& .MuiDrawer-paper': {
                     width: 400,
@@ -39,7 +51,7 @@ const MediaPreviewModal = ({ previewFile, setPreviewFile, formatSize, onDelete }
                 {/* Header */}
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${theme.palette.divider}` }}>
                     <Typography variant="subtitle1" fontWeight={800}>File Details</Typography>
-                    <IconButton onClick={() => setPreviewFile(null)} size="small">
+                    <IconButton onClick={handleClose} size="small">
                         <CloseIcon />
                     </IconButton>
                 </Box>
@@ -55,15 +67,15 @@ const MediaPreviewModal = ({ previewFile, setPreviewFile, formatSize, onDelete }
                     overflow: 'hidden',
                     borderBottom: `1px solid ${theme.palette.divider}`
                 }}>
-                    {previewFile?.type === 'video' ? (
-                        <VideoPreview url={previewFile.url} height="100%" />
-                    ) : (previewFile?.type === 'image' && !['heic', 'heif'].includes(previewFile?.format?.toLowerCase())) ? (
+                    {targetFile?.type === 'video' ? (
+                        <VideoPreview url={targetFile.url} height="100%" />
+                    ) : (targetFile?.type === 'image' && !['heic', 'heif'].includes(targetFile?.format?.toLowerCase())) ? (
                         <img 
-                            src={previewFile?.url ? `${fixUrl(previewFile.url)}${fixUrl(previewFile.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}` : ''} 
-                            alt={previewFile?.name} 
+                            src={targetFile?.url ? fixUrl(targetFile.url) : ''} 
+                            alt={targetFile?.name || 'Preview'} 
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
                         />
-                    ) : ['heic', 'heif'].includes(previewFile?.format?.toLowerCase()) ? (
+                    ) : ['heic', 'heif'].includes(targetFile?.format?.toLowerCase()) ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3, width: '100%', height: '100%', background: 'linear-gradient(135deg, #E3F2FD 0%, #E8EAF6 100%)' }}>
                             <ImageIcon sx={{ fontSize: 64, color: '#3f51b5', mb: 1, opacity: 0.8 }} />
                             <Typography variant="body2" sx={{ fontWeight: 800, color: '#3f51b5', bgcolor: 'rgba(63, 81, 181, 0.1)', px: 2, py: 0.5, borderRadius: 2 }}>
@@ -78,60 +90,47 @@ const MediaPreviewModal = ({ previewFile, setPreviewFile, formatSize, onDelete }
                 {/* Details */}
                 <Box sx={{ p: 3, flexGrow: 1, overflowY: 'auto' }}>
                     <Typography variant="body1" fontWeight={800} sx={{ mb: 3, wordBreak: 'break-all' }}>
-                        {previewFile?.name}
+                        {targetFile?.name || targetFile?.title || 'Unnamed File'}
                     </Typography>
 
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                             <Typography variant="caption" color="text.disabled" fontWeight={700}>SIZE</Typography>
-                            <Typography variant="body2" fontWeight={700}>{formatSize(previewFile?.size)}</Typography>
+                            <Typography variant="body2" fontWeight={700}>{formatSizeFn(targetFile?.size)}</Typography>
                         </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                             <Typography variant="caption" color="text.disabled" fontWeight={700}>FORMAT</Typography>
-                            <Typography variant="body2" fontWeight={700}>{previewFile?.format?.toUpperCase()}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="caption" color="text.disabled" fontWeight={700}>TYPE</Typography>
-                            <Typography variant="body2" fontWeight={700}>{previewFile?.type?.toUpperCase()}</Typography>
+                            <Typography variant="body2" fontWeight={700}>{(targetFile?.format || targetFile?.mimetype || 'FILE').toUpperCase()}</Typography>
                         </Box>
                     </Box>
 
                     <Divider sx={{ my: 3 }} />
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        <Button 
-                            variant="outlined" 
-                            fullWidth 
+                    <Stack spacing={2}>
+                        <Button
+                            variant="outlined"
                             startIcon={<ContentCopyIcon />}
                             onClick={() => {
-                                const url = `${fixUrl(previewFile.url)}${fixUrl(previewFile.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`;
-                                navigator.clipboard.writeText(url);
-                                toast.success('Public link copied!');
+                                if (targetFile?.url) {
+                                    navigator.clipboard.writeText(fixUrl(targetFile.url));
+                                    toast.success('Asset URL copied to clipboard!');
+                                }
                             }}
-                            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
                         >
-                            Copy Link
+                            Copy URL Link
                         </Button>
-                        <Button 
-                            variant="contained" 
-                            fullWidth 
-                            href={previewFile?.url ? `${fixUrl(previewFile.url)}${fixUrl(previewFile.url).includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}` : '#'} 
-                            target="_blank"
-                            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
-                        >
-                            Open in New Tab
-                        </Button>
-                        <Button 
-                            variant="outlined" 
-                            color="error" 
-                            fullWidth 
-                            startIcon={<DeleteIcon />}
-                            onClick={() => onDelete(previewFile)}
-                            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, mt: 2 }}
-                        >
-                            Delete File
-                        </Button>
-                    </Box>
+
+                        {props.onDelete && (
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={() => props.onDelete(targetFile.name)}
+                            >
+                                Delete Asset
+                            </Button>
+                        )}
+                    </Stack>
                 </Box>
             </Box>
         </Drawer>

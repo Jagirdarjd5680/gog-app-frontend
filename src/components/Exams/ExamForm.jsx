@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import {
     Dialog,
-    DialogTitle,
     DialogContent,
     DialogActions,
     Button,
@@ -20,6 +18,38 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+
+const labelStyles = {
+    fontFamily: 'inherit',
+    fontSize: '13px',
+    color: 'var(--color-vc-mute)',
+    '&.Mui-focused': { color: 'var(--color-vc-ink)' }
+};
+
+const inputStyles = {
+    borderRadius: '6px',
+    fontFamily: 'inherit',
+    fontSize: '13px',
+    color: 'var(--color-vc-ink)',
+    bgcolor: 'var(--color-vc-canvas)',
+    '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'var(--color-vc-hairline)'
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'var(--color-vc-hairline-strong)'
+    },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: 'var(--color-vc-ink)',
+        borderWidth: '1px'
+    }
+};
+
+const selectStyles = {
+    ...inputStyles,
+    '& .MuiSelect-select': {
+        py: '10.5px'
+    }
+};
 
 const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
     const [formData, setFormData] = useState({
@@ -39,20 +69,19 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
     const [courses, setCourses] = useState([]);
     const [modules, setModules] = useState([]);
     const [lectures, setLectures] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (open) {
             fetchCourses();
             if (initialData) {
-                // Format dates for input type="datetime-local" which requires YYYY-MM-DDTHH:MM
                 const formatDateTime = (dateString) => {
                     if (!dateString) return '';
                     const date = new Date(dateString);
-                    // Adjust to local ISO string
                     return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
                 };
 
-                const cId = initialData.course?._id || initialData.course || '';
+                const cId = initialData.courseId ?? initialData.course?._id ?? initialData.course ?? '';
                 setFormData({
                     ...initialData,
                     startDate: formatDateTime(initialData.startDate),
@@ -103,9 +132,6 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
             const { data } = await api.get('/courses');
             const fetchedCourses = data.data || [];
             setCourses(fetchedCourses);
-            
-            // If we have an autoCourseId or initialData, and it's not in courses yet, 
-            // the MUI Select might warn. But we fetch courses first now.
         } catch (error) {
             
         }
@@ -158,31 +184,57 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
             return toast.warning('Please fill in all required fields');
         }
 
+        setLoading(true);
         try {
+            // Backend field is `courseId` (a bare nullable int) — `formData.course` (this
+            // form's dropdown state key) was being sent as-is, which the create DTO's
+            // whitelist silently drops and the update handler never reads, so saving
+            // never actually linked/moved the exam to the selected course.
+            const payload = { ...formData, courseId: formData.course ? Number(formData.course) : null };
             if (initialData?._id) {
-                await api.put(`/exams/${initialData._id}`, formData);
+                await api.put(`/exams/${initialData._id}`, payload);
                 toast.success('Exam updated successfully');
             } else {
-                await api.post('/exams', formData);
+                await api.post('/exams', payload);
                 toast.success('Exam created successfully');
             }
             onSuccess();
+            onClose();
         } catch (error) {
-            
             toast.error('Failed to save exam');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-            <DialogTitle>
-                {initialData ? 'Edit Exam' : 'Create New Exam'}
-                <IconButton onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8 }}>
-                    <CloseIcon />
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            fullWidth 
+            maxWidth="sm"
+            PaperProps={{
+                sx: { 
+                    bgcolor: 'var(--color-vc-canvas)', 
+                    color: 'var(--color-vc-ink)', 
+                    borderRadius: '8px', 
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: 'none',
+                    backgroundImage: 'none'
+                }
+            }}
+        >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, py: 2, borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                <Typography sx={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.02em' }}>
+                    {initialData ? 'Edit Exam' : 'Create New Exam'}
+                </Typography>
+                <IconButton onClick={onClose} size="small" sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-ink)' } }}>
+                    <CloseIcon sx={{ fontSize: 18 }} />
                 </IconButton>
-            </DialogTitle>
-            <DialogContent dividers>
-                <Grid container spacing={2} sx={{ mt: 0 }}>
+            </Box>
+
+            <DialogContent sx={{ p: 3 }}>
+                <Grid container spacing={2.5}>
                     <Grid item xs={12}>
                         <TextField
                             label="Exam Title"
@@ -191,6 +243,8 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             onChange={handleChange}
                             fullWidth
                             required
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
@@ -203,6 +257,8 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             fullWidth
                             multiline
                             rows={3}
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
@@ -215,7 +271,8 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             onChange={handleChange}
                             fullWidth
                             required
-                            InputLabelProps={{ shrink: true }}
+                            InputLabelProps={{ shrink: true, sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
@@ -228,19 +285,25 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             onChange={handleChange}
                             fullWidth
                             required
-                            InputLabelProps={{ shrink: true }}
+                            InputLabelProps={{ shrink: true, sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
                     <Grid item xs={12} sm={3}>
                         <TextField
-                            label="Duration (mins)"
+                            label="Duration"
                             name="duration"
                             type="number"
                             value={formData.duration}
                             onChange={handleChange}
                             fullWidth
                             required
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ 
+                                sx: inputStyles,
+                                endAdornment: <InputAdornment position="end"><Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>m</Typography></InputAdornment>
+                            }}
                         />
                     </Grid>
 
@@ -253,6 +316,8 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             onChange={handleChange}
                             fullWidth
                             required
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
@@ -265,6 +330,8 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             onChange={handleChange}
                             fullWidth
                             required
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
@@ -277,18 +344,36 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                             onChange={handleChange}
                             fullWidth
                             required
-                            helperText="Attempts per user"
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
 
                     <Grid item xs={12}>
                         <FormControl fullWidth>
-                            <InputLabel>Associated Course (Optional)</InputLabel>
+                            <InputLabel sx={labelStyles}>Associated Course (Optional)</InputLabel>
                             <Select
                                 value={formData.course}
                                 label="Associated Course (Optional)"
                                 onChange={handleChange}
                                 name="course"
+                                sx={selectStyles}
+                                MenuProps={{
+                                    PaperProps: {
+                                        sx: {
+                                            bgcolor: 'var(--color-vc-canvas)',
+                                            border: '1px solid var(--color-vc-hairline)',
+                                            boxShadow: 'none',
+                                            '& .MuiMenuItem-root': {
+                                                fontSize: '13px',
+                                                fontFamily: 'inherit',
+                                                color: 'var(--color-vc-body)',
+                                                '&.Mui-selected': { bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' },
+                                                '&:hover': { bgcolor: 'var(--color-vc-canvas-soft-2)' }
+                                            }
+                                        }
+                                    }
+                                }}
                             >
                                 <MenuItem value=""><em>None</em></MenuItem>
                                 {courses.map((course) => (
@@ -304,12 +389,29 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                         <>
                             <Grid item xs={12} sm={6}>
                                 <FormControl fullWidth>
-                                    <InputLabel>Module (Optional)</InputLabel>
+                                    <InputLabel sx={labelStyles}>Module (Optional)</InputLabel>
                                     <Select
                                         value={formData.moduleId}
                                         label="Module (Optional)"
                                         onChange={handleChange}
                                         name="moduleId"
+                                        sx={selectStyles}
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    border: '1px solid var(--color-vc-hairline)',
+                                                    boxShadow: 'none',
+                                                    '& .MuiMenuItem-root': {
+                                                        fontSize: '13px',
+                                                        fontFamily: 'inherit',
+                                                        color: 'var(--color-vc-body)',
+                                                        '&.Mui-selected': { bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' },
+                                                        '&:hover': { bgcolor: 'var(--color-vc-canvas-soft-2)' }
+                                                    }
+                                                }
+                                            }
+                                        }}
                                     >
                                         <MenuItem value=""><em>Global (No Module)</em></MenuItem>
                                         {modules.map((mod) => (
@@ -323,13 +425,30 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
 
                             <Grid item xs={12} sm={6}>
                                 <FormControl fullWidth>
-                                    <InputLabel>Lecture (Optional)</InputLabel>
+                                    <InputLabel sx={labelStyles}>Lecture (Optional)</InputLabel>
                                     <Select
                                         value={formData.lectureId}
                                         label="Lecture (Optional)"
                                         onChange={handleChange}
                                         name="lectureId"
                                         disabled={!formData.moduleId}
+                                        sx={selectStyles}
+                                        MenuProps={{
+                                            PaperProps: {
+                                                sx: {
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    border: '1px solid var(--color-vc-hairline)',
+                                                    boxShadow: 'none',
+                                                    '& .MuiMenuItem-root': {
+                                                        fontSize: '13px',
+                                                        fontFamily: 'inherit',
+                                                        color: 'var(--color-vc-body)',
+                                                        '&.Mui-selected': { bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' },
+                                                        '&:hover': { bgcolor: 'var(--color-vc-canvas-soft-2)' }
+                                                    }
+                                                }
+                                            }
+                                        }}
                                     >
                                         <MenuItem value=""><em>Module Level (No Lecture)</em></MenuItem>
                                         {lectures.map((lec) => (
@@ -344,9 +463,41 @@ const ExamForm = ({ open, onClose, onSuccess, initialData, autoCourseId }) => {
                     )}
                 </Grid>
             </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSubmit} variant="contained">Save Exam</Button>
+            <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid var(--color-vc-hairline)' }}>
+                <Button 
+                    onClick={onClose}
+                    disabled={loading}
+                    sx={{ 
+                        textTransform: 'none',
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        fontWeight: 500,
+                        color: 'var(--color-vc-body)',
+                        '&:hover': { color: 'var(--color-vc-ink)', bgcolor: 'var(--color-vc-canvas-soft)' }
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    onClick={handleSubmit} 
+                    variant="contained"
+                    disabled={loading}
+                    sx={{ 
+                        borderRadius: '6px', 
+                        px: 3, 
+                        height: 36,
+                        textTransform: 'none',
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        fontWeight: 500,
+                        boxShadow: 'none',
+                        bgcolor: 'var(--color-vc-primary)',
+                        color: 'var(--color-vc-on-primary)',
+                        '&:hover': { bgcolor: 'var(--color-vc-primary)', opacity: 0.9, boxShadow: 'none' }
+                    }}
+                >
+                    {loading ? 'Saving...' : 'Save Exam'}
+                </Button>
             </DialogActions>
         </Dialog>
     );

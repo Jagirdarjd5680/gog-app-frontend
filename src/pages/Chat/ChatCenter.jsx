@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import { Box, Paper, useTheme } from '@mui/material';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import ChatSidebar from './ChatSidebar';
 import ChatMessageArea from './ChatMessageArea';
-import socket from '../../utils/socket';
+import socket, { connectSocket } from '../../realtime/socketClient';
+import { CHAT_EVENTS } from '../../realtime/events';
+import { Box } from '@mui/material';
 
 const ChatCenter = () => {
-    const theme = useTheme();
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const urlUserId = searchParams.get('userId');
@@ -17,45 +17,54 @@ const ChatCenter = () => {
     const [loading, setLoading] = useState(true);
     const [localMe, setLocalMe] = useState(user);
     const setupDoneRef = useRef(false);
+    const selectedUserRef = useRef(selectedUser);
 
     useEffect(() => {
         if (user) setLocalMe(user);
     }, [user]);
 
-    const fetchChatUsers = async () => {
+    useEffect(() => { selectedUserRef.current = selectedUser; }, [selectedUser]);
+
+    const fetchChatUsers = useCallback(async () => {
         try {
             const response = await api.get('/chat/users');
-            if (response.data.success) {
-                // Normalize _id to string to avoid Mongoose ObjectId comparison issues
-                const normalized = response.data.data.map(u => ({
+            const userData = response.data?.data || response.data || [];
+            if (Array.isArray(userData)) {
+                const normalized = userData.map(u => ({
                     ...u,
-                    _id: u._id?.toString()
+                    _id: (u._id || u.id)?.toString()
                 }));
+                console.log('[Chat] chat users list refreshed:', normalized.length);
                 setChatUsers(normalized);
 
-                // Admin: Try to select from URL if available
-                if (user.role === 'admin') {
-                    if (urlUserId) {
-                        const userFromUrl = normalized.find(u => u._id === urlUserId);
-                        if (userFromUrl) setSelectedUser(userFromUrl);
-                    }
-                } else if (normalized.length > 0 && !selectedUser) {
+                if (user?.role === 'admin' && urlUserId) {
+                    const userFromUrl = normalized.find(u => u._id === urlUserId);
+                    if (userFromUrl) setSelectedUser(userFromUrl);
+                } else if (normalized.length > 0 && !selectedUserRef.current) {
                     const admin = normalized.find(u => u.role === 'admin');
                     if (admin) setSelectedUser(admin);
                 }
             }
         } catch (error) {
-            
+            console.error('[Chat] Failed to fetch chat users:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.role, urlUserId]);
 
     useEffect(() => {
         fetchChatUsers();
-    }, []);
+    }, [fetchChatUsers]);
 
-    // Sync selectedUser with URL for admins
+    // Keep the sidebar (last message preview, unread badge, ordering) live —
+    // without this, an incoming message only shows up in the open conversation
+    // and the list looks stale until the page is manually reloaded.
+    useEffect(() => {
+        const handleIncoming = () => fetchChatUsers();
+        socket.on(CHAT_EVENTS.MESSAGE_RECEIVED, handleIncoming);
+        return () => socket.off(CHAT_EVENTS.MESSAGE_RECEIVED, handleIncoming);
+    }, [fetchChatUsers]);
+
     useEffect(() => {
         if (user?.role === 'admin' && selectedUser?._id) {
             if (searchParams.get('userId') !== selectedUser._id) {
@@ -64,170 +73,59 @@ const ChatCenter = () => {
         }
     }, [selectedUser?._id, user?.role, searchParams, setSearchParams]);
 
-    // Connect socket and setup user room — only once when user._id is known
     useEffect(() => {
-        if (!user?._id) return;
-        if (setupDoneRef.current) return; // prevent double-fire in React StrictMode
+        const myId = user?._id || user?.id;
+        if (!myId) return;
+        if (setupDoneRef.current) return;
         setupDoneRef.current = true;
 
-        if (!socket.connected) {
-            socket.connect();
-        }
-        socket.emit('setup', user._id);
-
-        return () => {
-            // Don't disconnect on cleanup — keep socket alive for the session
-        };
-    }, [user?._id]);
-
-    // Listen for status changes and incoming messages to update sidebar
-    useEffect(() => {
-        if (!user?._id) return;
-
-        const handleStatusChange = (data) => {
-            const userId = data.userId?.toString();
-            const myId = user?._id?.toString();
-
-            if (userId === myId) {
-                setLocalMe(prev => ({
-                    ...prev,
-                    isOnline: data.isOnline !== undefined ? data.isOnline : prev.isOnline,
-                    lastSeen: data.lastSeen || prev.lastSeen,
-                    isBlockedFromChat: data.isBlockedFromChat !== undefined ? data.isBlockedFromChat : prev.isBlockedFromChat
-                }));
-            }
-
-            setChatUsers(prev => prev.map(u =>
-                u._id === data.userId ? {
-                    ...u,
-                    isOnline: data.isOnline !== undefined ? data.isOnline : u.isOnline,
-                    lastSeen: data.lastSeen || u.lastSeen,
-                    isBlockedFromChat: data.isBlockedFromChat !== undefined ? data.isBlockedFromChat : u.isBlockedFromChat
-                } : u
-            ));
-        };
-
-        const handleMessageReceived = (newMsg) => {
-            // Normalize sender to string ID
-            const senderId = (newMsg.sender?._id || newMsg.sender)?.toString();
-
-            setChatUsers(prev => {
-                const userExists = prev.some(u => u._id?.toString() === senderId);
-
-                if (!userExists) {
-                    // If user not in sidebar, refresh the whole list to include them
-                    fetchChatUsers();
-                    return prev;
-                }
-
-                const updatedUsers = prev.map(u => {
-                    if (u._id?.toString() === senderId) {
-                        return {
-                            ...u,
-                            lastMessage: newMsg,
-                            unreadCount: selectedUser?._id?.toString() === u._id?.toString()
-                                ? u.unreadCount
-                                : (u.unreadCount || 0) + 1
-                        };
-                    }
-                    return u;
-                });
-
-                return updatedUsers.sort((a, b) => {
-                    const dateA = a.lastMessage?.createdAt || 0;
-                    const dateB = b.lastMessage?.createdAt || 0;
-                    return new Date(dateB) - new Date(dateA);
-                });
-            });
-        };
-
-        socket.on('user_status_changed', handleStatusChange);
-        socket.on('message_received', handleMessageReceived);
-
-        return () => {
-            socket.off('user_status_changed', handleStatusChange);
-            socket.off('message_received', handleMessageReceived);
-        };
-    }, [user?._id, selectedUser?._id]);
+        // No 'setup' emit needed — chat.gateway.ts auto-joins `user_${id}` from the
+        // verified JWT the moment the socket connects (see handleConnection).
+        connectSocket();
+    }, [user]);
 
     return (
-        <Box sx={{ height: 'calc(100vh - 100px)', p: 2, display: 'flex', gap: 2 }}>
-            {user?.role === 'admin' && (
+        <Box sx={{ 
+            height: 'calc(100vh - 100px)', 
+            display: 'flex', 
+            gap: 2, 
+            p: { xs: 2, md: 3 }, 
+            bgcolor: 'var(--color-vc-canvas)' 
+        }}>
+            <Box sx={{ 
+                width: 320, 
+                flexShrink: 0, 
+                bgcolor: 'var(--color-vc-canvas)', 
+                borderRadius: '12px', 
+                border: '1px solid var(--color-vc-hairline)', 
+                overflow: 'hidden', 
+                display: 'flex', 
+                flexDirection: 'column'
+            }}>
                 <ChatSidebar
                     users={chatUsers}
                     selectedUser={selectedUser}
-                    onSelectUser={(u) => {
-                        setSelectedUser(u);
-                        // Update URL search param
-                        setSearchParams({ userId: u._id });
-                        // Reset unread count locally
-                        setChatUsers(prev => prev.map(item =>
-                            item._id === u._id ? { ...item, unreadCount: 0 } : item
-                        ));
-                    }}
+                    onSelectUser={setSelectedUser}
                     loading={loading}
                     onRefresh={fetchChatUsers}
                 />
-            )}
+            </Box>
 
-            <Paper
-                elevation={0}
-                sx={{
-                    flexGrow: 1,
-                    borderRadius: 3,
-                    bgcolor: 'background.paper',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    border: `1px solid ${theme.palette.divider}`,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
-                }}
-            >
-                {(selectedUser || (user?.role !== 'admin' && chatUsers.some(u => u.role === 'admin'))) ? (
-                    <ChatMessageArea
-                        recipient={selectedUser || chatUsers.find(u => u.role === 'admin')}
-                        user={localMe}
-                        onMessageSent={() => {
-                            // Update last message in sidebar
-                            fetchChatUsers();
-                        }}
-                    />
-                ) : (
-                    <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                        color: 'text.disabled',
-                        flexDirection: 'column',
-                        gap: 3,
-                        textAlign: 'center',
-                        p: 4
-                    }}>
-                        <img 
-                            src="https://img.freepik.com/premium-vector/vector-illustration-black-mans-face-chatting-speech-bubble-him-place-text-dark-background_419010-626.jpg" 
-                            alt="Select user" 
-                            style={{ 
-                                width: 300, 
-                                borderRadius: '15px',
-                                opacity: 1,
-                                marginBottom: '15px'
-                            }} 
-                        />
-                        <h3 style={{ 
-                            fontWeight: 600, 
-                            color: theme.palette.text.primary,
-                            fontSize: '1.25rem',
-                            margin: 0
-                        }}>
-                            Select a conversation to start chatting
-                        </h3>
-                        <p style={{ maxWidth: 300, fontSize: '0.9rem', color: theme.palette.text.secondary }}>
-                           Connect with your students or staff members and stay updated in real-time.
-                        </p>
-                    </Box>
-                )}
-            </Paper>
+            <Box sx={{ 
+                flexGrow: 1, 
+                bgcolor: 'var(--color-vc-canvas)', 
+                borderRadius: '12px', 
+                border: '1px solid var(--color-vc-hairline)', 
+                overflow: 'hidden', 
+                display: 'flex', 
+                flexDirection: 'column'
+            }}>
+                <ChatMessageArea
+                    recipient={selectedUser}
+                    onMessageSent={fetchChatUsers}
+                    user={localMe}
+                />
+            </Box>
         </Box>
     );
 };

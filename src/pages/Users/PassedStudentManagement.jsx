@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, IconButton, Dialog,
+    Box, Typography, Button, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField,
-    Switch, FormControlLabel, Stack, Grid, CircularProgress,
-    Tooltip, Avatar, Chip
+    Switch, FormControlLabel, Stack, CircularProgress,
+    Avatar, Chip
 } from '@mui/material';
-import { 
-    Add as AddIcon, 
-    Edit as EditIcon, 
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import {
+    Add as AddIcon,
+    Edit as EditIcon,
     Delete as DeleteIcon,
     PhotoCamera as PhotoCameraIcon,
     School as SchoolIcon,
     Star as StarIcon,
     YouTube as YouTubeIcon,
     VideoLibrary as VideoIcon,
-    PermMedia as MediaIcon
+    PermMedia as MediaIcon,
+    Visibility as VisibilityIcon,
+    PhoneAndroid as PhoneAndroidIcon
 } from '@mui/icons-material';
 import api, { fixUrl } from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -31,6 +35,7 @@ const PassedStudentManagement = () => {
     const [actionLoading, setActionLoading] = useState(false);
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     const [pickerTarget, setPickerTarget] = useState('image');
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [formData, setFormData] = useState({
         name: '',
@@ -43,11 +48,7 @@ const PassedStudentManagement = () => {
         showInApp: true
     });
 
-    useEffect(() => {
-        fetchStudents();
-    }, []);
-
-    const fetchStudents = async () => {
+    const fetchStudents = useCallback(async () => {
         try {
             setLoading(true);
             const res = await api.get('/passed-students/admin');
@@ -59,7 +60,11 @@ const PassedStudentManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchStudents();
+    }, [fetchStudents]);
 
     const handleOpenDialog = (student = null) => {
         if (student) {
@@ -120,16 +125,16 @@ const PassedStudentManagement = () => {
     };
 
     const handleRemoveImage = (index) => {
-        setFormData(prev => ({ 
-            ...prev, 
-            images: prev.images.filter((_, i) => i !== index) 
+        setFormData(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
         }));
     };
 
     const handleRemoveVideo = (index) => {
-        setFormData(prev => ({ 
-            ...prev, 
-            videos: prev.videos.filter((_, i) => i !== index) 
+        setFormData(prev => ({
+            ...prev,
+            videos: prev.videos.filter((_, i) => i !== index)
         }));
     };
 
@@ -174,120 +179,141 @@ const PassedStudentManagement = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this alumni entry?")) {
-            try {
-                const res = await api.delete(`/passed-students/${id}`);
-                if (res.data.success) {
-                    toast.success("Entry deleted");
-                    fetchStudents();
-                }
-            } catch (error) {
-                toast.error("Delete failed");
+        if (!window.confirm("Are you sure you want to delete this alumni entry?")) return;
+        try {
+            const res = await api.delete(`/passed-students/${id}`);
+            if (res.data.success) {
+                toast.success("Entry deleted");
+                fetchStudents();
             }
+        } catch (error) {
+            toast.error("Delete failed");
         }
     };
 
+    const filteredStudents = useMemo(() => {
+        const term = searchTerm.toLowerCase().trim();
+        if (!term) return students;
+        return students.filter(s =>
+            (s.name || '').toLowerCase().includes(term) ||
+            (s.achievement || '').toLowerCase().includes(term)
+        );
+    }, [students, searchTerm]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Alumni', value: students.length, icon: <SchoolIcon />, color: 'primary' },
+        { title: 'Published', value: students.filter(s => s.isPublished).length, icon: <VisibilityIcon />, color: 'success' },
+        { title: 'Visible in App', value: students.filter(s => s.showInApp).length, icon: <PhoneAndroidIcon />, color: 'info' },
+        { title: 'With Achievement', value: students.filter(s => s.achievement).length, icon: <StarIcon />, color: 'warning' }
+    ], [students]);
+
+    const columns = useMemo(() => [
+        {
+            field: 'name',
+            headerName: 'STUDENT',
+            flex: 1.5,
+            minWidth: 240,
+            cellRenderer: (params) => (
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar src={params.data.image} sx={{ width: 36, height: 36 }}>
+                        {params.data.name?.charAt(0)}
+                    </Avatar>
+                    <Box>
+                        <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                            {params.data.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                            {(params.data.description || '').substring(0, 60) || 'No description'}
+                        </Typography>
+                    </Box>
+                </Stack>
+            )
+        },
+        {
+            field: 'achievement',
+            headerName: 'ACHIEVEMENT',
+            width: 220,
+            cellRenderer: (params) => params.data.achievement ? (
+                <Chip
+                    icon={<StarIcon sx={{ fontSize: '14px !important' }} />}
+                    label={params.data.achievement}
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                    sx={{ fontWeight: 700, fontSize: '0.7rem', borderRadius: '6px' }}
+                />
+            ) : (
+                <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>—</Typography>
+            )
+        },
+        {
+            field: 'visibility',
+            headerName: 'VISIBILITY',
+            width: 180,
+            cellRenderer: (params) => (
+                <Stack direction="row" spacing={1}>
+                    <Chip
+                        label="ADMIN"
+                        size="small"
+                        color={params.data.isPublished ? 'success' : 'default'}
+                        variant={params.data.isPublished ? 'filled' : 'outlined'}
+                        sx={{ fontWeight: 800, fontSize: '0.65rem', borderRadius: '6px' }}
+                    />
+                    <Chip
+                        label="APP"
+                        size="small"
+                        color={params.data.showInApp ? 'primary' : 'default'}
+                        variant={params.data.showInApp ? 'filled' : 'outlined'}
+                        sx={{ fontWeight: 800, fontSize: '0.65rem', borderRadius: '6px' }}
+                    />
+                </Stack>
+            )
+        },
+        {
+            field: 'actions',
+            headerName: 'ACTIONS',
+            width: 120,
+            cellRenderer: (params) => (
+                <Stack direction="row" spacing={1}>
+                    <IconButton size="small" onClick={() => handleOpenDialog(params.data)} sx={{ color: 'var(--color-vc-mute)' }} title="Edit">
+                        <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDelete(params.data._id)} sx={{ color: 'var(--color-vc-error)' }} title="Delete">
+                        <DeleteIcon fontSize="small" />
+                    </IconButton>
+                </Stack>
+            )
+        }
+    ], []);
+
     return (
-        <Box sx={{ p: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h4" fontWeight={800} color="primary">
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
                     Passed Students (Alumni)
                 </Typography>
-                <Button 
-                    variant="contained" 
-                    startIcon={<AddIcon />} 
-                    onClick={() => handleOpenDialog()}
-                    sx={{ borderRadius: 2, px: 3 }}
-                >
-                    Add Alumni Entry
-                </Button>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Showcase successful alumni, their achievements, and success stories
+                </Typography>
             </Box>
 
-            <TableContainer component={Paper} elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: 'primary.main' }}>
-                        <TableRow>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Student</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Achievement</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Visibility</TableCell>
-                            <TableCell align="right" sx={{ color: '#fff', fontWeight: 700 }}>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                                    <CircularProgress size={30} />
-                                </TableCell>
-                            </TableRow>
-                        ) : students.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                                    No alumni entries found.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            students.map((student) => (
-                                <TableRow key={student._id} hover>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            <Avatar src={student.image} alt={student.name} sx={{ width: 40, height: 40 }}>
-                                                {student.name.charAt(0)}
-                                            </Avatar>
-                                            <Box>
-                                                <Typography variant="body1" fontWeight={600}>{student.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">{student.description?.substring(0, 50)}...</Typography>
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip 
-                                            icon={<StarIcon sx={{ fontSize: '1rem !important' }} />} 
-                                            label={student.achievement} 
-                                            size="small" 
-                                            color="secondary" 
-                                            variant="outlined" 
-                                            sx={{ fontWeight: 600 }}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Stack direction="row" spacing={1}>
-                                            <Tooltip title="Admin Visibility">
-                                                <Chip 
-                                                    label="ADM" 
-                                                    size="small" 
-                                                    color={student.isPublished ? 'success' : 'default'} 
-                                                    variant={student.isPublished ? 'filled' : 'outlined'} 
-                                                />
-                                            </Tooltip>
-                                            <Tooltip title="Mobile App Visibility">
-                                                <Chip 
-                                                    label="APP" 
-                                                    size="small" 
-                                                    color={student.showInApp ? 'primary' : 'default'} 
-                                                    variant={student.showInApp ? 'filled' : 'outlined'} 
-                                                />
-                                            </Tooltip>
-                                        </Stack>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <Tooltip title="Edit">
-                                            <IconButton color="primary" onClick={() => handleOpenDialog(student)}>
-                                                <EditIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Delete">
-                                            <IconButton color="error" onClick={() => handleDelete(student._id)}>
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <GenericMetrics items={metricsItems} />
+
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search alumni name or achievement..."
+                actionButtonText="Add Alumni Entry"
+                actionButtonIcon={<AddIcon fontSize="small" />}
+                onActionClick={() => handleOpenDialog()}
+                totalCount={filteredStudents.length}
+            />
+
+            <TableUI
+                rowData={filteredStudents}
+                columnDefs={columns}
+                loading={loading}
+            />
 
             {/* Add/Edit Dialog */}
             <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
@@ -345,13 +371,13 @@ const PassedStudentManagement = () => {
                         </Stack>
                         <Stack spacing={1}>
                             {formData.videos.map((vid, index) => (
-                                <Paper key={index} variant="outlined" sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1, borderRadius: 2 }}>
+                                <Stack key={index} direction="row" spacing={1} alignItems="center" sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                                     <VideoIcon color="primary" fontSize="small" />
                                     <Typography variant="caption" noWrap sx={{ flex: 1 }}>{vid}</Typography>
                                     <IconButton size="small" color="error" onClick={() => handleRemoveVideo(index)}>
                                         <DeleteIcon fontSize="small" />
                                     </IconButton>
-                                </Paper>
+                                </Stack>
                             ))}
                         </Stack>
 
@@ -377,9 +403,9 @@ const PassedStudentManagement = () => {
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
                     <Button onClick={handleCloseDialog} color="inherit">Cancel</Button>
-                    <Button 
-                        onClick={handleSubmit} 
-                        variant="contained" 
+                    <Button
+                        onClick={handleSubmit}
+                        variant="contained"
                         disabled={actionLoading}
                     >
                         {actionLoading ? <CircularProgress size={24} /> : (editMode ? 'Update Alumni' : 'Add Alumni')}
@@ -388,8 +414,8 @@ const PassedStudentManagement = () => {
             </Dialog>
 
             {/* Media Picker Dialog */}
-            <Dialog 
-                open={mediaPickerOpen} 
+            <Dialog
+                open={mediaPickerOpen}
                 onClose={() => setMediaPickerOpen(false)}
                 maxWidth="lg"
                 fullWidth

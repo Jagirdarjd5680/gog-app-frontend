@@ -1,508 +1,311 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, IconButton, Dialog,
-    DialogTitle, DialogContent, DialogActions, TextField,
-    Switch, FormControlLabel, Stack, Grid, CircularProgress,
-    Tooltip, Card, CardMedia, ImageList, ImageListItem, Chip
+    Box, Typography, Button, IconButton, Stack, Chip, Avatar,
+    Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@mui/material';
-import { 
-    Add as AddIcon, 
-    Edit as EditIcon, 
-    Delete as DeleteIcon,
-    Visibility as VisibilityIcon,
-    PhotoCamera as PhotoCameraIcon,
-    YouTube as YouTubeIcon,
-    CalendarMonth as CalendarIcon,
-    LocationOn as LocationIcon,
-    VideoLibrary as VideoIcon,
-    PermMedia as MediaIcon
-} from '@mui/icons-material';
-import api, { fixUrl } from '../../utils/api';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import EventIcon from '@mui/icons-material/Event';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import GroupIcon from '@mui/icons-material/Group';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-import MediaLibrary from '../Media/MediaLibrary';
 
 const EventManagement = () => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [openDialog, setOpenDialog] = useState(false);
-    const [editMode, setEditMode] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState(null);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
-    const [pickerTarget, setPickerTarget] = useState('image'); // 'image' or 'video'
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        location: '',
-        videoLink: '',
-        images: [],
-        videos: [],
-        isPublished: true,
-        showInApp: true
-    });
+    // Dialog states
+    const [enrolledModalOpen, setEnrolledModalOpen] = useState(false);
+    const [enrolledStudents, setEnrolledStudents] = useState([]);
+    const [enrolledLoading, setEnrolledLoading] = useState(false);
+    const [selectedEventTitle, setSelectedEventTitle] = useState('');
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
+    const [addOpen, setAddOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const emptyForm = { title: '', description: '', date: '', price: '' };
+    const [form, setForm] = useState(emptyForm);
 
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
             const res = await api.get('/events/admin');
-            if (res.data.success) {
-                setEvents(res.data.data);
-            }
+            const data = res.data?.data || res.data || [];
+            setEvents(Array.isArray(data) ? data : []);
         } catch (error) {
-            toast.error("Failed to fetch events");
+            console.error('Failed to fetch events:', error);
+            toast.error('Failed to load events and webinars');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const handleOpenDialog = (event = null) => {
-        if (event) {
-            setEditMode(true);
-            setSelectedEvent(event);
-            const startVal = event.startDate || event.date;
-            const endVal = event.endDate || event.date;
-            setFormData({
-                title: event.title,
-                description: event.description || '',
-                startDate: startVal ? new Date(startVal).toISOString().split('T')[0] : '',
-                endDate: endVal ? new Date(endVal).toISOString().split('T')[0] : '',
-                location: event.location || '',
-                videoLink: event.videoLink || '',
-                images: event.images || [],
-                videos: event.videos || [],
-                isPublished: event.isPublished,
-                showInApp: event.showInApp ?? true
-            });
-        } else {
-            setEditMode(false);
-            setSelectedEvent(null);
-            const today = new Date().toISOString().split('T')[0];
-            setFormData({
-                title: '',
-                description: '',
-                startDate: today,
-                endDate: today,
-                location: '',
-                videoLink: '',
-                images: [],
-                videos: [],
-                isPublished: true,
-                showInApp: true
-            });
-        }
-        setOpenDialog(true);
-    };
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
 
-    const handleCloseDialog = () => {
-        setOpenDialog(false);
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleEditorChange = (content) => {
-        setFormData(prev => ({ ...prev, description: content }));
-    };
-
-    const handleToggle = (name) => (e) => {
-        setFormData(prev => ({ ...prev, [name]: e.target.checked }));
-    };
-
-    const handleAddImageUrl = () => {
-        const url = prompt("Enter image URL:");
-        if (url) {
-            setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
-        }
-    };
-
-    const handleAddVideoUrl = () => {
-        const url = prompt("Enter video URL (Direct link or YouTube):");
-        if (url) {
-            setFormData(prev => ({ ...prev, videos: [...prev.videos, url] }));
-        }
-    };
-
-    const handleRemoveImage = (index) => {
-        setFormData(prev => ({ 
-            ...prev, 
-            images: prev.images.filter((_, i) => i !== index) 
-        }));
-    };
-
-    const handleRemoveVideo = (index) => {
-        setFormData(prev => ({ 
-            ...prev, 
-            videos: prev.videos.filter((_, i) => i !== index) 
-        }));
-    };
-
-    const handleMediaSelect = (file) => {
-        const url = fixUrl(file.url);
-        if (pickerTarget === 'image') {
-            setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
-        } else {
-            setFormData(prev => ({ ...prev, videos: [...prev.videos, url] }));
-        }
-        setMediaPickerOpen(false);
-    };
-
-    const handleSubmit = async () => {
-        if (!formData.title || !formData.startDate || !formData.endDate) {
-            toast.warning("Title, Start Date and End Date are required");
-            return;
-        }
-
+    const handleViewEnrolled = async (event) => {
+        setSelectedEventTitle(event.title);
+        setEnrolledModalOpen(true);
+        setEnrolledLoading(true);
         try {
-            setActionLoading(true);
-            if (editMode) {
-                const res = await api.put(`/events/${selectedEvent._id}`, formData);
-                if (res.data.success) {
-                    toast.success("Event updated successfully");
-                    fetchEvents();
-                    handleCloseDialog();
-                }
-            } else {
-                const res = await api.post('/events', formData);
-                if (res.data.success) {
-                    toast.success("Event created successfully");
-                    fetchEvents();
-                    handleCloseDialog();
-                }
-            }
+            const res = await api.get(`/events/${event._id || event.id}/enrolled`);
+            const data = res.data?.data || [];
+            setEnrolledStudents(Array.isArray(data) ? data : []);
         } catch (error) {
-            toast.error(error.response?.data?.message || "Action failed");
+            toast.error('Failed to fetch enrolled participants');
         } finally {
-            setActionLoading(false);
+            setEnrolledLoading(false);
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this event?")) {
-            try {
-                const res = await api.delete(`/events/${id}`);
-                if (res.data.success) {
-                    toast.success("Event deleted");
-                    fetchEvents();
-                }
-            } catch (error) {
-                toast.error("Delete failed");
-            }
+        if (!window.confirm('Delete this event?')) return;
+        try {
+            await api.delete(`/events/${id}`);
+            toast.success('Event deleted successfully');
+            fetchEvents();
+        } catch (error) {
+            toast.error('Failed to delete event');
         }
     };
 
+    const handleAdd = async () => {
+        if (!form.title.trim() || !form.description.trim() || !form.date) {
+            toast.error('Title, description and date are required');
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.post('/events', {
+                title: form.title.trim(),
+                description: form.description.trim(),
+                date: new Date(form.date).toISOString(),
+                price: Number(form.price) || 0,
+            });
+            toast.success('Event created successfully');
+            setAddOpen(false);
+            setForm(emptyForm);
+            fetchEvents();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to create event');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const filteredEvents = useMemo(() => {
+        return events.filter(e => {
+            const title = (e.title || '').toLowerCase();
+            const location = (e.location || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
+
+            const matchesSearch = title.includes(term) || location.includes(term);
+            if (!matchesSearch) return false;
+
+            if (statusFilter !== 'all' && (e.isPublished !== false ? 'published' : 'draft') !== statusFilter) return false;
+            return true;
+        });
+    }, [events, searchTerm, statusFilter]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Webinars', value: events.length, icon: <EventIcon />, color: 'primary' },
+        { title: 'Published Events', value: events.filter(e => e.isPublished !== false).length, icon: <CheckCircleIcon />, color: 'success' },
+        { title: 'Total Registrations', value: events.reduce((sum, e) => sum + (e.enrolledCount || 0), 0), icon: <GroupIcon />, color: 'info' }
+    ], [events]);
+
+
+
+    const columns = useMemo(() => [
+        {
+            field: 'title',
+            headerName: 'EVENT TITLE & LOCATION',
+            flex: 2,
+            minWidth: 260,
+            cellRenderer: (params) => (
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13 }}>
+                        <EventIcon fontSize="small" />
+                    </Avatar>
+                    <Box>
+                        <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                            {params.data.title || 'Workshops & Webinar'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                            📍 {params.data.location || 'Online Session'}
+                        </Typography>
+                    </Box>
+                </Stack>
+            )
+        },
+        {
+            field: 'startDate',
+            headerName: 'EVENT DATE',
+            width: 170,
+            valueGetter: (params) => {
+                const d = params.data.startDate || params.data.date;
+                return d ? format(new Date(d), 'MMM dd, yyyy') : 'TBA';
+            }
+        },
+        {
+            field: 'isPublished',
+            headerName: 'STATUS',
+            width: 130,
+            cellRenderer: (params) => {
+                const pub = params.data.isPublished !== false;
+                return (
+                    <Chip
+                        label={pub ? 'PUBLISHED' : 'DRAFT'}
+                        color={pub ? 'success' : 'default'}
+                        size="small"
+                        sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                    />
+                );
+            }
+        },
+        {
+            field: 'actions',
+            headerName: 'ACTIONS',
+            width: 160,
+            cellRenderer: (params) => {
+                const id = params.data._id || params.data.id;
+                return (
+                    <Stack direction="row" spacing={1}>
+                        <IconButton size="small" onClick={() => handleViewEnrolled(params.data)} sx={{ color: 'var(--color-vc-link)' }} title="View Registrations">
+                            <GroupIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDelete(id)} sx={{ color: 'var(--color-vc-error)' }} title="Delete">
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                );
+            }
+        }
+    ], []);
+
     return (
-        <Box sx={{ p: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Typography variant="h4" fontWeight={800} color="primary">
-                    Event Management
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Events, Workshops & Webinars
                 </Typography>
-                <Button 
-                    variant="contained" 
-                    startIcon={<AddIcon />} 
-                    onClick={() => handleOpenDialog()}
-                    sx={{ borderRadius: 2, px: 3 }}
-                >
-                    Add New Event
-                </Button>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Schedule interactive webinars, workshops, offline bootcamps, and manage student RSVPs
+                </Typography>
             </Box>
 
-            <TableContainer component={Paper} elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: 'primary.main' }}>
-                        <TableRow>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Event Title</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Start Date</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>End Date</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Status</TableCell>
-                            <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Visibility</TableCell>
-                            <TableCell align="right" sx={{ color: '#fff', fontWeight: 700 }}>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                                    <CircularProgress size={30} />
-                                </TableCell>
-                            </TableRow>
-                        ) : events.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                                    No events found. Add your first event!
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            events.map((event) => {
-                                const now = new Date();
-                                const start = event.startDate ? new Date(event.startDate) : (event.date ? new Date(event.date) : null);
-                                const end = event.endDate ? new Date(event.endDate) : (event.date ? new Date(event.date) : null);
-                                
-                                let statusLabel = 'Upcoming';
-                                let statusColor = 'info';
+            <GenericMetrics items={metricsItems} />
 
-                                if (start && end) {
-                                    if (now >= start && now <= end) {
-                                        statusLabel = 'Live';
-                                        statusColor = 'error';
-                                    } else if (now > end) {
-                                        statusLabel = 'Completed';
-                                        statusColor = 'success';
-                                    }
-                                }
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search event title or location..."
+                filters={[
+                    {
+                        value: statusFilter,
+                        onChange: setStatusFilter,
+                        options: [
+                            { value: 'all', label: 'All Events' },
+                            { value: 'published', label: 'Published' },
+                            { value: 'draft', label: 'Drafts' }
+                        ]
+                    }
+                ]}
+                actionButtonText="Create Event"
+                actionButtonIcon={<AddIcon />}
+                onActionClick={() => setAddOpen(true)}
+            />
 
-                                return (
-                                    <TableRow key={event._id} hover>
-                                        <TableCell sx={{ fontWeight: 600 }}>{event.title}</TableCell>
-                                        <TableCell>{start && !isNaN(start) ? format(start, 'dd MMM yyyy') : 'N/A'}</TableCell>
-                                        <TableCell>{end && !isNaN(end) ? format(end, 'dd MMM yyyy') : 'N/A'}</TableCell>
-                                        <TableCell>
-                                            <Chip label={statusLabel} color={statusColor} size="small" sx={{ fontWeight: 700 }} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Stack direction="row" spacing={1}>
-                                                <Tooltip title="Admin Visibility">
-                                                    <Chip 
-                                                        label="ADM" 
-                                                        size="small" 
-                                                        color={event.isPublished ? 'success' : 'default'} 
-                                                        variant={event.isPublished ? 'filled' : 'outlined'} 
-                                                    />
-                                                </Tooltip>
-                                                <Tooltip title="Mobile App Visibility">
-                                                    <Chip 
-                                                        label="APP" 
-                                                        size="small" 
-                                                        color={event.showInApp ? 'primary' : 'default'} 
-                                                        variant={event.showInApp ? 'filled' : 'outlined'} 
-                                                    />
-                                                </Tooltip>
-                                            </Stack>
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Tooltip title="Edit">
-                                                <IconButton color="primary" onClick={() => handleOpenDialog(event)}>
-                                                    <EditIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Delete">
-                                                <IconButton color="error" onClick={() => handleDelete(event._id)}>
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <TableUI
+                rowData={filteredEvents}
+                columnDefs={columns}
+                loading={loading}
+            />
 
-            {/* Add/Edit Dialog */}
-            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-                <DialogTitle fontWeight={800}>
-                    {editMode ? 'Edit Event' : 'Create New Event'}
-                </DialogTitle>
+            {/* Enrolled Students Modal */}
+            <Dialog open={enrolledModalOpen} onClose={() => setEnrolledModalOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>Enrolled Participants - {selectedEventTitle}</DialogTitle>
                 <DialogContent dividers>
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} md={8}>
-                            <TextField
-                                fullWidth
-                                label="Event Title"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleInputChange}
-                                margin="normal"
-                                required
-                            />
-                            <Box sx={{ mt: 2, mb: 1 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                                    Event Description (Rich Text)
-                                </Typography>
-                                <Box sx={{ 
-                                    '& .ql-container': { 
-                                        minHeight: '200px',
-                                        fontSize: '1rem',
-                                        fontFamily: 'inherit',
-                                        borderRadius: '0 0 8px 8px'
-                                    },
-                                    '& .ql-toolbar': {
-                                        borderRadius: '8px 8px 0 0',
-                                        bgcolor: 'rgba(0,0,0,0.02)'
-                                    }
-                                }}>
-                                    <ReactQuill 
-                                        theme="snow"
-                                        value={formData.description}
-                                        onChange={handleEditorChange}
-                                        placeholder="Write detailed event description here..."
-                                    />
-                                </Box>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <TextField
-                                fullWidth
-                                label="Start Date"
-                                type="date"
-                                name="startDate"
-                                value={formData.startDate}
-                                onChange={handleInputChange}
-                                margin="normal"
-                                InputLabelProps={{ shrink: true }}
-                                required
-                            />
-                            <TextField
-                                fullWidth
-                                label="End Date"
-                                type="date"
-                                name="endDate"
-                                value={formData.endDate}
-                                onChange={handleInputChange}
-                                margin="normal"
-                                InputLabelProps={{ shrink: true }}
-                                required
-                            />
-                            <TextField
-                                fullWidth
-                                label="Location"
-                                name="location"
-                                value={formData.location}
-                                onChange={handleInputChange}
-                                margin="normal"
-                                placeholder="E.g. Online, Mumbai Office"
-                            />
-                            <TextField
-                                fullWidth
-                                label="Video Link (YouTube)"
-                                name="videoLink"
-                                value={formData.videoLink}
-                                onChange={handleInputChange}
-                                margin="normal"
-                                placeholder="https://youtube.com/..."
-                            />
-                            <Stack spacing={1} sx={{ mt: 2 }}>
-                                <FormControlLabel
-                                    control={<Switch checked={formData.isPublished} onChange={handleToggle('isPublished')} />}
-                                    label="Published (Admin Panel)"
-                                />
-                                <FormControlLabel
-                                    control={<Switch checked={formData.showInApp} onChange={handleToggle('showInApp')} />}
-                                    label="Show in Mobile App"
-                                />
-                            </Stack>
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="subtitle1" fontWeight={700}>
-                                    Event Gallery (Images)
-                                </Typography>
-                                <Stack direction="row" spacing={1}>
-                                    <Button startIcon={<PhotoCameraIcon />} variant="outlined" size="small" onClick={handleAddImageUrl}>
-                                        URL
-                                    </Button>
-                                    <Button 
-                                        startIcon={<MediaIcon />} 
-                                        variant="contained" 
-                                        size="small" 
-                                        onClick={() => { setPickerTarget('image'); setMediaPickerOpen(true); }}
-                                    >
-                                        Media Library
-                                    </Button>
+                    {enrolledLoading ? (
+                        <Typography variant="body2" color="text.secondary">Loading registrations...</Typography>
+                    ) : enrolledStudents.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">No students registered yet.</Typography>
+                    ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {enrolledStudents.map((st, idx) => (
+                                <Stack key={idx} direction="row" spacing={1.5} alignItems="center" sx={{ p: 1, borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                    <Avatar sx={{ width: 28, height: 28, fontSize: 12 }}>{(st.student?.name || 'S').charAt(0)}</Avatar>
+                                    <Box>
+                                        <Typography variant="body2" fontWeight={700}>{st.student?.name || 'Student'}</Typography>
+                                        <Typography variant="caption" color="text.secondary">{st.student?.email || 'N/A'}</Typography>
+                                    </Box>
                                 </Stack>
-                            </Box>
-                            <ImageList sx={{ width: '100%', height: 200, borderRadius: 2, border: '1px solid', borderColor: 'divider', p: 1 }} cols={4} rowHeight={164}>
-                                {formData.images.map((img, index) => (
-                                    <ImageListItem key={index} sx={{ borderRadius: 1, overflow: 'hidden' }}>
-                                        <img src={img} alt={`Event ${index}`} loading="lazy" style={{ height: '100%', objectFit: 'cover' }} />
-                                        <IconButton 
-                                            size="small" 
-                                            sx={{ position: 'absolute', top: 5, right: 5, bgcolor: 'rgba(255,255,255,0.8)', '&:hover': { bgcolor: 'error.main', color: 'white' } }}
-                                            onClick={() => handleRemoveImage(index)}
-                                        >
-                                            <DeleteIcon fontSize="small" />
-                                        </IconButton>
-                                    </ImageListItem>
-                                ))}
-                            </ImageList>
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 2 }}>
-                                <Typography variant="subtitle1" fontWeight={700}>
-                                    Event Videos
-                                </Typography>
-                                <Stack direction="row" spacing={1}>
-                                    <Button startIcon={<YouTubeIcon />} variant="outlined" size="small" onClick={handleAddVideoUrl}>
-                                        URL
-                                    </Button>
-                                    <Button 
-                                        startIcon={<VideoIcon />} 
-                                        variant="contained" 
-                                        size="small" 
-                                        onClick={() => { setPickerTarget('video'); setMediaPickerOpen(true); }}
-                                    >
-                                        Media Library
-                                    </Button>
-                                </Stack>
-                            </Box>
-                            <Grid container spacing={2}>
-                                {formData.videos.map((vid, index) => (
-                                    <Grid item xs={12} sm={6} key={index}>
-                                        <Paper variant="outlined" sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 2, borderRadius: 2 }}>
-                                            <VideoIcon color="primary" />
-                                            <Typography variant="caption" noWrap sx={{ flex: 1 }}>{vid}</Typography>
-                                            <IconButton size="small" color="error" onClick={() => handleRemoveVideo(index)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Paper>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </Grid>
-                    </Grid>
+                            ))}
+                        </Box>
+                    )}
                 </DialogContent>
-                <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={handleCloseDialog} color="inherit">Cancel</Button>
-                    <Button 
-                        onClick={handleSubmit} 
-                        variant="contained" 
-                        disabled={actionLoading}
-                    >
-                        {actionLoading ? <CircularProgress size={24} /> : (editMode ? 'Update Event' : 'Create Event')}
-                    </Button>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setEnrolledModalOpen(false)} variant="outlined" color="inherit">Close</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Media Picker Dialog */}
-            <Dialog 
-                open={mediaPickerOpen} 
-                onClose={() => setMediaPickerOpen(false)}
-                maxWidth="lg"
-                fullWidth
-                PaperProps={{ sx: { borderRadius: 3, height: '90vh' } }}
-            >
-                <DialogTitle sx={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    Select {pickerTarget === 'image' ? 'Image' : 'Video'} from Library
-                    <IconButton onClick={() => setMediaPickerOpen(false)}><DeleteIcon sx={{ transform: 'rotate(45deg)' }} /></IconButton>
-                </DialogTitle>
-                <DialogContent sx={{ p: 0 }}>
-                    <MediaLibrary onSelect={handleMediaSelect} />
+            {/* Create Event Modal */}
+            <Dialog open={addOpen} onClose={() => !saving && setAddOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 800 }}>Create Event / Webinar</DialogTitle>
+                <DialogContent dividers>
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        label="Event Title"
+                        value={form.title}
+                        onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                        placeholder="e.g. Full Stack Career Bootcamp"
+                        sx={{ mt: 1, mb: 2 }}
+                    />
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Description"
+                        value={form.description}
+                        onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                        placeholder="What is this event about?"
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        fullWidth
+                        type="datetime-local"
+                        label="Event Date & Time"
+                        value={form.date}
+                        onChange={(e) => setForm(f => ({ ...f, date: e.target.value }))}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        fullWidth
+                        type="number"
+                        label="Ticket Price (₹)"
+                        value={form.price}
+                        onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))}
+                        placeholder="Leave empty or 0 for a free event"
+                        InputProps={{ inputProps: { min: 0, step: '0.01' } }}
+                    />
                 </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setAddOpen(false)} disabled={saving}>Cancel</Button>
+                    <Button variant="contained" onClick={handleAdd} disabled={saving} sx={{ borderRadius: 2, px: 3 }}>
+                        {saving ? 'Creating...' : 'Create Event'}
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Box>
     );

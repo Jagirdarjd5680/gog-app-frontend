@@ -77,7 +77,7 @@ const AppSettings = ({ settings, onSave, isSaving }) => {
 
             <Grid container spacing={3}>
                 <Grid item xs={12}>
-                    <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                    <Card sx={{ borderRadius: '8px', boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
                         <CardContent sx={{ p: 4 }}>
                             <Typography variant="h6" fontWeight={600} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <AndroidIcon color="primary" />
@@ -131,7 +131,7 @@ const AppSettings = ({ settings, onSave, isSaving }) => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                    <Card sx={{ borderRadius: '8px', boxShadow: 'none', border: '1px solid', borderColor: 'divider' }}>
                         <CardContent sx={{ p: 4 }}>
                             <Typography variant="h6" fontWeight={600} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <StarsIcon color="warning" />

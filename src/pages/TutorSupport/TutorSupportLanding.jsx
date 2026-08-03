@@ -64,18 +64,18 @@ const TutorSupportLanding = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4, bgcolor: 'var(--color-vc-canvas, transparent)' }}>
       <Grid container spacing={4}>
         <Grid item xs={12} md={8}>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>Find a Tutor for Help</Typography>
-          <Typography variant="body1" color="text.secondary" mb={4}>
+          <Typography variant="h4" fontWeight={900} gutterBottom sx={{ color: 'var(--color-vc-ink, text.primary)' }}>Find a Tutor for Help</Typography>
+          <Typography variant="body1" sx={{ color: 'var(--color-vc-mute, text.secondary)' }} mb={4}>
             Get instant help from our professional tutors in various categories.
           </Typography>
 
           <Grid container spacing={3}>
             {tutors.map((tutor) => (
               <Grid item xs={12} sm={6} key={tutor._id}>
-                <Card sx={{ borderRadius: 4, boxShadow: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Card elevation={0} sx={{ borderRadius: '16px', border: '1px solid var(--color-vc-hairline, rgba(0,0,0,0.08))', bgcolor: 'var(--color-vc-canvas-soft, #fff)', height: '100%', display: 'flex', flexDirection: 'column' }}>
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Avatar src={tutor.profileImage} sx={{ width: 60, height: 60, mr: 2 }} />
@@ -140,10 +140,10 @@ const TutorSupportLanding = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'primary.main', color: 'white', mb: 3 }}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: '16px', bgcolor: 'var(--color-vc-primary, #2563eb)', color: 'white', mb: 3 }}>
             <Typography variant="h6">Your Support Credits</Typography>
-            <Typography variant="h3" fontWeight="bold">₹{credits}</Typography>
-            <Button variant="contained" sx={{ mt: 2, bgcolor: 'white', color: 'primary.main', '&:hover': { bgcolor: '#eee' } }}>
+            <Typography variant="h3" fontWeight={900}>₹{credits}</Typography>
+            <Button variant="contained" sx={{ mt: 2, bgcolor: 'white', color: 'var(--color-vc-primary, #2563eb)', fontWeight: 700, borderRadius: '8px', '&:hover': { bgcolor: '#f1f5f9' } }}>
               Recharge Credits
             </Button>
           </Paper>

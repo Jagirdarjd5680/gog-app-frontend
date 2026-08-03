@@ -21,82 +21,160 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                     size="small"
                     onClick={handleSyncSubscriptions}
                     disabled={loading}
+                    sx={{
+                        textTransform: 'none',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                        borderRadius: '6px',
+                        color: 'var(--color-vc-ink)',
+                        borderColor: 'var(--color-vc-hairline)',
+                        bgcolor: 'var(--color-vc-canvas)',
+                        '&:hover': {
+                            bgcolor: 'var(--color-vc-canvas-soft)',
+                            borderColor: 'var(--color-vc-hairline-strong)'
+                        }
+                    }}
                 >
                     Sync Subscriptions
                 </Button>
             </Box>
             {user?.coursesWithDetails?.length > 0 ? (
-                <List spacing={2}>
+                <List sx={{ p: 0 }}>
                     {user.coursesWithDetails.map((course) => (
-                        <Paper key={course._id} variant="outlined" sx={{ mb: 2, p: 2 }}>
-                            <Stack direction="row" spacing={2} alignItems="center">
+                        <Paper 
+                            key={course._id} 
+                            variant="outlined" 
+                            sx={{ 
+                                mb: 2, 
+                                p: 2.5, 
+                                borderRadius: '6px', 
+                                borderColor: 'var(--color-vc-hairline)', 
+                                bgcolor: 'var(--color-vc-canvas)' 
+                            }}
+                        >
+                            <Stack direction="row" spacing={3} alignItems="flex-start" flexWrap="wrap" useFlexGap>
                                 <Avatar
                                     variant="rounded"
                                     src={fixUrl(course.thumbnail)}
-                                    sx={{ width: 60, height: 60, bgcolor: 'primary.light' }}
+                                    sx={{ 
+                                        width: 56, 
+                                        height: 56, 
+                                        bgcolor: 'var(--color-vc-canvas-soft)', 
+                                        border: '1px solid var(--color-vc-hairline)',
+                                        borderRadius: '4px'
+                                    }}
                                 >
-                                    <MenuBookIcon />
+                                    <MenuBookIcon sx={{ color: 'var(--color-vc-mute)' }} />
                                 </Avatar>
-                                <Box sx={{ flexGrow: 1 }}>
-                                    <Typography variant="subtitle1" fontWeight={700}>{course.title}</Typography>
+                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
+                                        {course.title}
+                                    </Typography>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                                        <Box sx={{ width: '100%', mr: 1 }}>
-                                            <LinearProgress variant="determinate" value={course.progress} sx={{ height: 8, borderRadius: 4 }} />
+                                        <Box sx={{ width: '100%', mr: 1.5 }}>
+                                            <LinearProgress 
+                                                variant="determinate" 
+                                                value={course.progress} 
+                                                sx={{ 
+                                                    height: 6, 
+                                                    borderRadius: '3px',
+                                                    bgcolor: 'var(--color-vc-hairline)',
+                                                    '& .MuiLinearProgress-bar': {
+                                                        bgcolor: 'var(--color-vc-primary)'
+                                                    }
+                                                }} 
+                                            />
                                         </Box>
-                                        <Box sx={{ minWidth: 35 }}>
-                                            <Typography variant="body2" color="text.secondary">{`${Math.round(course.progress)}%`}</Typography>
+                                        <Box sx={{ minWidth: 30 }}>
+                                            <Typography sx={{ fontSize: '11px', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, color: 'var(--color-vc-body)' }}>
+                                                {`${Math.round(course.progress)}%`}
+                                            </Typography>
                                         </Box>
                                     </Box>
-                                    <Stack direction="row" spacing={3} sx={{ mt: 1.5 }}>
+                                    <Stack direction="row" spacing={4} sx={{ mt: 1.5 }}>
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" display="block">Activation</Typography>
-                                            <Typography variant="body2" fontWeight={500}>
+                                            <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
+                                                Activation
+                                            </Typography>
+                                            <Typography sx={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-vc-body)', fontFamily: '"JetBrains Mono", monospace' }}>
                                                 {course.activationDate ? format(new Date(course.activationDate), 'MMM dd, yyyy') : 'N/A'}
                                             </Typography>
                                         </Box>
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" display="block">Expiry</Typography>
-                                            <Typography variant="body2" fontWeight={500} color={
-                                                calculateCorrectExpiry(course.activationDate, course.expiryDate) &&
+                                            <Typography sx={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
+                                                Expiry
+                                            </Typography>
+                                            <Typography sx={{ 
+                                                fontSize: '12px', 
+                                                fontWeight: 500, 
+                                                fontFamily: '"JetBrains Mono", monospace',
+                                                color: calculateCorrectExpiry(course.activationDate, course.expiryDate) &&
                                                     new Date(calculateCorrectExpiry(course.activationDate, course.expiryDate)) < new Date()
-                                                    ? 'error.main' : 'text.primary'
-                                            }>
+                                                    ? 'var(--color-vc-error-deep)' : 'var(--color-vc-body)'
+                                            }}>
                                                 {course.activationDate
                                                     ? format(calculateCorrectExpiry(course.activationDate, course.expiryDate), 'MMM dd, yyyy')
                                                     : 'Lifetime'}
                                             </Typography>
                                         </Box>
                                     </Stack>
-                                    <Stack direction="row" spacing={2} sx={{ mt: 1.5 }}>
+                                    <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
                                         <Chip
                                             label={`${course.assignmentCount || 0} Assignments`}
                                             size="small"
-                                            sx={{ height: 24, fontSize: '0.7rem', bgcolor: 'rgba(99, 102, 241, 0.08)', color: 'primary.main', border: 'none', fontWeight: 600 }}
+                                            sx={{ 
+                                                height: 22, 
+                                                fontSize: '11px', 
+                                                bgcolor: 'var(--color-vc-link-bg-soft)', 
+                                                color: 'var(--color-vc-link-deep)', 
+                                                borderRadius: '4px',
+                                                fontWeight: 600 
+                                            }}
                                         />
                                         <Chip
                                             label={`${course.examCount || 0} Exams`}
                                             size="small"
-                                            sx={{ height: 24, fontSize: '0.7rem', bgcolor: 'rgba(233, 30, 99, 0.08)', color: 'error.main', border: 'none', fontWeight: 600 }}
+                                            sx={{ 
+                                                height: 22, 
+                                                fontSize: '11px', 
+                                                bgcolor: 'var(--color-vc-violet-soft)', 
+                                                color: 'var(--color-vc-violet-deep)', 
+                                                borderRadius: '4px',
+                                                fontWeight: 600 
+                                            }}
                                         />
                                     </Stack>
                                 </Box>
-                                <Box sx={{ minWidth: 150, textAlign: 'right' }}>
+                                <Box sx={{ minWidth: 160, textAlign: 'right' }}>
                                     {course.certificate ? (
                                         <Stack spacing={1}>
                                             <Button
                                                 variant="contained"
-                                                color="success"
                                                 size="small"
-                                                startIcon={<WorkspacePremiumIcon />}
+                                                startIcon={<WorkspacePremiumIcon sx={{ fontSize: 14 }} />}
                                                 href={`${import.meta.env.VITE_API_BASE_URL || 'https://backend.godofgraphics.in/api'}/certificates/${course.certificate._id}/download?token=${localStorage.getItem('token')}`}
                                                 target="_blank"
-                                                sx={{ borderRadius: 2, textTransform: 'none' }}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    fontSize: '12px',
+                                                    fontWeight: 500,
+                                                    fontFamily: 'inherit',
+                                                    borderRadius: '6px',
+                                                    boxShadow: 'none',
+                                                    bgcolor: 'var(--color-vc-primary)',
+                                                    color: 'var(--color-vc-on-primary)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-primary)',
+                                                        opacity: 0.9,
+                                                        boxShadow: 'none'
+                                                    }
+                                                }}
                                             >
                                                 Download Certificate
                                             </Button>
                                             <Button
                                                 variant="outlined"
-                                                color="error"
                                                 size="small"
                                                 onClick={async () => {
                                                     if (!window.confirm('Are you sure you want to cancel and delete this certificate?')) return;
@@ -110,7 +188,20 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                                                         toast.error(err.response?.data?.message || 'Failed to cancel');
                                                     }
                                                 }}
-                                                sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.75rem' }}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    fontSize: '11px',
+                                                    fontWeight: 500,
+                                                    fontFamily: 'inherit',
+                                                    borderRadius: '6px',
+                                                    color: 'var(--color-vc-error-deep)',
+                                                    borderColor: 'var(--color-vc-error-soft)',
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-error-soft)',
+                                                        borderColor: 'var(--color-vc-error-soft)'
+                                                    }
+                                                }}
                                             >
                                                 Cancel Certificate
                                             </Button>
@@ -119,7 +210,6 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                                         <Stack spacing={1}>
                                             <Button
                                                 variant="contained"
-                                                color="primary"
                                                 size="small"
                                                 disabled={course.progress < 95}
                                                 onClick={async () => {
@@ -133,25 +223,50 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                                                         toast.error(err.response?.data?.message || 'Failed to issue');
                                                     }
                                                 }}
-                                                startIcon={<CardMembershipIcon />}
-                                                sx={{ borderRadius: 2, textTransform: 'none' }}
+                                                startIcon={<CardMembershipIcon sx={{ fontSize: 14 }} />}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    fontSize: '12px',
+                                                    fontWeight: 500,
+                                                    fontFamily: 'inherit',
+                                                    borderRadius: '6px',
+                                                    boxShadow: 'none',
+                                                    bgcolor: 'var(--color-vc-primary)',
+                                                    color: 'var(--color-vc-on-primary)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-primary)',
+                                                        opacity: 0.9,
+                                                        boxShadow: 'none'
+                                                    }
+                                                }}
                                             >
                                                 Issue Certificate
                                             </Button>
                                             <Button
                                                 variant="outlined"
-                                                color="info"
                                                 size="small"
                                                 href={`${import.meta.env.VITE_API_BASE_URL || 'https://backend.godofgraphics.in/api'}/certificates/preview/${user._id}/${course._id}?token=${localStorage.getItem('token')}`}
                                                 target="_blank"
-                                                startIcon={<DownloadIcon />}
-                                                sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.75rem' }}
+                                                startIcon={<DownloadIcon sx={{ fontSize: 14 }} />}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    fontSize: '11px',
+                                                    fontWeight: 500,
+                                                    fontFamily: 'inherit',
+                                                    borderRadius: '6px',
+                                                    color: 'var(--color-vc-ink)',
+                                                    borderColor: 'var(--color-vc-hairline)',
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-canvas-soft)',
+                                                        borderColor: 'var(--color-vc-hairline-strong)'
+                                                    }
+                                                }}
                                             >
-                                                Download PDF (Preview)
+                                                Download Preview
                                             </Button>
                                             <Button
                                                 variant="outlined"
-                                                color="warning"
                                                 size="small"
                                                 onClick={async () => {
                                                     if (!window.confirm('Force issue certificate regardless of progress?')) return;
@@ -165,8 +280,21 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                                                         toast.error(err.response?.data?.message || 'Failed to force issue');
                                                     }
                                                 }}
-                                                startIcon={<AutoFixHighIcon />}
-                                                sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.7rem' }}
+                                                startIcon={<AutoFixHighIcon sx={{ fontSize: 14 }} />}
+                                                sx={{ 
+                                                    textTransform: 'none',
+                                                    fontSize: '11px',
+                                                    fontWeight: 500,
+                                                    fontFamily: 'inherit',
+                                                    borderRadius: '6px',
+                                                    color: 'var(--color-vc-warning-deep)',
+                                                    borderColor: 'var(--color-vc-warning-soft)',
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-warning-soft)',
+                                                        borderColor: 'var(--color-vc-warning-soft)'
+                                                    }
+                                                }}
                                             >
                                                 Force Issue
                                             </Button>
@@ -179,7 +307,9 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                 </List>
             ) : (
                 <Box sx={{ py: 5, textAlign: 'center' }}>
-                    <Typography variant="body1" color="text.secondary">No courses enrolled yet.</Typography>
+                    <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit' }}>
+                        No courses enrolled yet.
+                    </Typography>
                 </Box>
             )}
         </>

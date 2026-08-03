@@ -65,16 +65,16 @@ const ResumeEditor = ({ resumeData, setResumeData, handlePersonalInfoChange, han
     };
 
     return (
-        <Paper elevation={0} sx={{ borderRadius: '10px', border: '1px solid #e2e8f0', bgcolor: 'white', position: 'sticky', top: 24 }}>
+        <Paper elevation={0} sx={{ borderRadius: '10px', border: '1px solid var(--color-vc-hairline, #e2e8f0)', bgcolor: 'white', position: 'sticky', top: 24 }}>
             <Tabs 
                 value={activeSection} 
                 onChange={(_, v) => setActiveSection(v)}
                 variant="scrollable"
                 scrollButtons="auto"
                 sx={{ 
-                    borderBottom: '1px solid #e2e8f0', bgcolor: '#f8fafc',
+                    borderBottom: '1px solid var(--color-vc-hairline, #e2e8f0)', bgcolor: '#f8fafc',
                     '& .MuiTab-root': { py: 2, minHeight: 60, color: '#64748b', fontWeight: 600, fontSize: '0.85rem', textTransform: 'none' },
-                    '& .Mui-selected': { color: theme.palette.primary.main, fontWeight: 700 }
+                    '& .Mui-selected': { color: 'var(--color-vc-primary, #2563eb)', fontWeight: 700 }
                 }}
             >
                 <Tab icon={<User size={16} />} iconPosition="start" label="Profile" />
@@ -88,7 +88,7 @@ const ResumeEditor = ({ resumeData, setResumeData, handlePersonalInfoChange, han
                     <Stack spacing={2.5}>
                         {/* Image Upload Section */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                            <Avatar src={resumeData.personalInfo.image} sx={{ width: 64, height: 64, border: '2px solid #e2e8f0' }}>
+                            <Avatar src={resumeData.personalInfo.image} sx={{ width: 64, height: 64, border: '2px solid var(--color-vc-hairline, #e2e8f0)' }}>
                                 {!resumeData.personalInfo.image && resumeData.personalInfo.name.charAt(0)}
                             </Avatar>
                             <Button 
@@ -235,7 +235,7 @@ const ResumePreview = React.forwardRef(({ resumeData }, ref) => {
                     <Avatar 
                         src={resumeData.personalInfo.image}
                         variant="square"
-                        sx={{ width: 140, height: 160, bgcolor: '#e2e8f0', color: '#64748b', fontSize: '3rem', border: '4px solid #3f4851' }}
+                        sx={{ width: 140, height: 160, bgcolor: 'var(--color-vc-hairline, #e2e8f0)', color: '#64748b', fontSize: '3rem', border: '4px solid #3f4851' }}
                     >
                         {!resumeData.personalInfo.image && resumeData.personalInfo.name.charAt(0)}
                     </Avatar>
@@ -477,7 +477,7 @@ const ResumeBuilder = () => {
                     <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} sx={{ mb: 4 }}>
                         <Box>
                             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
-                                <FileText size={24} style={{ color: theme.palette.primary.main }} />
+                                <FileText size={24} style={{ color: 'var(--color-vc-primary, #2563eb)' }} />
                                 <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a' }}>Placements & Resumes</Typography>
                             </Stack>
                             <Typography variant="body2" sx={{ color: '#64748b' }}>Manage student resumes and placements.</Typography>
@@ -490,7 +490,7 @@ const ResumeBuilder = () => {
                     <Grid container spacing={3}>
                         {resumes.map(resume => (
                             <Grid item xs={12} sm={6} md={4} lg={3} key={resume._id}>
-                                <Card sx={{ position: 'relative', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: 'none', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' } }}>
+                                <Card sx={{ position: 'relative', borderRadius: '12px', border: '1px solid var(--color-vc-hairline, #e2e8f0)', boxShadow: 'none', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' } }}>
                                     <IconButton 
                                         size="small" 
                                         onClick={() => handleDeleteResume(resume._id)} 
@@ -555,7 +555,7 @@ const ResumeBuilder = () => {
                     <Box>
                         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
                             <Button size="small" onClick={handleSaveAndClose} sx={{ minWidth: 'auto', p: 1, mr: 1, color: '#64748b' }}>&larr; Back</Button>
-                            <FileText size={24} style={{ color: theme.palette.primary.main }} />
+                            <FileText size={24} style={{ color: 'var(--color-vc-primary, #2563eb)' }} />
                             <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a' }}>Resume Editor</Typography>
                         </Stack>
                         <Typography variant="body2" sx={{ color: '#64748b', ml: 7 }}>Editing: {activeResume?.personalInfo.name || 'New Resume'}</Typography>

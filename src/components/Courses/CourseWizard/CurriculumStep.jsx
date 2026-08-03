@@ -6,8 +6,6 @@ import {
     PointerSensor,
     useSensor,
     useSensors,
-    DragOverlay,
-    defaultDropAnimationSideEffects,
     useDroppable,
 } from '@dnd-kit/core';
 import {
@@ -45,12 +43,14 @@ import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import FolderZipIcon from '@mui/icons-material/FolderZip';
+import NotesIcon from '@mui/icons-material/Notes';
 import LectureModal from './LectureModal';
+import LectureNotesModal from './LectureNotesModal';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 // --- Sortable Item Component for Lectures ---
-const SortableLecture = ({ video, vIndex, moduleId, onEdit, onDelete, getLectureIcon, isDraggingGlobal }) => {
+const SortableLecture = ({ video, vIndex, moduleId, onEdit, onDelete, onManageNotes, getLectureIcon, isDraggingGlobal }) => {
     const {
         attributes,
         listeners,
@@ -70,7 +70,7 @@ const SortableLecture = ({ video, vIndex, moduleId, onEdit, onDelete, getLecture
     const style = {
         transform: CSS.Translate.toString(transform),
         transition,
-        opacity: isDragging ? 0.3 : 1,
+        opacity: isDragging ? 0.35 : 1,
         zIndex: isDragging ? 999 : 1,
     };
 
@@ -78,48 +78,80 @@ const SortableLecture = ({ video, vIndex, moduleId, onEdit, onDelete, getLecture
         <Card
             ref={setNodeRef}
             style={style}
-            elevation={isDragging ? 4 : 0}
+            elevation={0}
             sx={{
                 p: 1.5,
                 display: 'flex',
                 alignItems: 'center',
-                borderRadius: '12px',
-                bgcolor: 'white',
-                border: '1px solid',
-                borderColor: isDragging ? 'primary.main' : 'rgba(0,0,0,0.06)',
-                '&:hover': { borderColor: 'primary.light', bgcolor: '#fcfdff' },
+                borderRadius: '6px',
+                bgcolor: 'var(--color-vc-canvas)',
+                border: '1px solid var(--color-vc-hairline)',
+                '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' },
                 touchAction: 'none'
             }}
         >
-            <Box {...attributes} {...listeners} sx={{ mr: 2, color: 'text.disabled', cursor: 'grab' }}>
-                <DragIndicatorIcon fontSize="small" />
+            <Box {...attributes} {...listeners} sx={{ mr: 1.5, color: 'var(--color-vc-mute)', cursor: 'grab', display: 'flex' }}>
+                <DragIndicatorIcon sx={{ fontSize: 18 }} />
             </Box>
-            <Box sx={{ mr: 2 }}>
+            <Box sx={{ mr: 1.5 }}>
                 {getLectureIcon(video.type)}
             </Box>
             <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="body2" fontWeight={700} sx={{ color: '#334155' }}>
+                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                     {video.title}
                 </Typography>
-                <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.25 }}>
+                    <Typography sx={{ fontSize: '10px', color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: 0.5, fontFamily: 'inherit' }}>
                         {video.type || 'video'}
                     </Typography>
-                    <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: 'text.disabled' }} />
-                    <Typography variant="caption" color="text.secondary">
-                        {video.duration ? `${video.duration} min` : 'No duration'}
+                    <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: 'var(--color-vc-mute)' }} />
+                    <Typography sx={{ fontSize: '10px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
+                        {video.duration ? `${Math.round(video.duration / 60)} min` : 'No duration'}
                     </Typography>
                     {video.freePreview && (
-                        <Chip label="Free Preview" size="small" sx={{ height: 18, fontSize: '0.65rem', bgcolor: 'success.light', color: 'success.dark', fontWeight: 800 }} />
+                        <Chip 
+                            label="Free Preview" 
+                            size="small" 
+                            sx={{ 
+                                height: 16, 
+                                fontSize: '9px', 
+                                bgcolor: 'rgba(41, 188, 155, 0.15)', 
+                                color: 'var(--color-vc-cyan-deep)', 
+                                fontWeight: 600,
+                                borderRadius: '4px'
+                            }} 
+                        />
                     )}
                 </Stack>
             </Box>
             <Stack direction="row" spacing={0.5}>
-                <IconButton size="small" onClick={() => onEdit(moduleId, video, vIndex)}>
-                    <EditOutlinedIcon fontSize="small" />
+                {video.type === 'video' && (
+                    <Tooltip title={video.notes?.length ? `${video.notes.length} note(s)` : 'Add lecture notes'}>
+                        <IconButton
+                            size="small"
+                            onClick={() => onManageNotes(moduleId, video, vIndex)}
+                            sx={{
+                                color: video.notes?.length ? 'var(--color-vc-link-deep)' : 'var(--color-vc-body)',
+                                '&:hover': { color: 'var(--color-vc-ink)' }
+                            }}
+                        >
+                            <NotesIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                )}
+                <IconButton
+                    size="small"
+                    onClick={() => onEdit(moduleId, video, vIndex)}
+                    sx={{ color: 'var(--color-vc-body)', '&:hover': { color: 'var(--color-vc-ink)' } }}
+                >
+                    <EditOutlinedIcon sx={{ fontSize: 16 }} />
                 </IconButton>
-                <IconButton size="small" color="error" onClick={() => onDelete(moduleId, vIndex)}>
-                    <DeleteOutlineIcon fontSize="small" />
+                <IconButton
+                    size="small"
+                    onClick={() => onDelete(moduleId, vIndex)}
+                    sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-error-deep)' } }}
+                >
+                    <DeleteOutlineIcon sx={{ fontSize: 16 }} />
                 </IconButton>
             </Stack>
         </Card>
@@ -127,12 +159,11 @@ const SortableLecture = ({ video, vIndex, moduleId, onEdit, onDelete, getLecture
 };
 
 // --- Sortable Item Component for Modules ---
-const SortableModule = ({ 
-    module, index, onDeleteModule, onAddLecture, 
-    onEditLecture, onDeleteLecture, getLectureIcon, editingModuleId, 
+const SortableModule = ({
+    module, index, onDeleteModule, onAddLecture,
+    onEditLecture, onDeleteLecture, onManageNotes, getLectureIcon, editingModuleId,
     moduleTitle, setModuleTitle, saveModuleTitle, startEditingModule
 }) => {
-    // Memoize lecture IDs to prevent infinite loops in dnd-kit
     const lectureIds = useMemo(() => 
         (module.videos || []).filter(v => v && v.id).map(v => v.id),
         [module.videos]
@@ -170,32 +201,32 @@ const SortableModule = ({
         <Paper
             ref={setNodeRef}
             style={style}
-            elevation={isDragging ? 10 : 0}
+            elevation={0}
             sx={{ 
-                borderRadius: '16px', 
+                borderRadius: '6px', 
                 overflow: 'hidden',
-                border: '1px solid rgba(0,0,0,0.08)',
-                bgcolor: 'white',
-                '&:hover': { borderColor: 'primary.main' }
+                border: '1px solid var(--color-vc-hairline)',
+                bgcolor: 'var(--color-vc-canvas)'
             }}
         >
-            <Accordion defaultExpanded elevation={0} disableGutters sx={{ '&:before': { display: 'none' } }}>
+            <Accordion defaultExpanded elevation={0} disableGutters sx={{ bgcolor: 'transparent', '&:before': { display: 'none' } }}>
                 <AccordionSummary
-                    expandIcon={<ExpandMoreIcon sx={{ color: 'text.secondary' }} />}
+                    expandIcon={<ExpandMoreIcon sx={{ color: 'var(--color-vc-mute)' }} />}
                     sx={{
                         px: 3, py: 1,
-                        bgcolor: isDragging ? 'rgba(99, 102, 241, 0.05)' : '#f8fafc',
+                        bgcolor: isDragging ? 'var(--color-vc-canvas-soft-2)' : 'var(--color-vc-canvas-soft)',
+                        borderBottom: '1px solid var(--color-vc-hairline)'
                     }}
                 >
-                    <Box {...attributes} {...listeners} sx={{ display: 'flex', alignItems: 'center', mr: 2, color: 'text.disabled', cursor: 'grab', '&:hover': { color: 'primary.main' } }}>
-                        <DragIndicatorIcon />
+                    <Box {...attributes} {...listeners} sx={{ display: 'flex', alignItems: 'center', mr: 1.5, color: 'var(--color-vc-mute)', cursor: 'grab', '&:hover': { color: 'var(--color-vc-ink)' } }}>
+                        <DragIndicatorIcon sx={{ fontSize: 18 }} />
                     </Box>
-                    <Typography sx={{ fontWeight: 700, color: 'text.secondary', mr: 2, fontSize: '0.9rem' }}>
+                    <Typography sx={{ fontWeight: 600, color: 'var(--color-vc-mute)', mr: 1.5, fontSize: '13px', fontFamily: 'inherit', display: 'flex', alignItems: 'center' }}>
                         Module {index + 1}:
                     </Typography>
 
                     {editingModuleId === module.id ? (
-                        <Box sx={{ flexGrow: 1, mr: 2 }}>
+                        <Box sx={{ flexGrow: 1, mr: 2, display: 'flex', alignItems: 'center' }}>
                             <TextField
                                 size="small"
                                 fullWidth
@@ -206,31 +237,37 @@ const SortableModule = ({
                                 autoFocus
                                 variant="standard"
                                 onClick={(e) => e.stopPropagation()}
-                                sx={{ '& .MuiInput-root': { fontWeight: 700, fontSize: '1.1rem' } }}
+                                sx={{ '& .MuiInput-root': { fontWeight: 600, fontSize: '14px', color: 'var(--color-vc-ink)', fontFamily: 'inherit' } }}
                             />
                         </Box>
                     ) : (
                         <Typography 
-                            sx={{ flexGrow: 1, fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer', '&:hover': { color: 'primary.main' } }} 
+                            sx={{ flexGrow: 1, fontWeight: 600, fontSize: '14px', color: 'var(--color-vc-ink)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', '&:hover': { color: 'var(--color-vc-link)' } }} 
                             onClick={(e) => { e.stopPropagation(); startEditingModule(module.id, module.title); }}
                         >
                             {module.title}
                         </Typography>
                     )}
 
-                    <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); startEditingModule(module.id, module.title); }}>
-                            <EditOutlinedIcon fontSize="small" />
+                    <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+                        <IconButton 
+                            size="small" 
+                            onClick={(e) => { e.stopPropagation(); startEditingModule(module.id, module.title); }}
+                            sx={{ color: 'var(--color-vc-body)', '&:hover': { color: 'var(--color-vc-ink)' } }}
+                        >
+                            <EditOutlinedIcon sx={{ fontSize: 16 }} />
                         </IconButton>
-                        <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onDeleteModule(index); }}>
-                            <DeleteOutlineIcon fontSize="small" />
+                        <IconButton 
+                            size="small" 
+                            onClick={(e) => { e.stopPropagation(); onDeleteModule(index); }}
+                            sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-error-deep)' } }}
+                        >
+                            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                     </Stack>
                 </AccordionSummary>
 
-                <Divider />
-
-                <AccordionDetails sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.01)' }}>
+                <AccordionDetails sx={{ p: 2.5, bgcolor: 'var(--color-vc-canvas)' }}>
                     <Box ref={setDroppableRef} sx={{ minHeight: 40 }}>
                         <SortableContext 
                             items={lectureIds} 
@@ -245,23 +282,29 @@ const SortableModule = ({
                                         moduleId={module.id} 
                                         onEdit={onEditLecture}
                                         onDelete={onDeleteLecture}
+                                        onManageNotes={onManageNotes}
                                         getLectureIcon={getLectureIcon}
                                     />
                                 ))}
                                 {(module.videos || []).length === 0 && (
-                                    <Box sx={{ py: 3, textAlign: 'center', border: '1px dashed rgba(0,0,0,0.1)', borderRadius: '12px' }}>
-                                        <Typography variant="caption" color="text.disabled">Empty Module. Drag lectures here or add new ones.</Typography>
+                                    <Box sx={{ py: 3, textAlign: 'center', border: '1px dashed var(--color-vc-hairline)', borderRadius: '6px', bgcolor: 'var(--color-vc-canvas-soft)' }}>
+                                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '12px', fontFamily: 'inherit' }}>Empty Module. Drag lectures here or add new ones.</Typography>
                                     </Box>
                                 )}
                                 <Button
                                     fullWidth
-                                    variant="dashed"
-                                    startIcon={<AddIcon />}
+                                    startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                                     onClick={() => onAddLecture(module.id)}
                                     sx={{ 
-                                        py: 1.5, borderRadius: '12px', border: '2px dashed #e2e8f0', color: 'text.secondary',
-                                        textTransform: 'none', fontWeight: 600,
-                                        '&:hover': { borderColor: 'primary.main', color: 'primary.main', bgcolor: 'rgba(99, 102, 241, 0.02)' }
+                                        py: 1.25, 
+                                        borderRadius: '6px', 
+                                        border: '1px dashed var(--color-vc-hairline)', 
+                                        color: 'var(--color-vc-body)',
+                                        textTransform: 'none', 
+                                        fontSize: '13px',
+                                        fontFamily: 'inherit',
+                                        fontWeight: 500,
+                                        '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', color: 'var(--color-vc-ink)', bgcolor: 'var(--color-vc-canvas-soft)' }
                                     }}
                                 >
                                     Add Lecture / Resource
@@ -283,13 +326,16 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
     const [currentVideoIndex, setCurrentVideoIndex] = useState(null);
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [activeId, setActiveId] = useState(null);
+    const [notesModalOpen, setNotesModalOpen] = useState(false);
+    const [notesModuleId, setNotesModuleId] = useState(null);
+    const [notesVideoIndex, setNotesVideoIndex] = useState(null);
+    const [notesVideo, setNotesVideo] = useState(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // Memoize module IDs to prevent infinite loops
     const moduleIds = useMemo(() => 
         (values.modules || []).filter(m => m && m.id).map(m => m.id), 
         [values.modules]
@@ -310,12 +356,10 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
 
         if (!activeContainer || !overContainer || activeContainer === overContainer) return;
 
-        // Moving between containers
         const activeModuleIdx = values.modules.findIndex(m => m.id === activeContainer);
         const overModuleIdx = values.modules.findIndex(m => m.id === overContainer);
         const activeLectureIdx = values.modules[activeModuleIdx].videos.findIndex(v => v && v.id === active.id);
         
-        // If we are over another lecture, find its index. If over a module, put at the end.
         let overLectureIdx = values.modules[overModuleIdx].videos.findIndex(v => v && v.id === overId);
         if (overLectureIdx === -1) overLectureIdx = values.modules[overModuleIdx].videos.length;
 
@@ -344,11 +388,9 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
             const overModuleIdx = values.modules.findIndex(m => m.id === overContainer);
 
             if (activeId === activeContainer && overId === overContainer) {
-                // Reordering modules
                 const newModules = arrayMove(values.modules, activeModuleIdx, overModuleIdx);
                 setFieldValue('modules', newModules);
             } else if (activeContainer === overContainer) {
-                // Sorting within same module (handleDragEnd handles if overId is a lecture)
                 const activeLectureIdx = values.modules[activeModuleIdx].videos.findIndex(v => v && v.id === activeId);
                 const overLectureIdx = values.modules[overModuleIdx].videos.findIndex(v => v && v.id === overId);
                 
@@ -410,7 +452,10 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
             ...lectureData,
             url: lectureData.videoUrl,
             freePreview: lectureData.isFree,
-            duration: lectureData.duration ? Number(lectureData.duration) : 0
+            duration: lectureData.duration ? Number(lectureData.duration) : 0,
+            // LectureModal's form has no concept of notes, so carry over whatever
+            // was attached via the Notes modal instead of silently dropping it.
+            notes: currentVideoIndex !== null ? (selectedVideo?.notes || []) : []
         };
 
         const newModules = values.modules.map(module => {
@@ -427,6 +472,27 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
         setVideoModalOpen(false);
     };
 
+    const openNotesModal = (moduleId, video, videoIndex) => {
+        setNotesModuleId(moduleId);
+        setNotesVideoIndex(videoIndex);
+        setNotesVideo(video);
+        setNotesModalOpen(true);
+    };
+
+    const handleSaveNotes = (notes) => {
+        const newModules = values.modules.map(module => {
+            if (module.id !== notesModuleId) return module;
+            const updatedVideos = [...(module.videos || [])];
+            if (notesVideoIndex !== null && updatedVideos[notesVideoIndex]) {
+                updatedVideos[notesVideoIndex] = { ...updatedVideos[notesVideoIndex], notes };
+            }
+            return { ...module, videos: updatedVideos };
+        });
+
+        setFieldValue('modules', newModules);
+        setNotesModalOpen(false);
+    };
+
     const deleteVideo = (moduleId, videoIndex) => {
         const newModules = values.modules.map(module => {
             if (module.id === moduleId) {
@@ -439,25 +505,39 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
     };
 
     const getLectureIcon = (type) => {
-        const iconStyles = { p: 0.8, borderRadius: '8px', bgcolor: 'rgba(0,0,0,0.03)', display: 'flex' };
+        const iconStyles = { p: 0.75, borderRadius: '4px', bgcolor: 'var(--color-vc-canvas-soft-2)', border: '1px solid var(--color-vc-hairline)', display: 'flex' };
         switch (type) {
-            case 'pdf': return <Box sx={iconStyles}><DescriptionIcon fontSize="small" sx={{ color: '#ef4444' }} /></Box>;
-            case 'audio': return <Box sx={iconStyles}><AudiotrackIcon fontSize="small" sx={{ color: '#f59e0b' }} /></Box>;
-            case 'zip': return <Box sx={iconStyles}><FolderZipIcon fontSize="small" sx={{ color: '#3b82f6' }} /></Box>;
-            default: return <Box sx={iconStyles}><OndemandVideoIcon fontSize="small" sx={{ color: '#10b981' }} /></Box>;
+            case 'pdf': return <Box sx={iconStyles}><DescriptionIcon fontSize="small" sx={{ color: 'var(--color-vc-error-deep)', fontSize: 16 }} /></Box>;
+            case 'audio': return <Box sx={iconStyles}><AudiotrackIcon fontSize="small" sx={{ color: 'var(--color-vc-violet-deep)', fontSize: 16 }} /></Box>;
+            case 'zip': return <Box sx={iconStyles}><FolderZipIcon fontSize="small" sx={{ color: 'var(--color-vc-link-deep)', fontSize: 16 }} /></Box>;
+            default: return <Box sx={iconStyles}><OndemandVideoIcon fontSize="small" sx={{ color: 'var(--color-vc-cyan-deep)', fontSize: 16 }} /></Box>;
         }
     };
 
     return (
-        <Box sx={{ p: 1 }}>
+        <Box sx={{ p: 0.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 4 }}>
                 <Box>
-                    <Typography variant="h5" fontWeight={800} sx={{ color: '#1e293b' }}>Curriculum Builder</Typography>
-                    <Typography variant="body2" color="text.secondary">Organize your course into modules and lectures. Smooth drag-to-reorder enabled.</Typography>
+                    <Typography sx={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-vc-ink)', letterSpacing: '-0.02em', fontFamily: 'inherit' }}>Curriculum Builder</Typography>
+                    <Typography sx={{ fontSize: '13px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 }}>Organize your course into modules and lectures. Smooth drag-to-reorder enabled.</Typography>
                 </Box>
                 <Button
-                    variant="contained" startIcon={<AddIcon />} onClick={addModule}
-                    sx={{ borderRadius: '10px', px: 3, py: 1, bgcolor: '#1e293b', '&:hover': { bgcolor: '#0f172a' }, textTransform: 'none', fontWeight: 600 }}
+                    variant="contained" 
+                    startIcon={<AddIcon sx={{ fontSize: 16 }} />} 
+                    onClick={addModule}
+                    sx={{ 
+                        borderRadius: '6px', 
+                        px: 3, 
+                        height: 36,
+                        boxShadow: 'none',
+                        bgcolor: 'var(--color-vc-primary)',
+                        color: 'var(--color-vc-on-primary)',
+                        textTransform: 'none', 
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        fontWeight: 500,
+                        '&:hover': { bgcolor: 'var(--color-vc-primary)', opacity: 0.9, boxShadow: 'none' } 
+                    }}
                 >
                     Add Module
                 </Button>
@@ -472,7 +552,7 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
                 modifiers={[restrictToVerticalAxis]}
             >
                 <SortableContext items={moduleIds} strategy={verticalListSortingStrategy}>
-                    <Stack spacing={3}>
+                    <Stack spacing={3.5}>
                         {values.modules.map((module, index) => (
                             <SortableModule 
                                 key={module.id} 
@@ -482,6 +562,7 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
                                 onAddLecture={openVideoModal}
                                 onEditLecture={openVideoModal}
                                 onDeleteLecture={deleteVideo}
+                                onManageNotes={openNotesModal}
                                 getLectureIcon={getLectureIcon}
                                 editingModuleId={editingModuleId}
                                 moduleTitle={moduleTitle}
@@ -501,9 +582,17 @@ const CurriculumStep = ({ values, setFieldValue, courseId }) => {
                 initialData={selectedVideo}
                 courseId={courseId}
             />
+
+            <LectureNotesModal
+                open={notesModalOpen}
+                onClose={() => setNotesModalOpen(false)}
+                onSave={handleSaveNotes}
+                initialNotes={notesVideo?.notes}
+                courseId={courseId}
+                lectureTitle={notesVideo?.title}
+            />
         </Box>
     );
 };
 
 export default CurriculumStep;
-

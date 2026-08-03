@@ -1,24 +1,22 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
-  Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, IconButton, Chip, Avatar,
   Box, Typography, Skeleton, Badge, Tooltip,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, TextField, Stack, CircularProgress, Divider
 } from '@mui/material';
 import {
-  Edit as EditIcon, Delete as DeleteIcon, History as HistoryIcon,
   AccountBalanceWallet as WalletIcon,
   Check as ApproveIcon,
   Close as RejectIcon,
   CloudUpload as UploadIcon,
-  Link as LinkIcon,
-  Image as ImageIcon
+  Link as LinkIcon
 } from '@mui/icons-material';
 import axios from '../../utils/api';
 import { toast } from 'react-toastify';
+import TableUI from '../../components/UI/Table/TableUI';
+import { getTutorTableColumns } from './components/TutorTableColumns';
 
-const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWithdrawals = {}, withdrawalRequests = [], onWithdrawalProcessed }) => {
+const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWithdrawals = {}, withdrawalRequests = [], onWithdrawalProcessed, onSelectionChanged, selectedIds }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tutorRequests, setTutorRequests] = useState([]);   // all pending for this tutor
   const [selectedReq, setSelectedReq] = useState(null);     // the one being processed
@@ -31,7 +29,7 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
   const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef(null);
 
-  const openWithdrawalDialog = (tutorId) => {
+  const openWithdrawalDialog = useCallback((tutorId) => {
     const reqs = withdrawalRequests.filter(
       w => w.status === 'pending' && (w.tutor?._id || w.tutor) === tutorId
     );
@@ -42,7 +40,7 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
     setTransactionId('');
     setAdminNote('');
     setDialogOpen(true);
-  };
+  }, [withdrawalRequests]);
 
   const handleSelectForApproval = (req) => {
     setSelectedReq(req);
@@ -101,7 +99,7 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
     }
   };
 
-  // hidden file input
+  // Hidden file input
   const HiddenInput = () => (
     <input
       ref={fileInputRef}
@@ -111,6 +109,16 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
       onChange={handleFileUpload}
     />
   );
+
+  const columnDefs = useMemo(() => getTutorTableColumns({
+    handleEdit: onEdit,
+    handleDelete: onDelete,
+    handleViewHistory: onViewHistory,
+    handleProcessWithdrawal: openWithdrawalDialog,
+    pendingWithdrawals
+  }), [onEdit, onDelete, onViewHistory, openWithdrawalDialog, pendingWithdrawals]);
+
+  const getRowId = useCallback(row => row?._id || Math.random().toString(), []);
 
   if (loading) {
     return (
@@ -122,96 +130,16 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
 
   return (
     <>
-      <TableContainer>
-        <Table sx={{ minWidth: 650 }}>
-          <TableHead sx={{ bgcolor: 'action.hover' }}>
-            <TableRow>
-              <TableCell>Tutor</TableCell>
-              <TableCell>Categories</TableCell>
-              <TableCell>Charges</TableCell>
-              <TableCell>Earnings</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {tutors.map((tutor) => (
-              <TableRow key={tutor._id} hover>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar src={tutor.profileImage} sx={{ mr: 2 }} />
-                    <Box>
-                      <Typography fontWeight="medium">{tutor.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">{tutor.tutorId}</Typography>
-                    </Box>
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {tutor.skills.map((skill) => (
-                      <Chip key={skill} label={skill} size="small" variant="outlined" />
-                    ))}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">₹{tutor.charges.perConversation}</Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2" fontWeight="bold" color="primary">{tutor.earnings || 0} pts</Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={tutor.status}
-                    color={tutor.status === 'online' ? 'success' : tutor.status === 'busy' ? 'warning' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell align="right">
-                  {/* Withdrawal Icon — only shown when pending requests exist */}
-                  {pendingWithdrawals[tutor._id] > 0 && (
-                    <Tooltip title={`Process ${pendingWithdrawals[tutor._id]} Pending Withdrawal`}>
-                      <IconButton
-                        onClick={() => openWithdrawalDialog(tutor._id)}
-                        sx={{
-                          color: '#C40C0C',
-                          animation: 'pulse 1.5s infinite',
-                          '@keyframes pulse': {
-                            '0%': { transform: 'scale(1)', opacity: 1 },
-                            '50%': { transform: 'scale(1.15)', opacity: 0.8 },
-                            '100%': { transform: 'scale(1)', opacity: 1 },
-                          }
-                        }}
-                      >
-                        <Badge badgeContent={pendingWithdrawals[tutor._id]} color="error">
-                          <WalletIcon />
-                        </Badge>
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  <Tooltip title="View History">
-                    <IconButton onClick={() => onViewHistory(tutor._id)} color="info">
-                      <HistoryIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <IconButton onClick={() => onEdit(tutor)} color="primary">
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton onClick={() => onDelete(tutor._id)} color="error">
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-            {tutors.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                  No tutors found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <TableUI
+        rowData={tutors}
+        columnDefs={columnDefs}
+        loading={loading}
+        pagination={true}
+        paginationPageSize={10}
+        getRowId={getRowId}
+        onSelectionChanged={onSelectionChanged}
+        selectedIds={selectedIds}
+      />
 
       {/* Inline Withdrawal Processing Dialog - Two Step */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
@@ -224,7 +152,7 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
           {step === 1 ? (
             /* ─── STEP 1: List of all pending requests ─── */
             <Stack spacing={1.5} sx={{ mt: 0.5 }}>
-              {tutorRequests.map((req, i) => (
+              {tutorRequests.map((req) => (
                 <Box
                   key={req._id}
                   sx={{
@@ -380,4 +308,3 @@ const TutorList = ({ tutors, loading, onEdit, onDelete, onViewHistory, pendingWi
 };
 
 export default TutorList;
-

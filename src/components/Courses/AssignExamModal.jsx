@@ -44,13 +44,12 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
             const { data } = await api.get(`/exams?limit=1000&t=${Date.now()}`);
             const allExams = Array.isArray(data) ? data : data.data || [];
             setExams(allExams);
-            // Pre-select exams that are already assigned to this course
+            // Pre-select exams that are already assigned to this course. An exam belongs to
+            // at most one course (`Exam.courseId`, a bare nullable int) — not the Mongo-era
+            // `courses[]`/`course` object shape this used to check, which no field on the
+            // actual API response ever matches.
             const assigned = allExams
-                .filter(e => {
-                    const eCoursesIds = (e.courses || []).map(c => typeof c === 'object' ? c._id : c);
-                    const eSingleId = typeof e.course === 'object' ? e.course?._id : e.course;
-                    return eCoursesIds.some(cid => cid?.toString() === courseId?.toString()) || eSingleId?.toString() === courseId?.toString();
-                })
+                .filter(e => e.courseId?.toString() === courseId?.toString())
                 .map(e => e._id);
             setSelectedExamIds(assigned);
         } catch {
@@ -109,22 +108,15 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
         setSelectedExamIds(nextIds);
 
         try {
-            // We need to update this specific exam's courses array
-            const exam = exams.find(e => e._id === id);
-            const currentCourses = (exam?.courses || []).map(c => typeof c === 'object' ? c._id : c);
-            const nextCourses = isAdding 
-                ? Array.from(new Set([...currentCourses, courseId])) 
-                : currentCourses.filter(cid => cid !== courseId);
-            
-            await api.put(`/exams/${id}/assign-courses`, { courseIds: nextCourses });
-            
-            // Update local exams list to keep "course count" chip accurate
-            setExams(prev => prev.map(e => {
-                if (e._id === id) {
-                    return { ...e, courses: nextCourses };
-                }
-                return e;
-            }));
+            // An exam has exactly one (optional) course, so "adding" sets this course as
+            // its courseId and "removing" clears it back to null — there's no `assign-courses`
+            // endpoint (that was never implemented on the current Prisma-backed API; the old
+            // call 404'd, so toggling here never actually linked/unlinked anything).
+            await api.put(`/exams/${id}`, { courseId: isAdding ? Number(courseId) : null });
+
+            setExams(prev => prev.map(e => (
+                e._id === id ? { ...e, courseId: isAdding ? Number(courseId) : null } : e
+            )));
 
             toast.success('Updated');
             if (onSuccess) onSuccess(); // Refresh background
@@ -141,7 +133,7 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
                 if (!examData.title || !examData.startDate || !examData.endDate) {
                     return toast.warning('Please fill required fields');
                 }
-                await api.post('/exams', { ...examData, course: courseId, courses: [courseId] });
+                await api.post('/exams', { ...examData, courseId: Number(courseId) });
                 toast.success('Exam created and assigned!');
                 if (onSuccess) onSuccess();
                 onClose();
@@ -236,8 +228,8 @@ const AssignExamModal = ({ open, onClose, examId, examTitle, courseId, courseTit
                                                 primary={exam.title}
                                                 secondary={`Duration: ${exam.duration} min | Marks: ${exam.totalMarks}`}
                                             />
-                                            {(exam.courses?.length > 0) && (
-                                                <Chip label={`${exam.courses.length} course(s)`} size="small" />
+                                            {exam.courseId != null && exam.courseId.toString() !== courseId?.toString() && (
+                                                <Chip label="Assigned elsewhere" size="small" color="warning" />
                                             )}
                                         </ListItemButton>
                                     </ListItem>

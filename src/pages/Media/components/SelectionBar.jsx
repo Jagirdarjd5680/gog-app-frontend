@@ -5,16 +5,15 @@ import {
     Button,
     Paper,
     Slide,
-    IconButton,
-    alpha,
-    useTheme
+    IconButton
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
-import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 
-const SelectionBar = ({ selectedCount, onClear, onDelete, onDownload }) => {
-    const theme = useTheme();
+const SelectionBar = (props) => {
+    const selectedCount = props.selectedCount || 0;
+    const handleClear = props.onClear || props.onClearSelection || (() => {});
+    const handleDelete = props.onDelete || props.onDeleteSelected || (() => {});
 
     return (
         <Slide direction="up" in={selectedCount > 0} mountOnEnter unmountOnExit>
@@ -25,87 +24,53 @@ const SelectionBar = ({ selectedCount, onClear, onDelete, onDownload }) => {
                     bottom: 30,
                     left: '50%',
                     transform: 'translateX(-50%) !important',
-                    background: 'linear-gradient(135deg, #1a237e 0%, #4a148c 100%)',
-                    backdropFilter: 'blur(10px)',
-                    color: 'white',
+                    background: 'var(--color-vc-ink, #09090b)',
+                    color: 'var(--color-vc-canvas, #ffffff)',
                     px: 3,
                     py: 1.5,
-                    borderRadius: 5,
+                    borderRadius: '16px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 3,
+                    gap: 2.5,
                     zIndex: 1300,
-                    minWidth: 450,
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.3), 0 0 20px rgba(74, 20, 140, 0.4)',
-                    border: '1px solid rgba(255,255,255,0.1)'
+                    minWidth: 400,
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                    border: '1px solid var(--color-vc-hairline)'
                 }}
             >
-                {/* Count Circle */}
                 <Box sx={{ 
-                    width: 32, 
-                    height: 32, 
+                    width: 28, 
+                    height: 28, 
                     borderRadius: '50%', 
-                    bgcolor: 'white',
-                    color: '#1a237e',
+                    bgcolor: 'var(--color-vc-primary)',
+                    color: 'white',
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                    fontSize: '0.8rem',
+                    fontWeight: 900
                 }}>
-                    <Typography variant="body2" fontWeight={900}>{selectedCount}</Typography>
+                    {selectedCount}
                 </Box>
 
-                <Typography variant="body2" fontWeight={700} sx={{ letterSpacing: 0.5 }}>
-                    Files Selected
+                <Typography variant="body2" fontWeight={700}>
+                    Items Selected
                 </Typography>
 
                 <Box sx={{ flexGrow: 1 }} />
 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                        size="small"
-                        startIcon={<CloudDownloadIcon />}
-                        variant="text"
-                        sx={{ 
-                            color: 'white', 
-                            textTransform: 'none', 
-                            fontWeight: 700,
-                            borderRadius: 2,
-                            px: 2,
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-                        }}
-                        onClick={onDownload}
-                    >
-                        Download
-                    </Button>
-                    <Button
-                        size="small"
-                        startIcon={<DeleteIcon />}
-                        variant="contained"
-                        color="error"
-                        sx={{ 
-                            textTransform: 'none', 
-                            fontWeight: 700, 
-                            borderRadius: 2,
-                            px: 2,
-                            boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)'
-                        }}
-                        onClick={onDelete}
-                    >
-                        Delete
-                    </Button>
-                </Box>
-
-                <IconButton 
-                    size="small" 
-                    onClick={onClear} 
-                    sx={{ 
-                        color: 'white', 
-                        ml: 1,
-                        bgcolor: 'rgba(255,255,255,0.1)',
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-                    }}
+                <Button
+                    size="small"
+                    startIcon={<DeleteIcon />}
+                    variant="contained"
+                    color="error"
+                    sx={{ textTransform: 'none', fontWeight: 700, borderRadius: '8px' }}
+                    onClick={handleDelete}
                 >
+                    Delete Selected
+                </Button>
+
+                <IconButton size="small" onClick={handleClear} sx={{ color: 'var(--color-vc-mute)' }}>
                     <CloseIcon fontSize="small" />
                 </IconButton>
             </Paper>

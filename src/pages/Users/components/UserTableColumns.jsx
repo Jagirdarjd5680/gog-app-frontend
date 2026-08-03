@@ -14,6 +14,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import { LinearProgress } from '@mui/material';
 import { format } from 'date-fns';
+import { hasModulePermission } from '../../../utils/permissions';
 
 const stringToColor = (string) => {
     let hash = 0;
@@ -26,7 +27,7 @@ const stringToColor = (string) => {
     return color;
 };
 
-export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, handlePayment }) => [
+export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, handlePayment, user }) => [
     {
         headerName: '', width: 45, minWidth: 45, flex: 0, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left',
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
@@ -39,14 +40,30 @@ export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, hand
             const displayInitials = (initials && initials[1] ? initials[1] : '') + (initials && initials[2] ? initials[2] : '');
             return (
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: '100%' }}>
-                    <Avatar src={avatar} sx={{ width: 32, height: 32, bgcolor: !avatar ? stringToColor(name || 'User') : 'transparent', fontSize: '0.75rem', fontWeight: 700 }}>
+                    <Avatar src={avatar} sx={{ width: 28, height: 28, border: '1px solid var(--color-vc-hairline)', bgcolor: !avatar ? stringToColor(name || 'User') : 'transparent', fontSize: '11px', fontWeight: 600 }}>
                         {!avatar && displayInitials.toUpperCase()}
                     </Avatar>
                     <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.85rem', lineHeight: 1.2 }}>{name}</Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', opacity: 0.7 }}>#{rollNumber || '---'}</Typography>
+                        <Typography sx={{ fontWeight: 500, color: 'var(--color-vc-ink)', fontSize: '13px', lineHeight: 1.2, fontFamily: 'inherit' }}>{name}</Typography>
+                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '11px', fontFamily: 'inherit', mt: 0.25 }}>#{rollNumber || '---'}</Typography>
                     </Box>
                 </Stack>
+            );
+        }
+    },
+    {
+        headerName: 'EMAIL/PHONE', field: 'email', flex: 1.2, minWidth: 180, sortable: true,
+        cellRenderer: (params) => {
+            const { email, phone } = params.data;
+            return (
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                    <Typography sx={{ fontWeight: 400, color: 'var(--color-vc-ink)', fontSize: '13px', fontFamily: 'inherit', wordBreak: 'break-all' }}>
+                        {email || '---'}
+                    </Typography>
+                    <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '11px', fontFamily: 'inherit', mt: 0.25 }}>
+                        {phone || '---'}
+                    </Typography>
+                </Box>
             );
         }
     },
@@ -54,7 +71,7 @@ export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, hand
         headerName: 'FEE PROGRESS', width: 180,
         cellRenderer: (params) => {
             const summary = params.data.feeSummary;
-            if (!summary || summary.totalFinalFee === 0) return <Typography variant="caption" color="text.disabled">No records</Typography>;
+            if (!summary || summary.totalFinalFee === 0) return <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>No records</Typography>;
             
             const percentage = Math.min(100, (summary.totalPaid / summary.totalFinalFee) * 100);
             const isFull = percentage >= 100;
@@ -62,10 +79,10 @@ export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, hand
             return (
                 <Box sx={{ width: '100%', pr: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: isFull ? 'success.main' : 'text.secondary', fontSize: '0.65rem' }}>
+                        <Typography sx={{ fontWeight: 500, color: isFull ? 'var(--color-vc-success)' : 'var(--color-vc-body)', fontSize: '11px', fontFamily: 'inherit' }}>
                             ₹{summary.totalPaid} / ₹{summary.totalFinalFee}
                         </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: isFull ? 'success.main' : 'error.main', fontSize: '0.65rem' }}>
+                        <Typography sx={{ fontWeight: 500, color: isFull ? 'var(--color-vc-success)' : 'var(--color-vc-error-deep)', fontSize: '11px', fontFamily: 'inherit' }}>
                             {summary.totalRemaining > 0 ? `₹${summary.totalRemaining} left` : 'Paid'}
                         </Typography>
                     </Box>
@@ -74,12 +91,12 @@ export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, hand
                             variant="determinate" 
                             value={percentage} 
                             sx={{ 
-                                height: 6, 
+                                height: 5, 
                                 borderRadius: 3, 
-                                bgcolor: 'grey.100',
+                                bgcolor: 'var(--color-vc-hairline)',
                                 '& .MuiLinearProgress-bar': {
                                     borderRadius: 3,
-                                    bgcolor: isFull ? '#2e7d32' : percentage > 50 ? '#1a73e8' : '#ed6c02'
+                                    bgcolor: isFull ? 'var(--color-vc-success)' : percentage > 50 ? 'var(--color-vc-link)' : 'var(--color-vc-warning)'
                                 }
                             }} 
                         />
@@ -93,15 +110,15 @@ export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, hand
         cellRenderer: (params) => {
             const { source, authMethod } = params.data;
             const getSourceIcon = () => {
-                if (source === 'android') return <AndroidIcon sx={{ fontSize: 18, color: '#3ddc84' }} />;
-                if (source === 'ios') return <AppleIcon sx={{ fontSize: 18, color: '#000000' }} />;
-                if (source === 'mobile') return <PhoneIcon sx={{ fontSize: 18, color: '#1a73e8' }} />;
-                return <LanguageIcon sx={{ fontSize: 18, color: '#1a73e8' }} />;
+                if (source === 'android') return <AndroidIcon sx={{ fontSize: 16, color: 'var(--color-vc-mute)' }} />;
+                if (source === 'ios') return <AppleIcon sx={{ fontSize: 16, color: 'var(--color-vc-mute)' }} />;
+                if (source === 'mobile') return <PhoneIcon sx={{ fontSize: 16, color: 'var(--color-vc-mute)' }} />;
+                return <LanguageIcon sx={{ fontSize: 16, color: 'var(--color-vc-mute)' }} />;
             };
             const getAuthIcon = () => {
-                if (authMethod === 'google') return <GoogleIcon sx={{ fontSize: 16, color: '#DB4437' }} />;
-                if (authMethod === 'phone' || authMethod === 'otp' || authMethod === 'mobile') return <PhoneIcon sx={{ fontSize: 16, color: '#1a73e8' }} />;
-                return <EmailIcon sx={{ fontSize: 16, color: '#757575' }} />;
+                if (authMethod === 'google') return <GoogleIcon sx={{ fontSize: 14, color: 'var(--color-vc-mute)' }} />;
+                if (authMethod === 'phone' || authMethod === 'otp' || authMethod === 'mobile') return <PhoneIcon sx={{ fontSize: 14, color: 'var(--color-vc-mute)' }} />;
+                return <EmailIcon sx={{ fontSize: 14, color: 'var(--color-vc-mute)' }} />;
             };
             return (
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ height: '100%' }}>
@@ -113,22 +130,66 @@ export const getUserTableColumns = ({ handleView, handleEdit, handleDelete, hand
     },
     {
         headerName: 'STATUS', field: 'isActive', width: 80, cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
-        cellRenderer: (params) => (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                <Tooltip title={params.value ? 'Active Account' : 'Deactivated'}>
-                    {params.value ? <CheckCircleIcon sx={{ color: '#2e7d32', fontSize: 20 }} /> : <CancelIcon sx={{ color: '#d32f2f', fontSize: 20 }} />}
-                </Tooltip>
-            </Box>
-        )
+        cellRenderer: (params) => {
+            const isActive = params.data.isActive;
+            const status = params.data.status?.toLowerCase();
+            
+            let color = 'var(--color-vc-success)';
+            let titleText = 'Active Account';
+            
+            if (status === 'pending') {
+                color = 'var(--color-vc-warning)';
+                titleText = 'Pending verification';
+            } else if (!isActive || status === 'suspended' || status === 'disabled' || status === 'inactive') {
+                color = 'var(--color-vc-error-deep)';
+                titleText = 'Deactivated';
+            }
+
+            return (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <Tooltip title={titleText}>
+                        <Box 
+                            sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: color,
+                                boxShadow: color === 'var(--color-vc-success)' ? '0 0 8px var(--color-vc-success)' : color === 'var(--color-vc-warning)' ? '0 0 8px var(--color-vc-warning)' : 'none'
+                            }}
+                        />
+                    </Tooltip>
+                </Box>
+            );
+        }
     },
     {
         headerName: 'ACTIONS', width: 160, pinned: 'right', sortable: false,
         cellRenderer: (params) => (
             <Stack direction="row" spacing={0.5} alignItems="center" sx={{ height: '100%' }}>
-                <IconButton size="small" onClick={() => handlePayment(params.data)} title="Quick Payment" sx={{ color: 'primary.main' }}><AccountBalanceWalletIcon sx={{ fontSize: 18 }} /></IconButton>
-                <IconButton size="small" onClick={() => handleView(params.data)} title="View Detail"><VisibilityIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></IconButton>
-                <IconButton size="small" onClick={() => handleEdit(params.data)} title="Edit"><EditIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></IconButton>
-                <IconButton size="small" onClick={() => handleDelete(params.data)} title="Archive"><ArchiveIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></IconButton>
+                <Tooltip title="Quick Payment">
+                    <IconButton size="small" onClick={() => handlePayment(params.data)} sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-link)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)' } }}>
+                        <AccountBalanceWalletIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title="View Detail">
+                    <IconButton size="small" onClick={() => handleView(params.data)} sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' } }}>
+                        <VisibilityIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                </Tooltip>
+                {hasModulePermission(user, 'students', 'edit') && (
+                    <Tooltip title="Edit">
+                        <IconButton size="small" onClick={() => handleEdit(params.data)} sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)', color: 'var(--color-vc-ink)' } }}>
+                            <EditIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                )}
+                {hasModulePermission(user, 'students', 'delete') && (
+                    <Tooltip title="Archive">
+                        <IconButton size="small" onClick={() => handleDelete(params.data)} sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-error-deep)', '&:hover': { borderColor: 'var(--color-vc-error-soft)', bgcolor: 'var(--color-vc-error-soft)20' } }}>
+                            <ArchiveIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                    </Tooltip>
+                )}
             </Stack>
         )
     },

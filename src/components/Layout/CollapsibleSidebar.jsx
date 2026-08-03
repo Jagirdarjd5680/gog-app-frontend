@@ -22,9 +22,10 @@ import {
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
+import SecurityIcon from '@mui/icons-material/Security';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import SchoolIcon from '@mui/icons-material/School';
 import GroupsIcon from '@mui/icons-material/Groups';
-import VideoCallIcon from '@mui/icons-material/VideoCall';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import PaymentIcon from '@mui/icons-material/Payment';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -32,7 +33,6 @@ import SearchIcon from '@mui/icons-material/Search';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import QuizIcon from '@mui/icons-material/Quiz';
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -116,7 +116,6 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                 { text: 'Batches', path: '/batches', icon: <GroupsIcon /> },
                 { text: 'Categories', path: '/categories', icon: <CategoryIcon /> },
                 { text: 'Media Library', path: '/media-library', icon: <PermMediaIcon /> },
-                { text: 'Live Classes', path: '/live-classes', icon: <VideoCallIcon /> },
                 { text: 'Assignments', path: '/assignments', icon: <AssignmentIcon /> },
             ]
         },
@@ -186,7 +185,9 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
         },
 
         // --- STUDENT SPECIFIC ---
+        { text: 'All Courses', icon: <LibraryBooksIcon />, path: '/all-courses', roles: ['student'] },
         { text: 'Personal Info', icon: <PeopleIcon />, path: '/profile', roles: ['student'] },
+        { text: 'Account Settings', icon: <SecurityIcon />, path: '/account-settings', roles: ['student'] },
         { text: 'Refer & Earn', icon: <CardGiftcardIcon />, path: '/referrals', roles: ['student'] },
         { text: 'My Rewards', icon: <ReceiptLongIcon />, path: '/my-rewards', roles: ['student'] },
         { text: 'Leaderboard', icon: <EmojiEventsIcon />, path: '/leaderboard', roles: ['admin', 'teacher', 'student'] },
@@ -254,63 +255,74 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                     width: drawerWidth,
                     boxSizing: 'border-box',
                     borderRight: '1px solid',
-                    borderColor: 'divider',
+                    borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline))',
                     transition: 'width 0.3s ease',
-                    overflowX: 'hidden',
-                    overflowY: 'hidden',
-                    backgroundColor: darkMode
-                        ? '#1e1e1e'
-                        : (settings?.theme?.sidebarBg || '#ffffff'),
+                    overflow: 'visible',
+                    backgroundColor: 'var(--color-sidebar-bg, var(--color-vc-canvas))',
+                    fontFamily: 'var(--font-sidebar, inherit)',
                 },
             }}
         >
+            {!isMobile && (
+                <IconButton
+                    onClick={onToggleCollapse}
+                    size="small"
+                    sx={{ 
+                        position: 'absolute',
+                        right: -12,
+                        top: 22,
+                        zIndex: 1200,
+                        width: 24,
+                        height: 24,
+                        backgroundColor: 'var(--color-sidebar-bg, var(--color-vc-canvas))',
+                        border: '1px solid',
+                        borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline))',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.08)',
+                        color: 'var(--color-sidebar-menu-text, var(--color-vc-ink))',
+                        '&:hover': { 
+                            backgroundColor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                            color: 'var(--color-sidebar-active-text, var(--color-vc-ink))' 
+                        }
+                    }}
+                >
+                    {collapsed ? <ChevronRightIcon sx={{ fontSize: 14 }} /> : <ChevronLeftIcon sx={{ fontSize: 14 }} />}
+                </IconButton>
+            )}
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 {/* Header with Logo */}
                 <Box sx={{
-                    p: 2,
+                    p: collapsed ? '16px 8px' : 2,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1,
+                    gap: collapsed ? 1.5 : 1,
                     justifyContent: collapsed ? 'center' : 'flex-start',
-                    flexDirection: 'row',
-                    bgcolor: darkMode ? '#1e1e1e' : (settings?.theme?.sidebarBg || '#fff')
+                    flexDirection: collapsed ? 'column' : 'row',
+                    bgcolor: 'var(--color-sidebar-bg, var(--color-vc-canvas))'
                 }}>
                     <Avatar
                         src={fixUrl(collapsed ? settings?.general?.siteIcon : settings?.general?.siteLogo)}
                         sx={{
-                            bgcolor: '#fff',
-                            width: 40,
-                            height: 40,
+                            bgcolor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                            width: 36,
+                            height: 36,
                             borderRadius: '50%',
                             objectFit: 'contain',
                             border: '1px solid',
-                            borderColor: darkMode ? 'rgba(255,255,255,0.12)' : 'divider'
+                            borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline))'
                         }}
                     >
-                        {!settings?.general?.siteIcon && <SchoolIcon sx={{ color: 'primary.main' }} />}
+                        {!settings?.general?.siteIcon && <SchoolIcon sx={{ color: 'var(--color-sidebar-menu-text, var(--color-vc-ink))' }} />}
                     </Avatar>
 
                     {!collapsed && (
                         <Box sx={{ minWidth: 0, overflow: 'hidden', flexGrow: 1, ml: 1 }}>
-                            <Typography variant="subtitle1" fontWeight={800} noWrap sx={{ color: darkMode ? '#ffffff' : (settings?.theme?.menuText || '#000') }}>
+                            <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ color: 'var(--color-sidebar-menu-text, var(--color-vc-ink))', fontFamily: 'inherit', fontSize: '15px' }}>
                                 {settings?.general?.siteName || 'LMS Dashboard'}
                             </Typography>
                         </Box>
                     )}
-
-                    {!isMobile && (
-                        <IconButton
-                            onClick={onToggleCollapse}
-                            size="small"
-                            sx={{ ml: 'auto' }}
-                        >
-                            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-                        </IconButton>
-                    )}
                 </Box>
-
-
-                <Divider />
+                <Divider sx={{ borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline))' }} />
 
                 {/* Search Bar */}
                 {!collapsed && (
@@ -323,12 +335,24 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                             onChange={(e) => setSearchQuery(e.target.value)}
                             InputProps={{
                                 startAdornment: (
-                                    <SearchIcon sx={{ color: 'text.secondary', mr: 1, fontSize: 20 }} />
+                                    <SearchIcon sx={{ color: 'var(--color-sidebar-menu-text, var(--color-vc-mute))', mr: 0.5, fontSize: 16, opacity: 0.8 }} />
                                 ),
                                 sx: {
-                                    borderRadius: 2,
-                                    bgcolor: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                                    height: 32,
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    borderRadius: '6px',
+                                    bgcolor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                                    color: 'var(--color-sidebar-menu-text, var(--color-vc-ink))',
+                                    border: '1px solid var(--color-sidebar-border, var(--color-vc-hairline))',
+                                    '&:hover': {
+                                        borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline-strong))',
+                                    },
+                                    '&.Mui-focused': {
+                                        borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline-strong))',
+                                    },
                                     '& fieldset': { border: 'none' },
+                                    px: 1,
                                 }
                             }}
                         />
@@ -343,11 +367,11 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                     '&::-webkit-scrollbar': { width: '4px' },
                     '&::-webkit-scrollbar-track': { background: 'transparent' },
                     '&::-webkit-scrollbar-thumb': {
-                        background: 'rgba(0,0,0,0.15)',
+                        background: 'var(--color-sidebar-border, var(--color-vc-hairline))',
                         borderRadius: '4px'
                     },
                     '&::-webkit-scrollbar-thumb:hover': {
-                        background: 'rgba(0,0,0,0.3)'
+                        background: 'var(--color-sidebar-border, var(--color-vc-hairline-strong))'
                     },
                 }}>
                     <List sx={{ pt: 2, px: 1 }}>
@@ -359,25 +383,40 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                                             onClick={() => item.children ? toggleSubMenu(item.text) : handleNavigation(item.path)}
                                             selected={location.pathname === item.path}
                                             sx={{
-                                                borderRadius: 2,
+                                                borderRadius: '6px',
                                                 justifyContent: collapsed ? 'center' : 'flex-start',
-                                                px: collapsed ? 1 : 2,
-                                                color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                                px: collapsed ? 1 : 1.5,
+                                                py: 1,
+                                                mx: 1,
+                                                color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                                position: 'relative',
+                                                '&::before': {
+                                                    content: '""',
+                                                    position: 'absolute',
+                                                    left: 0,
+                                                    top: '25%',
+                                                    bottom: '25%',
+                                                    width: '3px',
+                                                    borderRadius: '2px',
+                                                    backgroundColor: 'var(--color-sidebar-active-text, var(--color-vc-primary))',
+                                                    display: location.pathname === item.path ? 'block' : 'none'
+                                                },
                                                 '&.Mui-selected': {
-                                                    backgroundColor: darkMode ? 'primary.main' : (settings?.theme?.activeMenuBg || 'primary.main'),
-                                                    color: '#fff',
+                                                    backgroundColor: 'var(--color-sidebar-active-bg, var(--color-vc-canvas-soft-2))',
+                                                    color: 'var(--color-sidebar-active-text, var(--color-vc-ink))',
+                                                    fontWeight: 500,
                                                     '&:hover': {
-                                                        backgroundColor: darkMode ? 'primary.dark' : (settings?.theme?.activeMenuBg || 'primary.dark'),
+                                                        backgroundColor: 'var(--color-sidebar-active-bg, var(--color-vc-canvas-soft-2))',
                                                     },
                                                     '& .MuiListItemIcon-root': {
-                                                        color: '#fff',
+                                                        color: 'var(--color-sidebar-active-text, var(--color-vc-ink))',
                                                     },
                                                 },
                                                 '&:hover': {
-                                                    backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
-                                                    color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                    backgroundColor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                                                    color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                                     '& .MuiListItemIcon-root': {
-                                                        color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                        color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                                     },
                                                 }
                                             }}
@@ -385,23 +424,29 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                                             <ListItemIcon
                                                 sx={{
                                                     color: location.pathname === item.path
-                                                        ? '#fff'
-                                                        : (darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')),
-                                                    minWidth: collapsed ? 0 : 40,
+                                                        ? 'var(--color-sidebar-active-text, var(--color-vc-ink))'
+                                                        : 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                                    minWidth: collapsed ? 0 : 32,
                                                     justifyContent: 'center',
+                                                    transition: 'color 0.15s ease',
                                                 }}
                                             >
                                                 {item.icon}
                                             </ListItemIcon>
-                                            {!collapsed && <ListItemText primary={item.text} />}
-                                            {!collapsed && item.children && (openSubMenus[item.text] ? <ExpandLess /> : <ExpandMore />)}
+                                            {!collapsed && <ListItemText primary={item.text} primaryTypographyProps={{ style: { fontSize: 'var(--font-size-sidebar, 14px)', fontFamily: 'inherit' } }} />}
+                                            {!collapsed && item.children && (openSubMenus[item.text] ? <ExpandLess sx={{ fontSize: 18 }} /> : <ExpandMore sx={{ fontSize: 18 }} />)}
                                         </ListItemButton>
                                     </Tooltip>
                                 </ListItem>
 
                                 {item.children && (
                                     <Collapse in={openSubMenus[item.text] && !collapsed} timeout="auto" unmountOnExit>
-                                        <List component="div" disablePadding sx={{ pl: collapsed ? 0 : 2 }}>
+                                        <List component="div" disablePadding sx={{
+                                            pl: collapsed ? 0 : 1,
+                                            ml: collapsed ? 0 : 2.5,
+                                            borderLeft: collapsed ? 'none' : '1px solid var(--color-sidebar-border, var(--color-vc-hairline))',
+                                            mb: 1
+                                        }}>
                                             {item.children.map((child) => (
                                                 <ListItem key={child.text} disablePadding sx={{ mb: 0.5 }}>
                                                     <Tooltip title={collapsed ? child.text : ''} placement="right">
@@ -409,26 +454,41 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                                                             onClick={() => handleNavigation(child.path)}
                                                             selected={location.pathname === child.path}
                                                             sx={{
-                                                                borderRadius: 2,
+                                                                borderRadius: '6px',
                                                                 justifyContent: collapsed ? 'center' : 'flex-start',
-                                                                px: collapsed ? 1 : 2,
-                                                                pl: collapsed ? 1 : 4,
-                                                                color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                                                px: collapsed ? 1 : 1.5,
+                                                                pl: collapsed ? 1 : 3,
+                                                                py: 0.75,
+                                                                mx: 1,
+                                                                color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                                                position: 'relative',
+                                                                '&::before': {
+                                                                    content: '""',
+                                                                    position: 'absolute',
+                                                                    left: 0,
+                                                                    top: '25%',
+                                                                    bottom: '25%',
+                                                                    width: '3px',
+                                                                    borderRadius: '2px',
+                                                                    backgroundColor: 'var(--color-sidebar-active-text, var(--color-vc-primary))',
+                                                                    display: location.pathname === child.path ? 'block' : 'none'
+                                                                },
                                                                 '&.Mui-selected': {
-                                                                    backgroundColor: darkMode ? 'primary.main' : (settings?.theme?.activeMenuBg || 'primary.main'),
-                                                                    color: '#fff',
+                                                                    backgroundColor: 'var(--color-sidebar-active-bg, var(--color-vc-canvas-soft-2))',
+                                                                    color: 'var(--color-sidebar-active-text, var(--color-vc-ink))',
+                                                                    fontWeight: 500,
                                                                     '&:hover': {
-                                                                        backgroundColor: darkMode ? 'primary.dark' : (settings?.theme?.activeMenuBg || 'primary.dark'),
+                                                                        backgroundColor: 'var(--color-sidebar-active-bg, var(--color-vc-canvas-soft-2))',
                                                                     },
                                                                     '& .MuiListItemIcon-root': {
-                                                                        color: '#fff',
+                                                                        color: 'var(--color-sidebar-active-text, var(--color-vc-ink))',
                                                                     },
                                                                 },
                                                                 '&:hover': {
-                                                                    backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
-                                                                    color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                                    backgroundColor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                                                                    color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                                                     '& .MuiListItemIcon-root': {
-                                                                        color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                                        color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                                                     },
                                                                 }
                                                             }}
@@ -436,15 +496,16 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                                                             <ListItemIcon
                                                                 sx={{
                                                                     color: location.pathname === child.path
-                                                                        ? '#fff'
-                                                                        : (darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')),
-                                                                    minWidth: collapsed ? 0 : 30,
+                                                                        ? 'var(--color-sidebar-active-text, var(--color-vc-ink))'
+                                                                        : 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                                                    minWidth: collapsed ? 0 : 28,
                                                                     justifyContent: 'center',
+                                                                    transition: 'color 0.15s ease',
                                                                 }}
                                                             >
-                                                                {React.cloneElement(child.icon, { sx: { fontSize: 18 } })}
+                                                                {React.cloneElement(child.icon, { sx: { fontSize: 16 } })}
                                                             </ListItemIcon>
-                                                            {!collapsed && <ListItemText primary={child.text} primaryTypographyProps={{ variant: 'body2' }} />}
+                                                            {!collapsed && <ListItemText primary={child.text} primaryTypographyProps={{ style: { fontSize: 'calc(var(--font-size-sidebar, 14px) - 1px)', fontFamily: 'inherit' } }} />}
                                                         </ListItemButton>
                                                     </Tooltip>
                                                 </ListItem>
@@ -456,31 +517,35 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                         ))}
 
                         {/* Divider before bottom actions */}
-                        <Divider sx={{ my: 2 }} />
+                        <Divider sx={{ my: 2, borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline))' }} />
 
                         {/* Help, Settings, Logout - Also scrollable */}
                         <ListItem disablePadding sx={{ mb: 0.5 }}>
                             <Tooltip title={collapsed ? 'Help Line' : ''} placement="right">
                                 <ListItemButton sx={{
-                                    borderRadius: 2,
+                                    borderRadius: '6px',
                                     justifyContent: collapsed ? 'center' : 'flex-start',
-                                    color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                    px: collapsed ? 1 : 1.5,
+                                    py: 1,
+                                    mx: 1,
+                                    color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
                                     '&:hover': {
-                                        backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
-                                        color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                        backgroundColor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                                        color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                         '& .MuiListItemIcon-root': {
-                                            color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                            color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                         },
                                     }
                                 }}>
                                     <ListItemIcon sx={{
-                                        minWidth: collapsed ? 0 : 40,
+                                        minWidth: collapsed ? 0 : 32,
                                         justifyContent: 'center',
-                                        color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')
+                                        color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                        transition: 'color 0.15s ease',
                                     }}>
                                         <HelpOutlineIcon />
                                     </ListItemIcon>
-                                    {!collapsed && <ListItemText primary="Help Line" />}
+                                    {!collapsed && <ListItemText primary="Help Line" primaryTypographyProps={{ style: { fontSize: 'var(--font-size-sidebar, 14px)', fontFamily: 'inherit' } }} />}
                                 </ListItemButton>
                             </Tooltip>
                         </ListItem>
@@ -491,84 +556,130 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
                                     onClick={() => handleNavigation('/settings')}
                                     selected={location.pathname === '/settings'}
                                     sx={{
-                                        borderRadius: 2,
+                                        borderRadius: '6px',
                                         justifyContent: collapsed ? 'center' : 'flex-start',
-                                        color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                        px: collapsed ? 1 : 1.5,
+                                        py: 1,
+                                        mx: 1,
+                                        color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                        position: 'relative',
+                                        '&::before': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            left: 0,
+                                            top: '25%',
+                                            bottom: '25%',
+                                            width: '3px',
+                                            borderRadius: '2px',
+                                            backgroundColor: 'var(--color-sidebar-active-text, var(--color-vc-primary))',
+                                            display: location.pathname === '/settings' ? 'block' : 'none'
+                                        },
                                         '&.Mui-selected': {
-                                            backgroundColor: darkMode ? 'primary.main' : (settings?.theme?.activeMenuBg || 'primary.main'),
-                                            color: darkMode ? '#fff' : (settings?.theme?.activeMenuText || '#fff'),
+                                            backgroundColor: 'var(--color-sidebar-active-bg, var(--color-vc-canvas-soft-2))',
+                                            color: 'var(--color-sidebar-active-text, var(--color-vc-ink))',
+                                            fontWeight: 500,
+                                            '&:hover': {
+                                                backgroundColor: 'var(--color-sidebar-active-bg, var(--color-vc-canvas-soft-2))',
+                                            },
                                             '& .MuiListItemIcon-root': {
-                                                color: darkMode ? '#fff' : (settings?.theme?.activeMenuText || '#fff'),
+                                                color: 'var(--color-sidebar-active-text, var(--color-vc-ink))',
                                             },
                                         },
                                         '&:hover': {
-                                            backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
-                                            color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                            backgroundColor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                                            color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                             '& .MuiListItemIcon-root': {
-                                                color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                             },
                                         }
                                     }}
                                 >
                                     <ListItemIcon sx={{
-                                        minWidth: collapsed ? 0 : 40,
+                                        minWidth: collapsed ? 0 : 32,
                                         justifyContent: 'center',
                                         color: location.pathname === '/settings'
-                                            ? (darkMode ? '#fff' : (settings?.theme?.activeMenuText || 'white'))
-                                            : (darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'))
+                                            ? 'var(--color-sidebar-active-text, var(--color-vc-ink))'
+                                            : 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                        transition: 'color 0.15s ease',
                                     }}>
                                         <SettingsIcon />
                                     </ListItemIcon>
-                                    {!collapsed && <ListItemText primary="Settings" />}
+                                    {!collapsed && <ListItemText primary="Settings" primaryTypographyProps={{ style: { fontSize: 'var(--font-size-sidebar, 14px)', fontFamily: 'inherit' } }} />}
                                 </ListItemButton>
                             </Tooltip>
                         </ListItem>
 
-                        <ListItem disablePadding>
+                        <ListItem disablePadding sx={{ mb: 0.5 }}>
                             <Tooltip title={collapsed ? 'Log Out' : ''} placement="right">
                                 <ListItemButton
                                     onClick={handleLogout}
                                     sx={{
-                                        borderRadius: 2,
+                                        borderRadius: '6px',
                                         justifyContent: collapsed ? 'center' : 'flex-start',
-                                        color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary'),
+                                        px: collapsed ? 1 : 1.5,
+                                        py: 1,
+                                        mx: 1,
+                                        color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
                                         '&:hover': {
-                                            backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : (settings?.theme?.hoverMenuBg || 'rgba(0,0,0,0.04)'),
-                                            color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                            backgroundColor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))',
+                                            color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                             '& .MuiListItemIcon-root': {
-                                                color: darkMode ? '#fff' : (settings?.theme?.hoverMenuText || 'inherit'),
+                                                color: 'var(--color-sidebar-hover-text, var(--color-vc-ink))',
                                             },
                                         }
                                     }}
                                 >
                                     <ListItemIcon sx={{
-                                        minWidth: collapsed ? 0 : 40,
+                                        minWidth: collapsed ? 0 : 32,
                                         justifyContent: 'center',
-                                        color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.secondary')
+                                        color: 'var(--color-sidebar-menu-text, var(--color-vc-body))',
+                                        transition: 'color 0.15s ease',
                                     }}>
                                         <LogoutIcon />
                                     </ListItemIcon>
-                                    {!collapsed && <ListItemText primary="Log Out" />}
+                                    {!collapsed && <ListItemText primary="Log Out" primaryTypographyProps={{ style: { fontSize: 'var(--font-size-sidebar, 14px)', fontFamily: 'inherit' } }} />}
                                 </ListItemButton>
                             </Tooltip>
                         </ListItem>
                     </List>
                 </Box>
 
-                <Divider />
+                <Divider sx={{ borderColor: 'var(--color-sidebar-border, var(--color-vc-hairline))' }} />
 
                 {/* User Profile & Dark Mode - Sticky at Bottom */}
-                <Box sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <Avatar sx={{ width: 40, height: 40 }}>
-                            {user?.name?.charAt(0)}
+                <Box sx={{ 
+                    p: collapsed ? '16px 8px' : 2, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: 'var(--color-sidebar-bg, var(--color-vc-canvas))'
+                }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: collapsed ? 'center' : 'flex-start', 
+                        width: '100%',
+                        gap: 1, 
+                        mb: collapsed ? 0 : 2 
+                    }}>
+                        <Avatar sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            bgcolor: 'var(--color-sidebar-hover-bg, var(--color-vc-canvas-soft))', 
+                            border: '1px solid var(--color-sidebar-border, var(--color-vc-hairline))', 
+                            color: 'var(--color-sidebar-menu-text, var(--color-vc-ink))',
+                            fontSize: '14px',
+                            fontWeight: 600
+                        }}>
+                            {user?.name?.charAt(0).toUpperCase()}
                         </Avatar>
                         {!collapsed && (
                             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                                <Typography variant="body2" fontWeight={600} noWrap sx={{ color: darkMode ? '#ffffff' : (settings?.theme?.menuText || 'text.primary') }}>
+                                <Typography variant="body2" fontWeight={500} noWrap sx={{ color: 'var(--color-sidebar-menu-text, var(--color-vc-ink))', fontSize: '13px', fontFamily: 'inherit' }}>
                                     {user?.name || 'Bonyra Jony'}
                                 </Typography>
-                                <Typography variant="caption" noWrap sx={{ color: darkMode ? 'rgba(255,255,255,0.7)' : (settings?.theme?.menuText || 'text.secondary'), opacity: 0.8 }}>
+                                <Typography variant="caption" noWrap sx={{ color: 'var(--color-sidebar-menu-text, var(--color-vc-mute))', opacity: 0.7, fontSize: '11px', fontFamily: '"JetBrains Mono", monospace' }}>
                                     {user?.email || 'bonyrajony19@gmail.com'}
                                 </Typography>
                             </Box>
@@ -577,8 +688,26 @@ const CollapsibleSidebar = ({ open, collapsed, mobileOpen, onToggleCollapse, onM
 
                     {!collapsed && (
                         <FormControlLabel
-                            control={<Switch checked={darkMode} onChange={toggleTheme} />}
-                            label="Dark Mode"
+                            control={
+                                <Switch 
+                                    checked={darkMode} 
+                                    onChange={toggleTheme} 
+                                    size="small"
+                                    sx={{
+                                        '& .MuiSwitch-switchBase.Mui-checked': {
+                                            color: 'var(--color-sidebar-active-text, var(--color-vc-primary))',
+                                            '& + .MuiSwitch-track': {
+                                                backgroundColor: 'var(--color-sidebar-active-text, var(--color-vc-primary))',
+                                            },
+                                        },
+                                    }}
+                                />
+                            }
+                            label={
+                                <Typography sx={{ fontSize: '12px', color: 'var(--color-sidebar-menu-text, var(--color-vc-body))', fontFamily: 'inherit' }}>
+                                    Dark Mode
+                                </Typography>
+                            }
                         />
                     )}
                 </Box>

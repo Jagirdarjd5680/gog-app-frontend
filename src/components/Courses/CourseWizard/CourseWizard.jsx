@@ -8,10 +8,7 @@ import {
     Divider,
     CircularProgress,
     Stack,
-    Paper,
-    Tooltip,
-    Container,
-    Avatar
+    Paper
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -27,6 +24,8 @@ import * as Yup from 'yup';
 import api from '../../../utils/api';
 import { toast } from 'react-toastify';
 import { CourseWizardSkeleton } from '../../Common/ModalSkeletons';
+import { getYoutubeVideoDuration } from '../../../utils/youtube';
+
 
 import BasicInfoStep from './BasicInfoStep';
 import CurriculumStep from './CurriculumStep';
@@ -35,11 +34,11 @@ import ExamsStep from './ExamsStep';
 import ReviewStep from './ReviewStep';
 
 const steps = [
-    { label: 'Basic Details', icon: <InfoOutlinedIcon />, description: 'Course title, price, and media' },
-    { label: 'Curriculum', icon: <MenuBookOutlinedIcon />, description: 'Topics, lectures, and resources' },
-    { label: 'Assignments', icon: <AssignmentOutlinedIcon />, description: 'Add and link assignments' },
-    { label: 'Exams & Quizzes', icon: <QuizIcon />, description: 'Create and manage course quizzes' },
-    { label: 'Final Review', icon: <VisibilityOutlinedIcon />, description: 'Preview and publish course' }
+    { label: 'Basic Details', icon: <InfoOutlinedIcon sx={{ fontSize: 18 }} />, description: 'Course title, price, and media' },
+    { label: 'Curriculum', icon: <MenuBookOutlinedIcon sx={{ fontSize: 18 }} />, description: 'Topics, lectures, and resources' },
+    { label: 'Assignments', icon: <AssignmentOutlinedIcon sx={{ fontSize: 18 }} />, description: 'Add and link assignments' },
+    { label: 'Exams & Quizzes', icon: <QuizIcon sx={{ fontSize: 18 }} />, description: 'Create and manage course quizzes' },
+    { label: 'Final Review', icon: <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />, description: 'Preview and publish course' }
 ];
 
 const validationSchema = [
@@ -86,13 +85,18 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
         gstPercent: 0,
         fakeLikes: 0,
         modules: [],
-        // New fields
         courseType: 'online',
         assignedBatches: [],
         allowOtherBatchMaterials: false,
+        platformAccess: 'both',
     });
 
     const isEditMode = Boolean(courseId);
+    // Tracks the course actually being worked on: the `courseId` prop when editing, or the
+    // id we get back once a brand-new course is auto-saved as a draft on step 1 (see
+    // handleSubmit) — Assignments/Exams steps need a real DB id to attach to, which doesn't
+    // exist yet for a course that's still mid-creation.
+    const [activeCourseId, setActiveCourseId] = useState(courseId || null);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -100,13 +104,14 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                 const { data } = await api.get('/categories');
                 setCategories(data.data || []);
             } catch (error) {
-                
+
             }
         };
         fetchCategories();
 
         if (open) {
             setActiveStep(0);
+            setActiveCourseId(courseId || null);
             if (isEditMode) {
                 fetchCourseDetails();
             } else {
@@ -131,7 +136,6 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                     gstPercent: 0,
                     fakeLikes: 0,
                     modules: [],
-                    // New fields
                     courseType: 'online',
                     assignedBatches: [],
                     allowOtherBatchMaterials: false,
@@ -143,7 +147,10 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
     const fetchCourseDetails = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get(`/courses/${courseId}`);
+            // /courses/:id is the public, platform-gated (Course.platformAccess) student
+            // endpoint — editing must bypass that restriction entirely, or a course locked
+            // to "app" only 403s the moment an admin tries to open it here.
+            const { data } = await api.get(`/courses/manage/${courseId}`);
             const courseData = data.data;
 
             const modulesWithIds = (courseData.modules || []).map(m => ({
@@ -151,6 +158,8 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                 id: m._id || m.id || `topic-${Math.random().toString(36).substr(2, 9)}`,
                 videos: (m.videos || []).map(v => ({
                     ...v,
+                    videoUrl: v.url || v.videoUrl || '',
+                    duration: v.duration || 0,
                     id: v._id || v.id || `vid-${Math.random().toString(36).substr(2, 9)}`
                 }))
             }));
@@ -158,7 +167,11 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
             setInitialValues({
                 title: courseData.title || '',
                 description: courseData.description || '',
-                category: courseData.category?._id || courseData.category || '',
+                // Categories dropdown (fetched from /categories) matches on the string form of
+                // the id — courseData.category is the raw Prisma relation object ({id, name,
+                // slug, ...}), which has no _id field, so using it directly used to leave the
+                // Select unable to match any option and render blank.
+                category: String(courseData.category?.id ?? courseData.categoryId ?? ''),
                 level: courseData.level || 'beginner',
                 price: courseData.price ?? 0,
                 originalPrice: courseData.originalPrice ?? 0,
@@ -176,10 +189,10 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                 gstPercent: courseData.gstPercent ?? 0,
                 fakeLikes: courseData.fakeLikes ?? 0,
                 modules: modulesWithIds,
-                // New fields
                 courseType: courseData.courseType || 'online',
                 assignedBatches: (courseData.assignedBatches || []).map(b => typeof b === 'object' ? b._id : b),
                 allowOtherBatchMaterials: courseData.allowOtherBatchMaterials || false,
+                platformAccess: courseData.platformAccess || 'both',
             });
         } catch (error) {
             toast.error('Failed to load course details');
@@ -192,38 +205,60 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
     const handleNext = () => setActiveStep((prev) => prev + 1);
     const handleBack = () => setActiveStep((prev) => prev - 1);
 
+    // Shared between draft save, the step-1 auto-create, and final publish so numeric/boolean
+    // fields (price, fakeLikes, gstPercent, isCertificate, ...) are always coerced to the real
+    // types the backend's DTO validators expect — a raw string like "500" from a text field
+    // fails `@IsNumber()` and used to make the whole save silently fail.
+    const buildPayload = (values, isPublished) => {
+        const cleanModules = values.modules.map(mod => {
+            const { id, ...moduleData } = mod;
+            return {
+                ...moduleData,
+                videos: (moduleData.videos || []).map(vid => {
+                    const { id: vId, ...videoData } = vid;
+                    if (!videoData.resourceId) delete videoData.resourceId;
+                    if (!videoData.resourceModel) delete videoData.resourceModel;
+                    return videoData;
+                })
+            };
+        });
+
+        const payload = {
+            ...values,
+            isPublished,
+            price: Number(values.price) || 0,
+            originalPrice: Number(values.originalPrice) || 0,
+            durationValue: Number(values.durationValue) || 0,
+            readingDurationValue: Number(values.readingDurationValue) || 0,
+            gstPercent: Number(values.gstPercent) || 0,
+            fakeLikes: Number(values.fakeLikes) || 0,
+            isCertificate: !!values.isCertificate,
+            certificateName: values.certificateName || '',
+            modules: cleanModules,
+        };
+        delete payload.thumbnailPreview;
+        return payload;
+    };
+
     const handleSaveDraft = async (values) => {
+        if (!values.title || !values.category) {
+            toast.error('Please fill in title and category (Basic Details step) before saving');
+            return;
+        }
         try {
             setLoading(true);
-            const cleanModules = values.modules.map(mod => {
-                const { id, ...moduleData } = mod;
-                return {
-                    ...moduleData,
-                    videos: (moduleData.videos || []).map(vid => {
-                        const { id: vId, ...videoData } = vid;
-                        if (!videoData.resourceId) delete videoData.resourceId;
-                        if (!videoData.resourceModel) delete videoData.resourceModel;
-                        return videoData;
-                    })
-                };
-            });
+            const payload = buildPayload(values, false);
 
-            const payload = {
-                ...values,
-                isPublished: false, // Explicitly set to false for draft
-                modules: cleanModules
-            };
-            delete payload.thumbnailPreview;
-
-            if (isEditMode) {
-                await api.put(`/courses/${courseId}`, payload);
+            if (activeCourseId) {
+                await api.put(`/courses/${activeCourseId}`, payload);
             } else {
-                await api.post('/courses', payload);
+                const { data } = await api.post('/courses', payload);
+                setActiveCourseId(data.data.id);
             }
             toast.success('Draft saved successfully');
             onSuccess();
         } catch (error) {
-            toast.error('Failed to save draft');
+            toast.error(error.response?.data?.message || 'Failed to save draft');
         } finally {
             setLoading(false);
         }
@@ -231,41 +266,34 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
 
     const handleSubmit = async (values, { setSubmitting }) => {
         if (activeStep !== steps.length - 1) {
+            // Assignments/Exams steps need a real course id to attach records to — save a
+            // draft the moment Basic Details is complete so the rest of the wizard has one,
+            // instead of leaving those steps permanently disabled until final publish.
+            if (activeStep === 0 && !activeCourseId) {
+                try {
+                    setLoading(true);
+                    const payload = buildPayload(values, false);
+                    const { data } = await api.post('/courses', payload);
+                    setActiveCourseId(data.data.id);
+                    toast.success('Draft created — you can now add curriculum, assignments & exams');
+                } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed to create course draft');
+                    setSubmitting(false);
+                    return;
+                } finally {
+                    setLoading(false);
+                }
+            }
             handleNext();
             setSubmitting(false);
             return;
         }
 
         try {
-            const cleanModules = values.modules.map(mod => {
-                const { id, ...moduleData } = mod;
-                return {
-                    ...moduleData,
-                    videos: (moduleData.videos || []).map(vid => {
-                        const { id: vId, ...videoData } = vid;
-                        // Strip empty resource fields to prevent MongoDB cast errors
-                        if (!videoData.resourceId) delete videoData.resourceId;
-                        if (!videoData.resourceModel) delete videoData.resourceModel;
-                        return videoData;
-                    })
-                };
-            });
+            const payload = buildPayload(values, true);
 
-            const payload = {
-                ...values,
-                isPublished: true, // Mark as published when launching
-                price: Number(values.price) || 0,
-                originalPrice: Number(values.originalPrice) || 0,
-                durationValue: Number(values.durationValue) || 0,
-                readingDurationValue: Number(values.readingDurationValue) || 0,
-                gstPercent: Number(values.gstPercent) || 0,
-                fakeLikes: Number(values.fakeLikes) || 0,
-                modules: cleanModules
-            };
-            delete payload.thumbnailPreview;
-
-            if (isEditMode) {
-                await api.put(`/courses/${courseId}`, payload);
+            if (activeCourseId) {
+                await api.put(`/courses/${activeCourseId}`, payload);
                 toast.success('Course updated successfully');
             } else {
                 await api.post('/courses', payload);
@@ -279,17 +307,33 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
         }
     };
 
-    const handleStepClick = async (idx, validateForm, setTouched) => {
+    const handleStepClick = async (idx, values, validateForm, setTouched) => {
         if (idx === activeStep) return;
 
-        // If trying to go to a future step, validate current first
         if (idx > activeStep) {
             const errors = await validateForm();
             if (Object.keys(errors).length > 0) {
-                // Focus on the fields with errors by touching them
-                setTouched(errors); 
+                setTouched(errors);
                 toast.error('Please fix validation errors before moving forward');
                 return;
+            }
+
+            // Same as handleSubmit: jumping past Basic Details via the sidebar stepper must
+            // also create the draft, or Assignments/Exams stay disabled for a new course.
+            if (activeStep === 0 && !activeCourseId) {
+                try {
+                    setLoading(true);
+                    const payload = buildPayload(values, false);
+                    const { data } = await api.post('/courses', payload);
+                    setActiveCourseId(data.data.id);
+                    toast.success('Draft created — you can now add curriculum, assignments & exams');
+                } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed to create course draft');
+                    setLoading(false);
+                    return;
+                } finally {
+                    setLoading(false);
+                }
             }
         }
 
@@ -303,9 +347,9 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
             fullScreen
             PaperProps={{
                 sx: { 
-                    bgcolor: '#f8fafc',
-                    overflow: 'hidden',
-                    backgroundImage: 'radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.05) 0px, transparent 50%)' 
+                    bgcolor: 'var(--color-vc-canvas-soft)',
+                    color: 'var(--color-vc-ink)',
+                    overflow: 'hidden'
                 }
             }}
         >
@@ -321,43 +365,67 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                         <Box sx={{ 
                             px: 4, py: 2, 
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            bgcolor: 'rgba(255, 255, 255, 0.8)',
-                            backdropFilter: 'blur(10px)',
-                            borderBottom: '1px solid rgba(0,0,0,0.05)',
+                            bgcolor: 'var(--color-vc-canvas)',
+                            borderBottom: '1px solid var(--color-vc-hairline)',
                             zIndex: 10
                         }}>
                             <Stack direction="row" spacing={2} alignItems="center">
                                 <Box sx={{ 
-                                    width: 40, height: 40, 
-                                    borderRadius: '12px', 
-                                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: 'white'
+                                    width: 36, height: 36, 
+                                    borderRadius: '6px', 
+                                    bgcolor: 'var(--color-vc-primary)',
+                                    display: 'flex', alignItems: 'center', justifycontent: 'center',
+                                    color: 'var(--color-vc-on-primary)'
                                 }}>
-                                    <MenuBookOutlinedIcon />
+                                    <MenuBookOutlinedIcon sx={{ fontSize: 20 }} />
                                 </Box>
                                 <Box>
-                                    <Typography variant="h6" fontWeight={800} sx={{ color: '#1e293b' }}>
+                                    <Typography variant="subtitle1" fontWeight={600} sx={{ color: 'var(--color-vc-ink)', letterSpacing: '-0.02em', fontFamily: 'inherit', lineHeight: 1.2 }}>
                                         {isEditMode ? 'Edit Course' : 'Create New Course'}
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>
                                         Step {activeStep + 1} of {steps.length}: {steps[activeStep].label}
                                     </Typography>
                                 </Box>
                             </Stack>
 
-                            <Stack direction="row" spacing={2}>
+                            <Stack direction="row" spacing={1.5} alignItems="center">
                                 <Button 
                                     variant="outlined" 
-                                    startIcon={<SaveOutlinedIcon />}
-                                    sx={{ borderRadius: '10px', textTransform: 'none', px: 3 }}
+                                    startIcon={<SaveOutlinedIcon sx={{ fontSize: 16 }} />}
+                                    sx={{ 
+                                        borderRadius: '6px', 
+                                        textTransform: 'none', 
+                                        px: 2.5,
+                                        height: 36,
+                                        fontSize: '13px',
+                                        fontFamily: 'inherit',
+                                        fontWeight: 500,
+                                        borderColor: 'var(--color-vc-hairline)',
+                                        color: 'var(--color-vc-ink)',
+                                        bgcolor: 'var(--color-vc-canvas)',
+                                        '&:hover': {
+                                            borderColor: 'var(--color-vc-hairline-strong)',
+                                            bgcolor: 'var(--color-vc-canvas-soft)'
+                                        }
+                                    }}
                                     onClick={() => handleSaveDraft(values)}
                                     disabled={loading}
                                 >
-                                    {loading ? <CircularProgress size={20} /> : 'Save Draft'}
+                                    {loading ? <CircularProgress size={16} /> : 'Save Draft'}
                                 </Button>
-                                <IconButton onClick={onClose} sx={{ bgcolor: 'rgba(0,0,0,0.05)' }}>
-                                    <CloseIcon />
+                                <IconButton 
+                                    onClick={onClose} 
+                                    size="small"
+                                    sx={{ 
+                                        color: 'var(--color-vc-mute)',
+                                        '&:hover': {
+                                            color: 'var(--color-vc-ink)',
+                                            bgcolor: 'var(--color-vc-canvas-soft)'
+                                        }
+                                    }}
+                                >
+                                    <CloseIcon sx={{ fontSize: 18 }} />
                                 </IconButton>
                             </Stack>
                         </Box>
@@ -365,56 +433,65 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                         <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
                             {/* Sidebar Stepper */}
                             <Box sx={{ 
-                                width: 320, 
-                                borderRight: '1px solid rgba(0,0,0,0.05)', 
-                                p: 4,
+                                width: 280, 
+                                borderRight: '1px solid var(--color-vc-hairline)', 
+                                p: 3.5,
                                 display: { xs: 'none', md: 'block' },
-                                bgcolor: 'white'
+                                bgcolor: 'var(--color-vc-canvas)'
                             }}>
-                                <Stack spacing={4}>
-                                    {steps.map((step, index) => (
-                                        <Stack 
-                                            key={index} 
-                                            direction="row" 
-                                            spacing={2} 
-                                            alignItems="flex-start" 
-                                            sx={{ 
-                                                opacity: activeStep >= index ? 1 : 0.5,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.3s ease'
-                                            }}
-                                            onClick={() => handleStepClick(index, validateForm, setTouched)}
-                                        >
-                                            <Box sx={{ 
-                                                width: 44, height: 44, 
-                                                borderRadius: '50%', 
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                bgcolor: activeStep === index ? 'primary.main' : (activeStep > index ? 'success.light' : '#f1f5f9'),
-                                                color: activeStep >= index ? 'white' : 'text.disabled',
-                                                boxShadow: activeStep === index ? '0 0 20px rgba(99, 102, 241, 0.3)' : 'none',
-                                                transition: 'all 0.3s ease'
-                                            }}>
-                                                {activeStep > index ? '✓' : step.icon}
-                                            </Box>
-                                            <Box>
-                                                <Typography variant="subtitle2" fontWeight={700} color={activeStep === index ? 'primary' : 'text.primary'}>
-                                                    {step.label}
-                                                </Typography>
-                                                <Typography variant="caption" display="block" color="text.secondary" sx={{ maxWidth: 180 }}>
-                                                    {step.description}
-                                                </Typography>
-                                            </Box>
-                                        </Stack>
-                                    ))}
+                                <Stack spacing={3.5}>
+                                    {steps.map((step, index) => {
+                                        const isActive = activeStep === index;
+                                        const isCompleted = activeStep > index;
+                                        return (
+                                            <Stack 
+                                                key={index} 
+                                                direction="row" 
+                                                spacing={2} 
+                                                alignItems="flex-start" 
+                                                sx={{ 
+                                                    opacity: activeStep >= index ? 1 : 0.45,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease',
+                                                    '&:hover': {
+                                                        opacity: 1
+                                                    }
+                                                }}
+                                                onClick={() => handleStepClick(index, values, validateForm, setTouched)}
+                                            >
+                                                <Box sx={{ 
+                                                    width: 32, height: 32, 
+                                                    borderRadius: '50%', 
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    bgcolor: isActive ? 'var(--color-vc-ink)' : (isCompleted ? 'rgba(41, 188, 155, 0.15)' : 'var(--color-vc-canvas-soft-2)'),
+                                                    color: isActive ? 'var(--color-vc-on-primary)' : (isCompleted ? 'var(--color-vc-cyan-deep)' : 'var(--color-vc-mute)'),
+                                                    border: isCompleted ? '1px solid transparent' : '1px solid var(--color-vc-hairline)',
+                                                    transition: 'all 0.2s ease'
+                                                }}>
+                                                    {isCompleted ? '✓' : index + 1}
+                                                </Box>
+                                                <Box>
+                                                    <Typography sx={{ fontSize: '13px', fontWeight: isActive ? 600 : 500, color: isActive ? 'var(--color-vc-ink)' : 'var(--color-vc-body)', fontFamily: 'inherit' }}>
+                                                        {step.label}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25, maxWidth: 180 }}>
+                                                        {step.description}
+                                                    </Typography>
+                                                </Box>
+                                            </Stack>
+                                        );
+                                    })}
                                 </Stack>
                             </Box>
 
                             {/* Main Content */}
-                            <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 5 } }}>
+                            <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 3, md: 5 } }}>
                                 {loading ? (
                                     <CourseWizardSkeleton />
                                 ) : (
-                                    <Box sx={{ maxWidth: 1100, mx: 'auto' }} className="animate-slide-up">
+                                    <Box sx={{ maxWidth: 1400, mx: 'auto', width: '100%' }}>
                                         {activeStep === 0 && (
                                             <BasicInfoStep
                                                 values={values}
@@ -423,32 +500,33 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                                 handleChange={handleChange}
                                                 setFieldValue={setFieldValue}
                                                 categories={categories}
-                                                courseId={courseId}
+                                                courseId={activeCourseId}
+                                                onCategoryCreated={(newCat) => setCategories(prev => [...prev, newCat])}
                                             />
                                         )}
                                         {activeStep === 1 && (
                                             <CurriculumStep
                                                 values={values}
                                                 setFieldValue={setFieldValue}
-                                                courseId={courseId}
+                                                courseId={activeCourseId}
                                             />
                                         )}
                                         {activeStep === 2 && (
                                             <AssignmentStep
                                                 values={values}
                                                 setFieldValue={setFieldValue}
-                                                courseId={courseId}
+                                                courseId={activeCourseId}
                                             />
                                         )}
                                         {activeStep === 3 && (
                                             <ExamsStep
                                                 values={values}
                                                 setFieldValue={setFieldValue}
-                                                courseId={courseId}
+                                                courseId={activeCourseId}
                                             />
                                         )}
                                         {activeStep === 4 && (
-                                            <ReviewStep values={values} categories={categories} courseId={courseId} />
+                                            <ReviewStep values={values} categories={categories} courseId={activeCourseId} />
                                         )}
                                     </Box>
                                 )}
@@ -457,17 +535,34 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
 
                         {/* Footer Controls */}
                         <Paper sx={{ 
-                            p: 3, px: 6, 
+                            p: 2.5, px: 6, 
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            bgcolor: 'white',
-                            borderTop: '1px solid rgba(0,0,0,0.05)',
+                            bgcolor: 'var(--color-vc-canvas)',
+                            borderTop: '1px solid var(--color-vc-hairline)',
                             borderRadius: 0
                         }}>
                             <Button
                                 disabled={activeStep === 0 || isSubmitting}
                                 onClick={handleBack}
-                                startIcon={<ArrowBackIcon />}
-                                sx={{ borderRadius: '10px', px: 4, textTransform: 'none', fontWeight: 600 }}
+                                startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+                                sx={{ 
+                                    borderRadius: '6px', 
+                                    px: 3, 
+                                    textTransform: 'none', 
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    height: 36,
+                                    color: 'var(--color-vc-body)',
+                                    '&:hover': {
+                                        bgcolor: 'var(--color-vc-canvas-soft)',
+                                        color: 'var(--color-vc-ink)'
+                                    },
+                                    '&:disabled': {
+                                        color: 'var(--color-vc-mute)',
+                                        opacity: 0.5
+                                    }
+                                }}
                             >
                                 Previous Step
                             </Button>
@@ -476,14 +571,23 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
                                 variant="contained"
                                 type="submit"
                                 disabled={isSubmitting}
-                                endIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <ArrowForwardIcon />}
+                                endIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : <ArrowForwardIcon sx={{ fontSize: 16 }} />}
                                 sx={{ 
-                                    borderRadius: '10px', 
-                                    px: 6, py: 1.5,
+                                    borderRadius: '6px', 
+                                    px: 4, 
+                                    height: 36,
                                     textTransform: 'none', 
-                                    fontWeight: 700,
-                                    boxShadow: '0 10px 20px -5px rgba(99, 102, 241, 0.4)',
-                                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)'
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    boxShadow: 'none',
+                                    bgcolor: 'var(--color-vc-primary)',
+                                    color: 'var(--color-vc-on-primary)',
+                                    '&:hover': {
+                                        bgcolor: 'var(--color-vc-primary)',
+                                        opacity: 0.9,
+                                        boxShadow: 'none'
+                                    }
                                 }}
                             >
                                 {activeStep === steps.length - 1
@@ -499,4 +603,3 @@ const CourseWizard = ({ open, onClose, courseId, onSuccess }) => {
 };
 
 export default CourseWizard;
-

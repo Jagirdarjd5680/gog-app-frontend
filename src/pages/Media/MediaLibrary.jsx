@@ -1,338 +1,312 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Box, CircularProgress, useTheme, Pagination, alpha, Typography } from '@mui/material';
-import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../utils/api';
-import { uploadFile } from '../../utils/upload';
-
-// Sub-components
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
+    Box, Typography, Button, Paper, Stack, IconButton, LinearProgress, Chip
+} from '@mui/material';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
 import MediaSidebar from './components/MediaSidebar';
 import MediaTopBar from './components/MediaTopBar';
 import MediaFileList from './components/MediaFileList';
+import MediaCard from './MediaCard';
+import SelectionBar from './components/SelectionBar';
 import MediaModals from './components/MediaModals';
 import MediaPreviewModal from './components/MediaPreviewModal';
-import SelectionBar from './components/SelectionBar';
-import { MediaGridSkeleton, MediaListSkeleton, MediaSidebarSkeleton } from './components/MediaSkeleton';
+import PermMediaIcon from '@mui/icons-material/PermMedia';
+import ImageIcon from '@mui/icons-material/Image';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import api from '../../utils/api';
+import { toast } from 'react-toastify';
+import { uploadFile } from '../../utils/upload';
+import { useAuth } from '../../context/AuthContext';
+
+import MediaGridSkeleton from './components/MediaSkeleton';
 
 const MediaLibrary = ({ onSelect }) => {
-    const theme = useTheme();
     const { user } = useAuth();
-
-    // State
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [uploading, setUploading] = useState(false);
-    const fileInputRef = useRef(null);
-    const [viewMode, setViewMode] = useState('grid');
-    const [activeFilter, setActiveFilter] = useState('all');
+    const [activeTab, setActiveTab] = useState('all');
     const [uploaderTab, setUploaderTab] = useState('all');
+    const [selectedTeacherId, setSelectedTeacherId] = useState('');
+    const [teachers, setTeachers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useState('grid');
     const [selectedFiles, setSelectedFiles] = useState([]);
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    
-    // Modal States
-    const [previewFile, setPreviewFile] = useState(null);
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [deleteFile, setDeleteFile] = useState(null);
-    const [deleting, setDeleting] = useState(false);
-    const [urlImportOpen, setUrlImportOpen] = useState(false);
-    const [importForm, setImportForm] = useState({ title: '', url: '', type: 'raw' });
-    const [importingUrl, setImportingUrl] = useState(false);
-    const [statsModalOpen, setStatsModalOpen] = useState(false);
-    const [storageStats, setStorageStats] = useState(null);
+
+    // Upload state
+    const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const fileInputRef = useRef(null);
 
-    const fetchFiles = useCallback(async (silent = false) => {
+    // Modal states
+    const [previewFile, setPreviewFile] = useState(null);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [statsModalOpen, setStatsModalOpen] = useState(false);
+
+    const fetchFiles = useCallback(async (isSilent = false) => {
+        if (!isSilent) setLoading(true);
         try {
-            if (!silent) setLoading(true);
-            const params = {
-                page,
-                limit: 20,
-                userRole: uploaderTab === 'admin' ? 'admin' : undefined
-            };
-            const res = await api.get('/upload', { params });
-            if (res.data.success) {
-                console.log('📂 [Media Library] All Fetched Files:', res.data.files);
-                const images = res.data.files.filter(f => f.type === 'image' || f.mimetype?.startsWith('image') || f.format?.match(/(jpg|jpeg|png|gif|webp|svg)$/i));
-                console.log('📷 [Media Library] Filtered Images:', images);
-                setFiles(res.data.files);
-                setTotalPages(res.data.totalPages);
-            }
-        } catch (err) {
-            if (!silent) toast.error('Failed to fetch media');
+            const res = await api.get('/upload');
+            const data = res.data?.files || res.data?.data || res.data || [];
+            setFiles(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch media library:', error);
+            if (!isSilent) toast.error('Failed to load media files');
         } finally {
-            if (!silent) setLoading(false);
+            if (!isSilent) setLoading(false);
         }
-    }, [page, uploaderTab]);
+    }, []);
 
-    useEffect(() => { fetchFiles(); }, [fetchFiles]);
-
-    // Poll if any file is uploading, queued, or processing
     useEffect(() => {
-        const hasActiveJobs = files.some(f => ['uploading', 'queued', 'processing'].includes(f.status));
-        if (hasActiveJobs) {
-            const timer = setTimeout(() => {
-                fetchFiles(true);
-            }, 3000);
-            return () => clearTimeout(timer);
+        fetchFiles();
+        if (user?.role === 'admin') {
+            api.get('/users?role=teacher').then(res => {
+                setTeachers(res.data?.data || res.data || []);
+            }).catch(() => {});
         }
-    }, [files, fetchFiles]);
+    }, [fetchFiles, user]);
 
-    const formatSize = (bytes) => {
-        if (!bytes) return '0 B';
-        const i = Math.floor(Math.log(bytes) / Math.log(1024));
-        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${['B', 'KB', 'MB', 'GB'][i]}`;
-    };
+    // Continuous 1-second silent polling while any file is converting into HLS chunks in background
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFiles(prevFiles => {
+                const hasProcessing = prevFiles.some(f => ['processing', 'uploading', 'queued'].includes(f.status));
+                if (hasProcessing) {
+                    fetchFiles(true); // Silent update without loading spinner
+                }
+                return prevFiles;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [fetchFiles]);
 
-    const handleDelete = async () => {
+    const handleFileUpload = async (e) => {
+        const selectedFile = e.target.files?.[0];
+        if (!selectedFile) return;
+
+        setUploading(true);
+        setUploadProgress(0);
         try {
-            setDeleting(true);
-            await api.delete(`/upload/${deleteFile.name}`);
-            setFiles(files.filter(f => f._id !== deleteFile._id));
-            toast.success('File deleted');
-            setDeleteDialogOpen(false);
-            if (previewFile?._id === deleteFile._id) setPreviewFile(null);
-        } catch (err) {
-            toast.error('Delete failed');
+            const res = await uploadFile(selectedFile, (progress) => {
+                setUploadProgress(progress);
+            });
+            toast.success('Media file uploaded successfully!');
+            
+            // Optimistic update so card renders immediately
+            const rawUrl = res?.url || `/uploads/${selectedFile.name}`;
+            const newMediaObj = {
+                _id: res?.id || String(Date.now()),
+                id: res?.id || String(Date.now()),
+                name: selectedFile.name,
+                title: selectedFile.name,
+                url: rawUrl,
+                fileUrl: rawUrl,
+                type: selectedFile.type?.startsWith('video') ? 'video' : selectedFile.type?.startsWith('image') ? 'image' : 'raw',
+                format: selectedFile.name.split('.').pop() || 'file',
+                size: selectedFile.size,
+                status: selectedFile.type?.startsWith('video') ? 'processing' : 'ready',
+                processingProgress: 1,
+                createdAt: new Date().toISOString()
+            };
+            setFiles(prev => [newMediaObj, ...prev.filter(f => f.name !== selectedFile.name)]);
+            await fetchFiles(true);
+        } catch (error) {
+            console.error('Upload failed:', error);
+            toast.error('Upload failed');
         } finally {
-            setDeleting(false);
+            setUploading(false);
+            setUploadProgress(0);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    const handleSelectAll = () => {
-        if (selectedFiles.length === files.length) {
-            setSelectedFiles([]);
-        } else {
-            setSelectedFiles(files.map(f => f.name));
+    const handleDelete = async (fileName) => {
+        if (!window.confirm('Delete this media asset?')) return;
+        // Optimistic deletion from state so card vanishes immediately in real-time
+        setFiles(prev => prev.filter(f => f.name !== fileName && f.title !== fileName && f.id !== fileName));
+        setSelectedFiles(prev => prev.filter(name => name !== fileName));
+        try {
+            await api.delete(`/upload/${fileName}`);
+            toast.success('Asset deleted');
+            await fetchFiles(true);
+        } catch (error) {
+            console.error('Failed to delete file:', error);
+            toast.error('Failed to delete file');
+            await fetchFiles(true);
         }
     };
 
     const handleBulkDelete = async () => {
-        if (window.confirm(`Delete ${selectedFiles.length} files?`)) {
-            try {
-                setDeleting(true);
-                const res = await api.post('/upload/bulk-delete', { fileNames: selectedFiles });
-                if (res.data.success) {
-                    toast.success(res.data.message || 'Selected files deleted');
-                    setSelectedFiles([]);
-                    fetchFiles();
-                }
-            } catch (err) {
-                toast.error('Bulk deletion failed');
-            } finally {
-                setDeleting(false);
-            }
-        }
-    };
-
-    const handleSync = async () => {
+        if (!window.confirm(`Delete ${selectedFiles.length} selected files?`)) return;
+        const toDelete = [...selectedFiles];
+        setFiles(prev => prev.filter(f => !toDelete.includes(f.name) && !toDelete.includes(f.id)));
+        setSelectedFiles([]);
         try {
-            const syncToast = toast.loading('Syncing storage...');
-            const res = await api.get('/upload/sync');
-            if (res.data.success) {
-                toast.success(res.data.message, { id: syncToast });
-                fetchFiles();
-            }
-        } catch (err) {
-            toast.error('Sync failed');
+            await Promise.all(toDelete.map(name => api.delete(`/upload/${name}`)));
+            toast.success('Selected files deleted');
+            await fetchFiles(true);
+        } catch (error) {
+            console.error('Failed to bulk delete files:', error);
+            toast.error('Failed to delete some files');
+            await fetchFiles(true);
         }
     };
 
-    const filteredFiles = files.filter(f => {
-        const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter = activeFilter === 'all' 
-            ? true 
-            : activeFilter === 'chat' 
-                ? f.isChatMedia === true 
-                : f.type === activeFilter || f.format === activeFilter;
-        return matchesSearch && matchesFilter;
-    });
-
-    const handleUploadClick = () => {
-        if (fileInputRef.current) {
-            fileInputRef.current.click();
-        }
+    const toggleFileSelection = (fileName) => {
+        setSelectedFiles(prev =>
+            prev.includes(fileName) ? prev.filter(n => n !== fileName) : [...prev, fileName]
+        );
     };
 
-    const handleFileChange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const filteredFiles = useMemo(() => {
+        return files.filter(f => {
+            const name = (f.name || f.title || '').toLowerCase();
+            const term = searchQuery.toLowerCase().trim();
+            const matchesSearch = name.includes(term);
+            if (!matchesSearch) return false;
 
-        try {
-            setUploading(true);
-            const loadingToast = toast.loading(`Uploading ${file.name}... (0%)`);
-            
-            const result = await uploadFile(file, (progress) => {
-                setUploadProgress(progress);
-                toast.loading(`Uploading ${file.name}... (${progress}%)`, { id: loadingToast });
-            });
+            const isImage = f.mimetype?.startsWith('image') || f.type === 'image' || f.name?.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i);
+            const isVideo = f.mimetype?.startsWith('video') || f.type === 'video' || f.name?.match(/\.(mp4|mkv|avi|mov)$/i);
+            const isPdf = f.mimetype === 'application/pdf' || f.format === 'pdf' || f.name?.endsWith('.pdf');
 
-            if (result && (result.success || result.url)) {
-                toast.success('Upload successful', { id: loadingToast });
-                console.log('%c✅ [Upload] File uploaded successfully!', 'color: #2e7d32; font-weight: bold; font-size: 14px; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px;');
-                console.log('%cUploaded File Details:', 'color: #2e7d32; font-weight: bold;', {
-                    name: file.name,
-                    size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-                    mimetype: file.type || 'unknown',
-                    result: result
-                });
-                fetchFiles();
-            } else {
-                const failureMsg = result?.message || 'Upload failed';
-                toast.error(failureMsg, { id: loadingToast });
-                console.log('%c❌ [Upload] Upload failed:', 'color: #c62828; font-weight: bold; font-size: 14px; background-color: #ffebee; padding: 4px 8px; border-radius: 4px;');
-                console.log('%cReason:', 'color: #c62828; font-weight: bold;', failureMsg);
-            }
-        } catch (err) {
-            const errorMsg = err.response?.data?.message || err.message || 'Upload failed';
-            toast.error(errorMsg);
-            console.log('%c❌ [Upload] Error occurred during upload:', 'color: #c62828; font-weight: bold; font-size: 14px; background-color: #ffebee; padding: 4px 8px; border-radius: 4px;');
-            console.log('%cError Details:', 'color: #c62828; font-weight: bold;', {
-                message: errorMsg,
-                errorObject: err
-            });
-        } finally {
-            setUploading(false);
-            setUploadProgress(0);
-            if (e.target) e.target.value = '';
-        }
-    };
+            if (activeTab === 'image' && !isImage) return false;
+            if (activeTab === 'video' && !isVideo) return false;
+            if (activeTab === 'pdf' && !isPdf) return false;
+            return true;
+        });
+    }, [files, searchQuery, activeTab]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Assets', value: files.length, icon: <PermMediaIcon />, color: 'primary' },
+        { title: 'Images & Photos', value: files.filter(f => f.mimetype?.startsWith('image') || f.type === 'image' || f.name?.match(/\.(jpg|jpeg|png|webp|gif|svg)$/i)).length, icon: <ImageIcon />, color: 'info' },
+        { title: 'Video Chunks', value: files.filter(f => f.mimetype?.startsWith('video') || f.type === 'video' || f.name?.match(/\.(mp4|mkv|avi|mov)$/i)).length, icon: <VideoLibraryIcon />, color: 'success' }
+    ], [files]);
 
     return (
-        <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden', bgcolor: '#f1f3f4' }}>
-            {/* Sidebar — Skeleton while loading */}
-            {loading && files.length === 0 
-                ? <MediaSidebarSkeleton />
-                : <MediaSidebar 
-                    activeFilter={activeFilter} 
-                    onFilterChange={setActiveFilter}
-                    uploaderTab={uploaderTab}
-                    onUploaderTabChange={setUploaderTab}
-                    onUploadClick={handleUploadClick} 
-                />}
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Media & File Manager
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Manage cloud media library, chunked video uploads, and course document attachments
+                </Typography>
+            </Box>
+
+            <GenericMetrics items={metricsItems} />
+
+            {uploading && (
+                <Box sx={{ p: 2, mb: 2.5, bgcolor: 'var(--color-vc-canvas-soft)', borderRadius: '14px', border: '1px solid var(--color-vc-hairline)', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                        <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'var(--color-vc-primary)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                            🚀 UPLOADING ASSET ({typeof uploadProgress === 'number' ? uploadProgress.toFixed(1) : uploadProgress}%)
+                        </Typography>
+                        <Typography variant="caption" fontWeight={700} sx={{ color: 'var(--color-vc-mute)' }}>
+                            Real-Time AJAX Stream
+                        </Typography>
+                    </Box>
+                    <LinearProgress
+                        variant="determinate"
+                        value={typeof uploadProgress === 'number' ? uploadProgress : Number(uploadProgress) || 0}
+                        sx={{ mt: 1, borderRadius: '6px', height: 8, bgcolor: 'rgba(56, 189, 248, 0.15)', '& .MuiLinearProgress-bar': { bgcolor: '#38bdf8' } }}
+                    />
+                </Box>
+            )}
 
             <input
                 type="file"
                 ref={fileInputRef}
+                onChange={handleFileUpload}
                 style={{ display: 'none' }}
-                onChange={handleFileChange}
             />
 
-            <Box sx={{ flexGrow: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+            <Box sx={{ display: 'flex', gap: 3, mt: 3 }}>
+                <MediaSidebar
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    uploaderTab={uploaderTab}
+                    setUploaderTab={setUploaderTab}
+                    teachers={teachers}
+                    selectedTeacherId={selectedTeacherId}
+                    setSelectedTeacherId={setSelectedTeacherId}
+                    user={user}
+                />
 
-                {/* Delete Overlay Spinner */}
-                {deleting && (
-                    <Box sx={{
-                        position: 'absolute', inset: 0, zIndex: 100,
-                        bgcolor: alpha('#fff', 0.7),
-                        backdropFilter: 'blur(3px)',
-                        display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', gap: 2
-                    }}>
-                        <CircularProgress color="error" size={48} />
-                        <Box sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'error.main' }}>
-                            {selectedFiles.length > 1 ? `Deleting ${selectedFiles.length} files...` : 'Deleting file...'}
-                        </Box>
-                    </Box>
-                )}
-
-                {/* Uploading Overlay Spinner */}
-                {uploading && (
-                    <Box sx={{
-                        position: 'absolute', inset: 0, zIndex: 100,
-                        bgcolor: alpha('#fff', 0.7),
-                        backdropFilter: 'blur(3px)',
-                        display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', gap: 2
-                    }}>
-                        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                            <CircularProgress variant="determinate" value={uploadProgress} size={64} thickness={4} />
-                            <Box
-                                sx={{
-                                    top: 0, left: 0, bottom: 0, right: 0,
-                                    position: 'absolute',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}
-                            >
-                                <Typography variant="caption" component="div" color="text.secondary" fontWeight={800}>
-                                    {`${Math.round(uploadProgress)}%`}
-                                </Typography>
-                            </Box>
-                        </Box>
-                        <Box sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'primary.main' }}>Uploading file...</Box>
-                    </Box>
-                )}
-
-                <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, pb: 10 }}>
-                    <MediaTopBar 
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        viewMode={viewMode}
-                        onViewModeChange={setViewMode}
-                        onSyncClick={handleSync}
-                        onImportUrlClick={() => setUrlImportOpen(true)}
-                        onStatsClick={async () => {
-                            const res = await api.get('/upload/stats');
-                            setStorageStats(res.data);
-                            setStatsModalOpen(true);
-                        }}
-                    />
-
-                    {/* Top Pagination */}
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-                        <Pagination 
-                            count={totalPages} 
-                            page={page} 
-                            onChange={(e, v) => setPage(v)} 
-                            color="primary" 
-                            size="small"
-                        />
-                    </Box>
-
-                    {/* Content — Skeleton while loading, real list when ready */}
-                    {loading
-                        ? (viewMode === 'grid' 
-                            ? <MediaGridSkeleton count={8} /> 
-                            : <MediaListSkeleton count={8} />)
-                        : <MediaFileList 
-                            files={filteredFiles}
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <MediaTopBar
+                            searchQuery={searchQuery}
+                            onSearchChange={setSearchQuery}
                             viewMode={viewMode}
+                            onViewModeChange={setViewMode}
+                            onSyncClick={fetchFiles}
+                            onImportUrlClick={() => setImportModalOpen(true)}
+                            onStatsClick={() => setStatsModalOpen(true)}
+                        />
+                        <Button
+                            variant="contained"
+                            startIcon={<CloudUploadIcon />}
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 3, py: 1 }}
+                        >
+                            {uploading ? `Uploading ${uploadProgress}%...` : 'Upload Media'}
+                        </Button>
+                    </Box>
+
+                    {selectedFiles.length > 0 && (
+                        <SelectionBar
+                            selectedCount={selectedFiles.length}
+                            onClearSelection={() => setSelectedFiles([])}
+                            onDeleteSelected={handleBulkDelete}
+                        />
+                    )}
+
+                    {loading ? (
+                        <MediaGridSkeleton count={8} />
+                    ) : viewMode === 'list' ? (
+                        <MediaFileList
+                            files={filteredFiles}
+                            loading={loading}
                             selectedFiles={selectedFiles}
-                            onToggleSelection={(name) => setSelectedFiles(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name])}
-                            onSelectAll={handleSelectAll}
-                            onDelete={(file) => { setDeleteFile(file); setDeleteDialogOpen(true); }}
-                            onCopy={(url) => { navigator.clipboard.writeText(url); toast.success('Link copied!'); }}
+                            onToggleSelection={toggleFileSelection}
+                            onDelete={handleDelete}
                             onPreview={setPreviewFile}
                             onSelect={onSelect}
-                            formatSize={formatSize}
-                        />}
+                        />
+                    ) : (
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 2 }}>
+                            {filteredFiles.map(file => (
+                                <MediaCard
+                                    key={file._id || file.id || file.name}
+                                    file={file}
+                                    isSelected={selectedFiles.includes(file.name)}
+                                    onToggleSelection={() => toggleFileSelection(file.name)}
+                                    onDelete={() => handleDelete(file.name)}
+                                    onCopy={() => { navigator.clipboard.writeText(file.url); toast.success('URL Copied!'); }}
+                                    onPreview={() => setPreviewFile(file)}
+                                    onSelect={onSelect}
+                                />
+                            ))}
+                        </Box>
+                    )}
                 </Box>
-
-                <MediaPreviewModal 
-                    previewFile={previewFile} 
-                    setPreviewFile={setPreviewFile} 
-                    formatSize={formatSize}
-                    onDelete={(file) => { setDeleteFile(file); setDeleteDialogOpen(true); }}
-                />
             </Box>
 
-            <SelectionBar 
-                selectedCount={selectedFiles.length} 
-                onClear={() => setSelectedFiles([])}
-                onDelete={handleBulkDelete}
-                onDownload={() => toast.info('Multi-download coming soon')}
+            <MediaPreviewModal
+                file={previewFile}
+                onClose={() => setPreviewFile(null)}
+                onDelete={(name) => { handleDelete(name); setPreviewFile(null); }}
             />
 
-            <MediaModals 
-                statsModalOpen={statsModalOpen} setStatsModalOpen={setStatsModalOpen} storageStats={storageStats}
-                deleteDialogOpen={deleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} deleting={deleting} confirmDelete={handleDelete} deleteFile={deleteFile}
-                urlImportOpen={urlImportOpen} setUrlImportOpen={setUrlImportOpen} importingUrl={importingUrl} importForm={importForm} setImportForm={setImportForm}
-                handleUrlImport={async () => {
-                    setImportingUrl(true);
-                    await api.post('/upload/import-url', importForm);
-                    setUrlImportOpen(false); fetchFiles(); setImportingUrl(false);
-                }}
+            <MediaModals
+                importOpen={importModalOpen}
+                onImportClose={() => setImportModalOpen(false)}
+                statsOpen={statsModalOpen}
+                onStatsClose={() => setStatsModalOpen(false)}
+                files={files}
+                onImportSuccess={fetchFiles}
             />
         </Box>
     );

@@ -1,47 +1,51 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Box, Typography, Button, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, IconButton,
-    Chip, Tooltip, CircularProgress, Stack
+    Box, Typography, IconButton, Stack, Chip, Avatar
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import QuizIcon from '@mui/icons-material/Quiz';
-import VideoCallIcon from '@mui/icons-material/VideoCall';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import { format } from 'date-fns';
+import FolderIcon from '@mui/icons-material/Folder';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import LaunchIcon from '@mui/icons-material/Launch';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import FreeMaterialFormModal from '../../components/FreeMaterial/FreeMaterialFormModal';
+import { format } from 'date-fns';
 
 const FreeMaterialList = () => {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(true);
     const [openModal, setOpenModal] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
 
-    const fetchMaterials = async () => {
+    const fetchMaterials = useCallback(async () => {
         setLoading(true);
         try {
             const { data } = await api.get('/free-materials/admin');
-            setMaterials(data.data || []);
+            const list = data.data || data || [];
+            setMaterials(Array.isArray(list) ? list : []);
         } catch (error) {
+            console.error('Failed to load free materials:', error);
             toast.error('Failed to load free materials');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchMaterials();
-    }, []);
+    }, [fetchMaterials]);
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this material?')) return;
+        if (!window.confirm('Delete this free study material?')) return;
         try {
             await api.delete(`/free-materials/${id}`);
             toast.success('Material deleted successfully');
@@ -51,155 +55,161 @@ const FreeMaterialList = () => {
         }
     };
 
-    const getTypeIcon = (type) => {
-        switch (type) {
-            case 'pdf': return <PictureAsPdfIcon fontSize="small" color="error" />;
-            case 'video': return <VideoLibraryIcon fontSize="small" color="primary" />;
-            case 'test': return <QuizIcon fontSize="small" color="success" />;
-            case 'zoom': return <VideoCallIcon fontSize="small" color="secondary" />;
-            case 'assignment': return <AssignmentIcon fontSize="small" color="warning" />;
-            default: return null;
-        }
-    };
-
     const handleViewResource = (material) => {
-        const url = material.pdfUrl || material.videoUrl || material.zipUrl;
+        const url = material.url;
         if (url) {
             window.open(url, '_blank');
-        } else if (material.type === 'test' && material.exam) {
-            toast.info('Test material: Check in Exams section');
-        } else if (material.type === 'zoom' && material.meeting) {
-            toast.info('Zoom meeting: Check in Live Classes section');
-        } else if (material.type === 'assignment' && material.assignment) {
-            toast.info('Assignment material: Check in Assignments section');
         } else {
-            toast.warning('No URL found for this material');
+            toast.info('Resource details view');
         }
     };
 
+    const filteredMaterials = useMemo(() => {
+        return materials.filter(m => {
+            const title = (m.title || '').toLowerCase();
+            const category = (m.category || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
+
+            const matchesSearch = title.includes(term) || category.includes(term);
+            if (!matchesSearch) return false;
+
+            if (typeFilter !== 'all' && (m.type || 'pdf') !== typeFilter) return false;
+            return true;
+        });
+    }, [materials, searchTerm, typeFilter]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Free Materials', value: materials.length, icon: <FolderIcon />, color: 'primary' },
+        { title: 'PDF Notes', value: materials.filter(m => m.type === 'pdf').length, icon: <PictureAsPdfIcon />, color: 'error' },
+        { title: 'Video Lessons', value: materials.filter(m => m.type === 'video').length, icon: <VideoLibraryIcon />, color: 'info' },
+        { title: 'Free Tests', value: materials.filter(m => m.type === 'test').length, icon: <QuizIcon />, color: 'success' }
+    ], [materials]);
+
+    const filters = useMemo(() => [
+        {
+            value: typeFilter,
+            onChange: setTypeFilter,
+            minWidth: 170,
+            options: [
+                { value: 'all', label: 'All Types' },
+                { value: 'pdf', label: 'PDF Documents' },
+                { value: 'video', label: 'Video Lessons' },
+                { value: 'test', label: 'Mock Tests' }
+            ]
+        }
+    ], [typeFilter]);
+
+    const handleAddMaterial = () => {
+        setSelectedMaterial(null);
+        setOpenModal(true);
+    };
+
+    const columns = useMemo(() => [
+        {
+            field: 'title',
+            headerName: 'MATERIAL TITLE',
+            flex: 2,
+            minWidth: 240,
+            cellRenderer: (params) => {
+                const type = params.data.type || 'pdf';
+                const IconComp = type === 'pdf' ? PictureAsPdfIcon : type === 'video' ? VideoLibraryIcon : QuizIcon;
+                return (
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: type === 'pdf' ? 'error.main' : type === 'video' ? 'info.main' : 'success.main', fontSize: 13 }}>
+                            <IconComp fontSize="small" />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                                {params.data.title || 'Study Resource'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                                {params.data.category || 'General'}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                );
+            }
+        },
+        {
+            field: 'type',
+            headerName: 'TYPE',
+            width: 130,
+            cellRenderer: (params) => (
+                <Chip
+                    label={(params.data.type || 'PDF').toUpperCase()}
+                    color={params.data.type === 'pdf' ? 'error' : params.data.type === 'video' ? 'info' : 'success'}
+                    size="small"
+                    sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                />
+            )
+        },
+        {
+            field: 'createdAt',
+            headerName: 'DATE ADDED',
+            width: 160,
+            valueGetter: (params) => {
+                const d = params.data.createdAt;
+                return d ? format(new Date(d), 'MMM dd, yyyy') : 'N/A';
+            }
+        },
+        {
+            field: 'actions',
+            headerName: 'ACTIONS',
+            width: 140,
+            cellRenderer: (params) => {
+                const id = params.data._id || params.data.id;
+                return (
+                    <Stack direction="row" spacing={1}>
+                        <IconButton size="small" onClick={() => handleViewResource(params.data)} sx={{ color: 'var(--color-vc-link)' }} title="Open Resource">
+                            <LaunchIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => { setSelectedMaterial(params.data); setOpenModal(true); }} sx={{ color: 'var(--color-vc-mute)' }} title="Edit">
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => handleDelete(id)} sx={{ color: 'var(--color-vc-error)' }} title="Delete">
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                );
+            }
+        }
+    ], []);
+
     return (
-        <Box>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                    <Typography variant="h4" fontWeight={900}>
-                        Free Materials
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Manage free resources for students
-                    </Typography>
-                </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => {
-                        setSelectedMaterial(null);
-                        setOpenModal(true);
-                    }}
-                    sx={{ borderRadius: 2, px: 3, py: 1 }}
-                >
-                    Add Material
-                </Button>
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Free Study Materials & Notes
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Manage downloadable PDF notes, video lectures, and sample mock tests for students
+                </Typography>
             </Box>
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: 'action.hover' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 700 }}>Title</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                            <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                                    <CircularProgress size={30} />
-                                </TableCell>
-                            </TableRow>
-                        ) : materials.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                                    <Typography color="text.secondary">No free materials found</Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            materials.map((m) => (
-                                <TableRow key={m._id} hover>
-                                    <TableCell>
-                                        <Typography variant="body2" fontWeight={700}>
-                                            {m.title}
-                                        </Typography>
-                                        {m.subject && (
-                                            <Typography variant="caption" color="text.secondary">
-                                                Sub: {m.subject}
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Stack direction="row" spacing={1} alignItems="center">
-                                            {getTypeIcon(m.type)}
-                                            <Typography variant="caption" sx={{ textTransform: 'uppercase', fontWeight: 700 }}>
-                                                {m.type}
-                                            </Typography>
-                                        </Stack>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2">
-                                            {m.category?.name || 'Unknown'}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={m.isActive ? 'Active' : 'Inactive'}
-                                            color={m.isActive ? 'success' : 'error'}
-                                            size="small"
-                                            sx={{ fontWeight: 600 }}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="caption">
-                                            {format(new Date(m.createdAt), 'dd MMM yyyy')}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <Tooltip title="View/Check">
-                                            <IconButton size="small" color="primary" onClick={() => handleViewResource(m)}>
-                                                <VisibilityIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Edit">
-                                            <IconButton size="small" color="info" onClick={() => {
-                                                setSelectedMaterial(m);
-                                                setOpenModal(true);
-                                            }}>
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Delete">
-                                            <IconButton size="small" color="error" onClick={() => handleDelete(m._id)}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <GenericMetrics items={metricsItems} />
+
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search material title or category..."
+                filters={filters}
+                totalCount={filteredMaterials.length}
+                actionButtonText="Add Free Material"
+                actionButtonIcon={<AddIcon fontSize="small" />}
+                onActionClick={handleAddMaterial}
+            />
+
+            <TableUI
+                rowData={filteredMaterials}
+                columnDefs={columns}
+                loading={loading}
+            />
 
             <FreeMaterialFormModal
                 open={openModal}
                 onClose={() => setOpenModal(false)}
                 material={selectedMaterial}
-                onSuccess={() => {
-                    fetchMaterials();
-                    setOpenModal(false);
-                }}
+                onSuccess={fetchMaterials}
             />
         </Box>
     );

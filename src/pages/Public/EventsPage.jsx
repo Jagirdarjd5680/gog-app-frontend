@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { 
     Box, Typography, Grid, Card, CardContent, CardMedia, 
     TextField, InputAdornment, Chip, Container, Stack,
-    Skeleton, Button
+    Skeleton, Button, IconButton, Tooltip, Dialog, DialogTitle,
+    DialogContent, List, ListItem, ListItemAvatar, Avatar, ListItemText, CircularProgress
 } from '@mui/material';
 import { 
     Search as SearchIcon, 
     CalendarToday as CalendarIcon, 
     LocationOn as LocationIcon,
-    FilterList as FilterIcon
+    FilterList as FilterIcon,
+    Group as GroupIcon,
+    Close as CloseIcon
 } from '@mui/icons-material';
 import api, { fixUrl } from '../../utils/api';
 import { format } from 'date-fns';
@@ -18,6 +21,12 @@ const EventsPage = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
+
+    // Enrolled Modal States
+    const [enrolledModalOpen, setEnrolledModalOpen] = useState(false);
+    const [enrolledStudents, setEnrolledStudents] = useState([]);
+    const [enrolledLoading, setEnrolledLoading] = useState(false);
+    const [selectedEventTitle, setSelectedEventTitle] = useState('');
 
     useEffect(() => {
         fetchEvents();
@@ -34,6 +43,23 @@ const EventsPage = () => {
             
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleViewEnrolled = async (event) => {
+        setSelectedEventTitle(event.title);
+        setEnrolledModalOpen(true);
+        setEnrolledLoading(true);
+        setEnrolledStudents([]);
+        try {
+            const res = await api.get(`/events/${event._id}/enrolled`);
+            if (res.data.success) {
+                setEnrolledStudents(res.data.data.map(b => b.student).filter(Boolean));
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setEnrolledLoading(false);
         }
     };
 
@@ -172,14 +198,26 @@ const EventsPage = () => {
                                                 </Typography>
                                             </Box>
                                         </Stack>
-                                        <Button 
-                                            variant="outlined" 
-                                            fullWidth 
-                                            sx={{ borderRadius: 2, fontWeight: 700 }}
-                                            onClick={() => window.location.href = `/events/${event._id}`}
-                                        >
-                                            View Details
-                                        </Button>
+                                        
+                                        <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                                            <Button 
+                                                variant="outlined" 
+                                                fullWidth 
+                                                sx={{ borderRadius: 2, fontWeight: 700 }}
+                                                onClick={() => window.location.href = `/events/${event._id}`}
+                                            >
+                                                View Details
+                                            </Button>
+                                            <Tooltip title="View Enrolled Students">
+                                                <IconButton 
+                                                    color="primary" 
+                                                    sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
+                                                    onClick={() => handleViewEnrolled(event)}
+                                                >
+                                                    <GroupIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
                                     </CardContent>
                                 </Card>
                             </Grid>
@@ -187,8 +225,58 @@ const EventsPage = () => {
                     })
                 )}
             </Grid>
+
+            {/* Enrolled Students Modal */}
+            <Dialog 
+                open={enrolledModalOpen} 
+                onClose={() => setEnrolledModalOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight={700}>
+                        Enrolled Students
+                    </Typography>
+                    <IconButton onClick={() => setEnrolledModalOpen(false)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        {selectedEventTitle}
+                    </Typography>
+                    
+                    {enrolledLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : enrolledStudents.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                            <Typography color="text.secondary">No students enrolled yet.</Typography>
+                        </Box>
+                    ) : (
+                        <List>
+                            {enrolledStudents.map((student, idx) => (
+                                <ListItem key={idx} divider={idx < enrolledStudents.length - 1}>
+                                    <ListItemAvatar>
+                                        <Avatar src={fixUrl(student.profileImage)}>
+                                            {student.name?.charAt(0) || 'U'}
+                                        </Avatar>
+                                    </ListItemAvatar>
+                                    <ListItemText 
+                                        primary={student.name || 'Unknown User'} 
+                                        secondary={student.email}
+                                        primaryTypographyProps={{ fontWeight: 600 }}
+                                    />
+                                </ListItem>
+                            ))}
+                        </List>
+                    )}
+                </DialogContent>
+            </Dialog>
         </Container>
     );
 };
 
 export default EventsPage;
+

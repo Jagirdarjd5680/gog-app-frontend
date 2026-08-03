@@ -112,8 +112,9 @@ const SettingsLayout = () => {
         setIsSaving(true);
         try {
             const response = await api.put('/settings', data);
-            setSettings(response.data);
-            updateSettings(response.data);
+            const newSettings = response.data.data || response.data;
+            setSettings(newSettings);
+            updateSettings(newSettings);
             toast.success('Settings updated successfully');
         } catch (error) {
             toast.error('Failed to save settings');
@@ -157,19 +158,20 @@ const SettingsLayout = () => {
     };
 
     return (
-        <Box sx={{ p: 1, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h4" fontWeight={800} sx={{ mb: 4, ml: 1 }}>
+        <Box sx={{ p: 2, minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h5" fontWeight={800} sx={{ mb: 4, ml: 1, letterSpacing: '-0.5px' }}>
                 System Settings
             </Typography>
-
+ 
             <Grid container spacing={3}>
                 {/* Sidebar */}
                 <Grid item xs={12} md={3}>
                     <Paper sx={{
-                        borderRadius: 3,
+                        borderRadius: '8px',
                         overflow: 'hidden',
-                        bgcolor: isDark ? '#1e1e1e' : '#fff',
-                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                        bgcolor: 'var(--color-vc-canvas)',
+                        border: '1px solid var(--color-vc-hairline)',
+                        boxShadow: 'none',
                         position: 'sticky',
                         top: 24,
                     }}>
@@ -184,15 +186,20 @@ const SettingsLayout = () => {
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
-                                            <SearchIcon fontSize="small" />
+                                            <SearchIcon fontSize="small" sx={{ color: 'var(--color-vc-mute)' }} />
                                         </InputAdornment>
                                     ),
-                                    sx: { borderRadius: 2 }
+                                    sx: { 
+                                        borderRadius: '6px',
+                                        bgcolor: 'var(--color-vc-canvas-soft)',
+                                        '& fieldset': { border: 'none' },
+                                        height: 36
+                                    }
                                 }}
                             />
                         </Box>
-                        <Divider />
-                        <List sx={{ p: 0 }}>
+                        <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
+                        <List sx={{ p: 1 }}>
                             {filteredMenu.map((item) => (
                                 <ListItem
                                     button
@@ -200,28 +207,42 @@ const SettingsLayout = () => {
                                     selected={activeTab === item.id}
                                     onClick={() => setActiveTab(item.id)}
                                     sx={{
-                                        py: 1.5,
+                                        py: 1,
+                                        px: 2,
+                                        my: 0.5,
+                                        borderRadius: '6px',
+                                        color: 'var(--color-vc-body)',
+                                        transition: 'all 0.15s ease',
                                         '&.Mui-selected': {
-                                            bgcolor: 'primary.main',
-                                            color: '#fff',
-                                            '& .MuiListItemIcon-root': { color: '#fff' },
-                                            '&:hover': { bgcolor: 'primary.dark' }
+                                            bgcolor: 'var(--color-vc-primary) !important',
+                                            color: 'var(--color-vc-on-primary)',
+                                            '& .MuiListItemIcon-root': { color: 'var(--color-vc-on-primary)' },
+                                            '&:hover': { bgcolor: 'var(--color-vc-primary)' }
+                                        },
+                                        '&:hover': {
+                                            bgcolor: 'var(--color-vc-canvas-soft-2)',
+                                            color: 'var(--color-vc-ink)',
+                                            '& .MuiListItemIcon-root': { color: 'var(--color-vc-ink)' }
                                         }
                                     }}
                                 >
-                                    <ListItemIcon sx={{ minWidth: 40, color: activeTab === item.id ? '#fff' : 'text.secondary' }}>
+                                    <ListItemIcon sx={{ minWidth: 32, color: 'inherit', '& .MuiSvgIcon-root': { fontSize: 18 } }}>
                                         {item.icon}
                                     </ListItemIcon>
                                     <ListItemText
                                         primary={item.label}
-                                        primaryTypographyProps={{ fontWeight: activeTab === item.id ? 700 : 500 }}
+                                        primaryTypographyProps={{ 
+                                            fontWeight: activeTab === item.id ? 600 : 500,
+                                            fontSize: '13px',
+                                            fontFamily: 'inherit'
+                                        }}
                                     />
                                 </ListItem>
                             ))}
                         </List>
                     </Paper>
                 </Grid>
-
+ 
                 {/* Content */}
                 <Grid item xs={12} md={9}>
                     <Fade in key={activeTab}>

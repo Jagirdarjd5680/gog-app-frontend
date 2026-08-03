@@ -223,8 +223,8 @@ const PaymentSettings = ({ settings, onSave, isSaving }) => {
                 setTestDialogOpen(false);
             }
         } catch (error) {
-            toast.error('Payment wizard failed to open');
-            
+            console.error('Test payment failed:', error);
+            toast.error(error.response?.data?.message || error.message || 'Payment wizard failed to open');
         } finally {
             setTestLoading(false);
         }

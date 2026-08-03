@@ -1,34 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Box,
-    Typography,
-    Grid,
-    Button,
-    Paper,
-    Avatar,
-    Checkbox,
-    IconButton,
-    InputAdornment,
-    TextField,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Alert,
-    CircularProgress,
-    Tooltip,
-    Divider,
-    Card,
-    CardActionArea,
-    CardContent
+    Box, Typography, IconButton, Stack, Avatar, Checkbox, Card, CardContent
 } from '@mui/material';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import ChatIcon from '@mui/icons-material/Chat';
+import PermMediaIcon from '@mui/icons-material/PermMedia';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GetAppIcon from '@mui/icons-material/GetApp';
-import SearchIcon from '@mui/icons-material/Search';
-import PersonIcon from '@mui/icons-material/Person';
-import FolderZipIcon from '@mui/icons-material/FolderZip';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import { format } from 'date-fns';
 
 const ChatMediaLibrary = () => {
     const [users, setUsers] = useState([]);
@@ -38,44 +22,40 @@ const ChatMediaLibrary = () => {
     const [mediaLoading, setMediaLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedMedia, setSelectedMedia] = useState([]);
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    useEffect(() => {
-        fetchMediaUsers();
-    }, []);
-
-    const fetchMediaUsers = async () => {
+    const fetchMediaUsers = useCallback(async () => {
+        setLoading(true);
         try {
-            setLoading(true);
             const res = await api.get('/chat/media-users');
-            if (res.data.success) {
-                setUsers(res.data.data);
+            if (res.data?.success) {
+                setUsers(res.data.data || []);
             }
         } catch (error) {
-            toast.error('Failed to load chat users');
+            console.error('Failed to load chat users:', error);
+            toast.error('Failed to load chat media users');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchUserMedia = async (userId) => {
+    useEffect(() => {
+        fetchMediaUsers();
+    }, [fetchMediaUsers]);
+
+    const fetchUserMedia = async (user) => {
+        setSelectedUser(user);
+        setSelectedMedia([]);
+        setMediaLoading(true);
         try {
-            setMediaLoading(true);
-            setSelectedMedia([]);
-            const res = await api.get(`/chat/media-user/${userId}`);
-            if (res.data.success) {
-                setMedia(res.data.data);
+            const res = await api.get(`/chat/media-user/${user._id || user.id}`);
+            if (res.data?.success) {
+                setMedia(res.data.data || []);
             }
         } catch (error) {
-            toast.error('Failed to load user media');
+            toast.error('Failed to load user chat media');
         } finally {
             setMediaLoading(false);
         }
-    };
-
-    const handleUserClick = (user) => {
-        setSelectedUser(user);
-        fetchUserMedia(user._id);
     };
 
     const toggleMediaSelection = (id) => {
@@ -85,173 +65,147 @@ const ChatMediaLibrary = () => {
     };
 
     const handleBulkDelete = async () => {
+        if (!selectedMedia.length || !window.confirm(`Delete ${selectedMedia.length} chat media items?`)) return;
         try {
             const res = await api.post('/chat/media/bulk-delete', { messageIds: selectedMedia });
-            if (res.data.success) {
-                toast.success(res.data.message);
-                setMedia(media.filter(m => !selectedMedia.includes(m._id)));
+            if (res.data?.success) {
+                toast.success('Media items deleted');
+                setMedia(prev => prev.filter(m => !selectedMedia.includes(m._id)));
                 setSelectedMedia([]);
-                setDeleteDialogOpen(false);
-                fetchMediaUsers(); // Refresh counts
+                fetchMediaUsers();
             }
         } catch (error) {
             toast.error('Failed to delete media');
         }
     };
 
-    const handleExportZip = async () => {
-        if (!selectedUser) return;
-        toast.info('Preparing ZIP file...');
-        window.open(`${api.defaults.baseURL}/chat/media/export/${selectedUser._id}`, '_blank');
-    };
+    const filteredUsers = useMemo(() => {
+        return users.filter(u => {
+            const name = (u.name || '').toLowerCase();
+            const email = (u.email || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
+            return name.includes(term) || email.includes(term);
+        });
+    }, [users, searchTerm]);
 
-    const filteredUsers = users.filter(u => 
-        u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const metricsItems = useMemo(() => [
+        { title: 'Chat Users', value: users.length, icon: <ChatIcon />, color: 'primary' },
+        { title: 'Media Messages', value: media.length, icon: <PermMediaIcon />, color: 'info' }
+    ], [users, media]);
 
     return (
-        <Box sx={{ display: 'flex', height: '100%', gap: 3 }}>
-            {/* Left Sidebar: Users List */}
-            <Box sx={{ width: 320, borderRight: 1, borderColor: 'divider', overflowY: 'auto', pr: 2 }}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Search users..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    sx={{ mb: 2 }}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon fontSize="small" />
-                            </InputAdornment>
-                        ),
-                    }}
-                />
-                {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress size={30} /></Box>
-                ) : (
-                    <Grid container spacing={1}>
-                        {filteredUsers.map((u) => (
-                            <Grid item xs={12} key={u._id}>
-                                <Card 
-                                    elevation={selectedUser?._id === u._id ? 3 : 0}
-                                    sx={{ 
-                                        borderRadius: 2, 
-                                        border: 1, 
-                                        borderColor: selectedUser?._id === u._id ? 'primary.main' : 'divider',
-                                        bgcolor: selectedUser?._id === u._id ? 'primary.50' : 'background.paper'
-                                    }}
-                                >
-                                    <CardActionArea onClick={() => handleUserClick(u)}>
-                                        <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                            <Avatar src={u.avatar} sx={{ width: 40, height: 40 }}>
-                                                <PersonIcon />
-                                            </Avatar>
-                                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                                                <Typography variant="body2" fontWeight={700} noWrap>
-                                                    {u.name}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary" noWrap display="block">
-                                                    {u.mediaCount} files
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                    </CardActionArea>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
-                )}
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Chat Media & Attachment Library
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Review, download, and manage media attachments shared across 1-on-1 student chat threads
+                </Typography>
             </Box>
 
-            {/* Right Side: Media Grid */}
-            <Box sx={{ flexGrow: 1, overflowY: 'auto' }}>
-                {!selectedUser ? (
-                    <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
-                        <Typography variant="h6">Select a user to view chat media</Typography>
-                    </Box>
-                ) : (
-                    <Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                            <Box>
-                                <Typography variant="h5" fontWeight={800}>{selectedUser.name}'s Chat Media</Typography>
-                                <Typography variant="body2" color="text.secondary">{media.length} items found</Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button 
-                                    variant="outlined" 
-                                    startIcon={<FolderZipIcon />}
-                                    onClick={handleExportZip}
-                                    disabled={media.length === 0}
-                                >
-                                    Export ZIP
-                                </Button>
-                                {selectedMedia.length > 0 && (
-                                    <Button 
-                                        variant="contained" 
-                                        color="error"
-                                        startIcon={<DeleteIcon />}
-                                        onClick={() => setDeleteDialogOpen(true)}
+            <GenericMetrics items={metricsItems} />
+
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search chat participant name or email..."
+                totalCount={filteredUsers.length}
+                actionButtonText={selectedMedia.length > 0 ? `Delete Selected (${selectedMedia.length})` : undefined}
+                actionButtonIcon={<DeleteIcon fontSize="small" />}
+                onActionClick={handleBulkDelete}
+            />
+
+            <Box sx={{ display: 'flex', gap: 3, mt: 2 }}>
+                {/* User List Sidebar */}
+                <Box sx={{ width: 280, minWidth: 280, borderRadius: '16px', bgcolor: 'var(--color-vc-canvas-soft)', border: '1px solid var(--color-vc-hairline)', p: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.75rem' }}>
+                        CHAT PARTICIPANTS
+                    </Typography>
+                    {filteredUsers.map(u => {
+                        const isSel = selectedUser?._id === u._id;
+                        return (
+                            <Stack
+                                key={u._id}
+                                direction="row"
+                                spacing={1.5}
+                                alignItems="center"
+                                onClick={() => fetchUserMedia(u)}
+                                sx={{
+                                    p: 1.2,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    mb: 0.5,
+                                    bgcolor: isSel ? 'var(--color-vc-primary-light, rgba(99,102,241,0.1))' : 'transparent',
+                                    border: isSel ? '1px solid var(--color-vc-primary)' : '1px solid transparent',
+                                    '&:hover': { bgcolor: 'var(--color-vc-canvas)' }
+                                }}
+                            >
+                                <Avatar sx={{ width: 32, height: 32, fontSize: 13, bgcolor: 'primary.main' }}>
+                                    {(u.name || 'U').charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                    <Typography variant="body2" fontWeight={700} noWrap sx={{ color: 'var(--color-vc-ink)' }}>{u.name}</Typography>
+                                    <Typography variant="caption" noWrap sx={{ color: 'var(--color-vc-mute)' }}>{u.email}</Typography>
+                                </Box>
+                            </Stack>
+                        );
+                    })}
+                </Box>
+
+                {/* Media Attachment Grid */}
+                <Box sx={{ flexGrow: 1 }}>
+                    {!selectedUser ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
+                            Select a chat participant to view shared media attachments
+                        </Typography>
+                    ) : mediaLoading ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
+                            Loading attachments...
+                        </Typography>
+                    ) : media.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
+                            No media attachments shared by this user.
+                        </Typography>
+                    ) : (
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 2 }}>
+                            {media.map(item => {
+                                const isSel = selectedMedia.includes(item._id);
+                                return (
+                                    <Card
+                                        key={item._id}
+                                        sx={{
+                                            borderRadius: '12px',
+                                            bgcolor: 'var(--color-vc-canvas-soft)',
+                                            border: '1px solid var(--color-vc-hairline)',
+                                            p: 1.5,
+                                            position: 'relative'
+                                        }}
                                     >
-                                        Delete ({selectedMedia.length})
-                                    </Button>
-                                )}
-                            </Box>
-                        </Box>
-
-                        {mediaLoading ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
-                        ) : (
-                            <Grid container spacing={2}>
-                                {media.map((item) => (
-                                    <Grid item xs={6} sm={4} md={3} lg={2} key={item._id}>
-                                        <Box 
-                                            sx={{ 
-                                                position: 'relative', 
-                                                pt: '100%', 
-                                                borderRadius: 2, 
-                                                overflow: 'hidden',
-                                                border: 1,
-                                                borderColor: selectedMedia.includes(item._id) ? 'primary.main' : 'divider',
-                                                cursor: 'pointer'
-                                            }}
-                                            onClick={() => toggleMediaSelection(item._id)}
-                                        >
-                                            <Box 
-                                                component="img"
-                                                src={`${api.defaults.baseURL.replace('/api','')}${item.image}`}
-                                                sx={{ 
-                                                    position: 'absolute', 
-                                                    top: 0, left: 0, width: '100%', height: '100%', 
-                                                    objectFit: 'cover' 
-                                                }}
-                                            />
-                                            <Checkbox 
-                                                checked={selectedMedia.includes(item._id)}
-                                                sx={{ position: 'absolute', top: 5, left: 5, color: 'white', '&.Mui-checked': { color: 'primary.main' } }}
-                                            />
+                                        <Checkbox
+                                            checked={isSel}
+                                            onChange={() => toggleMediaSelection(item._id)}
+                                            icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                                            checkedIcon={<CheckBoxIcon fontSize="small" />}
+                                            sx={{ position: 'absolute', top: 4, left: 4, zIndex: 5, color: 'white' }}
+                                        />
+                                        <Box sx={{ height: 120, borderRadius: '8px', overflow: 'hidden', bgcolor: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                                            {item.fileUrl?.match(/\.(jpg|png|webp|gif)$/i) ? (
+                                                <Box component="img" src={item.fileUrl} alt="Attachment" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <PermMediaIcon color="primary" />
+                                            )}
                                         </Box>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        )}
-                    </Box>
-                )}
+                                        <Typography variant="caption" fontWeight={700} noWrap sx={{ color: 'var(--color-vc-ink)', display: 'block' }}>
+                                            {item.fileName || 'Attachment'}
+                                        </Typography>
+                                    </Card>
+                                );
+                            })}
+                        </Box>
+                    )}
+                </Box>
             </Box>
-
-            {/* Delete Dialog */}
-            <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-                <DialogTitle>Confirm Deletion</DialogTitle>
-                <DialogContent>
-                    <Typography>Are you sure you want to delete {selectedMedia.length} media items? This will remove them from the chat permanently.</Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" color="error" onClick={handleBulkDelete}>Delete</Button>
-                </DialogActions>
-            </Dialog>
         </Box>
     );
 };

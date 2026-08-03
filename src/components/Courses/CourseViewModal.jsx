@@ -41,23 +41,18 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import FolderZipIcon from '@mui/icons-material/FolderZip';
-import TimerIcon from '@mui/icons-material/Timer';
-import StarIcon from '@mui/icons-material/Star';
-import SyncIcon from '@mui/icons-material/Sync';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SearchIcon from '@mui/icons-material/Search';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SyncIcon from '@mui/icons-material/Sync';
+import AddIcon from '@mui/icons-material/Add';
 import VideoPreview from '../Common/VideoPreview';
 import { fixUrl } from '../../utils/api';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import ExamForm from '../Exams/ExamForm';
 import AssignmentFormModal from '../Assignments/AssignmentFormModal';
-import AddIcon from '@mui/icons-material/Add';
 
 const CourseViewModal = ({ open, onClose, course }) => {
     const [loading, setLoading] = useState(false);
@@ -76,12 +71,17 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
     const fetchFullCourseDetails = async () => {
         try {
-            const response = await api.get(`/courses/${course._id}`);
+            // /courses/:id is the public, platform-gated (Course.platformAccess) student
+            // endpoint — viewing course details here must bypass that, or a course locked
+            // to "app"/"web" only 403s the moment an admin opens this modal. This route also
+            // brings back real enrolledCount/examCount/assignmentCount/rating numbers instead
+            // of the always-zero Mongo-era fields (course.enrolledStudents, course.examCount, ...).
+            const response = await api.get(`/courses/manage/${course._id}`);
             if (response.data.success) {
                 setFullCourseData(response.data.data);
             }
         } catch (error) {
-            
+            toast.error('Failed to load course details');
         }
     };
 
@@ -115,7 +115,6 @@ const CourseViewModal = ({ open, onClose, course }) => {
             const lessonMatches = (mod.videos || []).some(v => v.title?.toLowerCase().includes(query));
             return modTitleMatches || lessonMatches;
         }).map(mod => {
-            // Further filter the lessons within matching modules
             if (mod.title?.toLowerCase().includes(query)) return mod;
             return {
                 ...mod,
@@ -174,11 +173,11 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
     const getResourceIcon = (type) => {
         switch (type) {
-            case 'video': return <PlayCircleOutlineIcon fontSize="small" color="primary" />;
-            case 'pdf': return <DescriptionIcon fontSize="small" color="secondary" />;
-            case 'audio': return <AudiotrackIcon fontSize="small" color="warning" />;
-            case 'zip': return <FolderZipIcon fontSize="small" color="error" />;
-            default: return <LayersIcon fontSize="small" color="action" />;
+            case 'video': return <PlayCircleOutlineIcon fontSize="small" sx={{ color: 'var(--color-vc-link)' }} />;
+            case 'pdf': return <DescriptionIcon fontSize="small" sx={{ color: 'var(--color-vc-warning-deep)' }} />;
+            case 'audio': return <AudiotrackIcon fontSize="small" sx={{ color: 'var(--color-vc-violet-deep)' }} />;
+            case 'zip': return <FolderZipIcon fontSize="small" sx={{ color: 'var(--color-vc-error-deep)' }} />;
+            default: return <LayersIcon fontSize="small" sx={{ color: 'var(--color-vc-mute)' }} />;
         }
     };
 
@@ -190,65 +189,133 @@ const CourseViewModal = ({ open, onClose, course }) => {
             maxWidth="xl"
             PaperProps={{ 
                 sx: { 
-                    borderRadius: 3,
-                    bgcolor: '#ffffff',
+                    borderRadius: '8px',
+                    bgcolor: 'var(--color-vc-canvas)',
+                    color: 'var(--color-vc-ink)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: '0px 24px 32px -8px rgba(0,0,0,0.1)',
                     minHeight: '80vh'
                 } 
             }}
         >
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, pt: 2, px: 3 }}>
-                <Typography variant="subtitle1" component="span" fontWeight={900} color="primary">
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1.5, pt: 2, px: 3 }}>
+                <Typography variant="subtitle2" component="span" fontWeight={600} sx={{ color: 'var(--color-vc-link)', fontFamily: '"JetBrains Mono", monospace', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '0.08em' }}>
                     Course Portfolio Manager
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Button 
-                        startIcon={<SyncIcon />} 
+                        startIcon={<SyncIcon sx={{ fontSize: 16 }} />} 
                         variant="outlined" 
                         size="small" 
                         onClick={handleSyncAllEnrollments} 
                         disabled={loading} 
                         sx={{ 
-                            borderRadius: '8px', 
+                            borderRadius: '6px', 
                             textTransform: 'none', 
-                            fontWeight: 700
+                            fontWeight: 500,
+                            fontFamily: 'inherit',
+                            fontSize: '13px',
+                            height: 32,
+                            borderColor: 'var(--color-vc-hairline)',
+                            color: 'var(--color-vc-ink)',
+                            bgcolor: 'var(--color-vc-canvas)',
+                            '&:hover': {
+                                borderColor: 'var(--color-vc-hairline-strong)',
+                                bgcolor: 'var(--color-vc-canvas-soft)'
+                            }
                         }}
                     >
                         Sync Access
                     </Button>
-                    <IconButton onClick={onClose} size="small">
-                        <CloseIcon />
+                    <IconButton 
+                        onClick={onClose} 
+                        size="small" 
+                        sx={{ 
+                            color: 'var(--color-vc-mute)',
+                            '&:hover': {
+                                color: 'var(--color-vc-ink)',
+                                bgcolor: 'var(--color-vc-canvas-soft)'
+                            }
+                        }}
+                    >
+                        <CloseIcon sx={{ fontSize: 18 }} />
                     </IconButton>
                 </Box>
             </DialogTitle>
-            <Divider />
+            <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
 
-            <DialogContent sx={{ p: 2 }}>
-                <Grid container spacing={2}>
+            <DialogContent sx={{ p: 3, bgcolor: 'var(--color-vc-canvas-soft)' }}>
+                <Grid container spacing={3}>
                     {/* Left Column: Info & Curriculum */}
                     <Grid item xs={12} md={8}>
-                        <Box sx={{ mb: 2 }}>
-                            <Typography variant="h5" fontWeight={900} gutterBottom>{course.title}</Typography>
-                            <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-                                <Chip label={course.category?.name || 'Uncategorized'} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
-                                <Chip label={course.level} color="primary" size="small" sx={{ textTransform: 'capitalize', fontWeight: 600 }} />
-                                <Chip label={course.price === 0 ? 'FREE' : `₹${course.price}`} color={course.price === 0 ? "success" : "default"} size="small" sx={{ fontWeight: 900 }} />
-                                <Chip label={`${stats.videos} Videos`} size="small" color="info" variant="outlined" sx={{ fontWeight: 600 }} />
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="h5" sx={{ fontWeight: 600, color: 'var(--color-vc-ink)', letterSpacing: '-0.02em', mb: 1, fontFamily: 'inherit' }}>
+                                {course.title}
+                            </Typography>
+                            
+                            <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
+                                <Chip 
+                                    label={course.category?.name || course.category || 'Uncategorized'} 
+                                    size="small" 
+                                    sx={{ 
+                                        fontWeight: 500, 
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        bgcolor: 'var(--color-vc-canvas)',
+                                        color: 'var(--color-vc-body)',
+                                        border: '1px solid var(--color-vc-hairline)'
+                                    }} 
+                                />
+                                <Chip 
+                                    label={course.level} 
+                                    size="small" 
+                                    sx={{ 
+                                        textTransform: 'capitalize', 
+                                        fontWeight: 600,
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        bgcolor: 'var(--color-vc-link-bg-soft)',
+                                        color: 'var(--color-vc-link-deep)'
+                                    }} 
+                                />
+                                <Chip 
+                                    label={course.price === 0 ? 'FREE' : `₹${course.price}`} 
+                                    size="small" 
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        bgcolor: course.price === 0 ? 'rgba(41, 188, 155, 0.15)' : 'var(--color-vc-canvas-soft-2)',
+                                        color: course.price === 0 ? 'var(--color-vc-cyan-deep)' : 'var(--color-vc-ink)'
+                                    }} 
+                                />
+                                <Chip 
+                                    label={`${stats.videos} Videos`} 
+                                    size="small" 
+                                    sx={{ 
+                                        fontWeight: 500,
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        bgcolor: 'var(--color-vc-violet-soft)',
+                                        color: 'var(--color-vc-violet-deep)'
+                                    }} 
+                                />
                             </Box>
 
-                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, mb: 2 }}>
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none', mb: 3 }}>
                                 <Table size="small">
                                     <TableBody>
-                                        <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)', width: '25%' }}>Students Enrolled</TableCell>
-                                            <TableCell>{course.enrolledStudents?.length || 0}</TableCell>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)', width: '25%' }}>Rating</TableCell>
-                                            <TableCell>{course.rating || 0}</TableCell>
+                                        <TableRow sx={{ borderBottom: '1px solid var(--color-vc-hairline)' }}>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', width: '25%', fontFamily: 'inherit', fontSize: '13px' }}>Students Enrolled</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>{fullCourseData?.enrolledCount ?? '—'}</TableCell>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', width: '25%', fontFamily: 'inherit', fontSize: '13px' }}>Rating</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>{fullCourseData ? `${(fullCourseData.rating || 0).toFixed(1)} (${fullCourseData.reviewCount || 0})` : '—'}</TableCell>
                                         </TableRow>
                                         <TableRow>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Course Validity</TableCell>
-                                            <TableCell>{course.durationValue === 0 ? 'Unlimited' : `${course.durationValue} ${course.durationUnit}`}</TableCell>
-                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'rgba(0,0,0,0.02)' }}>Exams & Assignments</TableCell>
-                                            <TableCell>{(course.examCount || 0) + (course.assignmentCount || 0)}</TableCell>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>Course Validity</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>{course.durationValue === 0 ? 'Unlimited' : `${course.durationValue} ${course.durationUnit}`}</TableCell>
+                                            <TableCell component="th" sx={{ fontWeight: 600, bgcolor: 'var(--color-vc-canvas-soft)', borderBottom: 'none', color: 'var(--color-vc-ink)', fontFamily: 'inherit', fontSize: '13px' }}>Exams & Assignments</TableCell>
+                                            <TableCell sx={{ borderBottom: 'none', color: 'var(--color-vc-body)', fontFamily: 'inherit', fontSize: '13px' }}>{fullCourseData ? (fullCourseData.examCount || 0) + (fullCourseData.assignmentCount || 0) : '—'}</TableCell>
                                         </TableRow>
                                     </TableBody>
                                 </Table>
@@ -256,32 +323,51 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
                             <Box 
                                 sx={{ 
-                                    color: 'text.secondary',
-                                    fontSize: '0.85rem',
-                                    lineHeight: 1.5,
-                                    mb: 2,
+                                    color: 'var(--color-vc-body)',
+                                    fontSize: '14px',
+                                    lineHeight: 1.6,
+                                    mb: 3,
                                     width: '100%',
                                     overflowWrap: 'break-word',
-                                    '& p': { mb: 1 },
-                                    '& ul, & ol': { mb: 1, pl: 3 },
+                                    fontFamily: 'inherit',
+                                    '& p': { mb: 1.5 },
+                                    '& ul, & ol': { mb: 1.5, pl: 3 },
                                     '& li': { mb: 0.5 },
-                                    '& strong': { fontWeight: 700, color: 'text.primary' },
-                                    '& hr': { my: 1, border: 0, borderTop: '1px solid #eee' },
-                                    '& img': { maxWidth: '100%', height: 'auto', borderRadius: 1 }
+                                    '& strong': { fontWeight: 600, color: 'var(--color-vc-ink)' },
+                                    '& hr': { my: 2, border: 0, borderTop: '1px solid var(--color-vc-hairline)' },
+                                    '& img': { maxWidth: '100%', height: 'auto', borderRadius: '4px' }
                                 }}
                                 dangerouslySetInnerHTML={{ __html: course.description || 'No description provided.' }}
                             />
                         </Box>
 
-                        <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)}>
-                                    <Tab label="Curriculum" sx={{ textTransform: 'none', fontWeight: 600 }} />
-                                    <Tab label={`Assignments & Exams (${(fullCourseData?.assignments?.length || 0) + (fullCourseData?.exams?.length || 0)})`} sx={{ textTransform: 'none', fontWeight: 600 }} />
+                        <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
+                            <Box sx={{ borderBottom: 1, borderColor: 'var(--color-vc-hairline)' }}>
+                                <Tabs 
+                                    value={tabIndex} 
+                                    onChange={(e, v) => setTabIndex(v)}
+                                    TabIndicatorProps={{ sx: { bgcolor: 'var(--color-vc-ink)' } }}
+                                    sx={{
+                                        '& .MuiTab-root': {
+                                            color: 'var(--color-vc-body)',
+                                            textTransform: 'none',
+                                            fontWeight: 500,
+                                            fontFamily: 'inherit',
+                                            fontSize: '13px',
+                                            py: 1.5,
+                                            '&.Mui-selected': {
+                                                color: 'var(--color-vc-ink)',
+                                                fontWeight: 600
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <Tab label="Curriculum" />
+                                    <Tab label={`Assignments & Exams (${(fullCourseData?.assignments?.length || 0) + (fullCourseData?.exams?.length || 0)})`} />
                                 </Tabs>
                             </Box>
 
-                            <CardContent sx={{ p: 2 }}>
+                            <CardContent sx={{ p: 3 }}>
                                 {tabIndex === 0 && (
                                     <Box>
                                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
@@ -291,19 +377,56 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                                 InputProps={{
-                                                    startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
-                                                    sx: { borderRadius: 2, bgcolor: 'white', maxWidth: 220 }
+                                                    startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: 'var(--color-vc-mute)' }} /></InputAdornment>,
+                                                    sx: { 
+                                                        borderRadius: '6px', 
+                                                        bgcolor: 'var(--color-vc-canvas)', 
+                                                        maxWidth: 220,
+                                                        fontSize: '13px',
+                                                        fontFamily: 'inherit',
+                                                        height: 36,
+                                                        color: 'var(--color-vc-ink)',
+                                                        '& .MuiOutlinedInput-notchedOutline': {
+                                                            borderColor: 'var(--color-vc-hairline)'
+                                                        },
+                                                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                                                            borderColor: 'var(--color-vc-hairline-strong)'
+                                                        },
+                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                            borderColor: 'var(--color-vc-hairline-strong)'
+                                                        }
+                                                    }
                                                 }}
                                             />
                                         </Box>
                                         
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                             {filteredModules.length > 0 ? (
                                                 filteredModules.map((module, index) => (
-                                                    <Accordion key={index} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #eee', '&:before': { display: 'none' } }}>
-                                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: 'action.hover' }}>
-                                                            <Typography variant="subtitle2" fontWeight={800}>{module.title}</Typography>
-                                                            <Typography variant="caption" sx={{ ml: 'auto', mr: 2, opacity: 0.7 }}>{module.videos?.length || 0} items</Typography>
+                                                    <Accordion 
+                                                        key={index} 
+                                                        variant="outlined" 
+                                                        elevation={0}
+                                                        sx={{ 
+                                                            borderRadius: '6px !important', 
+                                                            overflow: 'hidden', 
+                                                            border: '1px solid var(--color-vc-hairline)', 
+                                                            bgcolor: 'var(--color-vc-canvas)',
+                                                            '&:before': { display: 'none' } 
+                                                        }}
+                                                    >
+                                                        <AccordionSummary 
+                                                            expandIcon={<ExpandMoreIcon sx={{ color: 'var(--color-vc-mute)', fontSize: 18 }} />} 
+                                                            sx={{ 
+                                                                bgcolor: 'var(--color-vc-canvas-soft)',
+                                                                borderBottom: '1px solid transparent',
+                                                                '&.Mui-expanded': {
+                                                                    borderBottomColor: 'var(--color-vc-hairline)'
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>{module.title}</Typography>
+                                                            <Typography sx={{ ml: 'auto', mr: 2, fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>{module.videos?.length || 0} items</Typography>
                                                         </AccordionSummary>
                                                         <AccordionDetails sx={{ p: 0 }}>
                                                             <List disablePadding>
@@ -311,33 +434,50 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                                                     <ListItem
                                                                         key={vIdx}
                                                                         divider={vIdx < module.videos.length - 1}
-                                                                        sx={{ py: 1, px: 2, '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}
+                                                                        sx={{ 
+                                                                            py: 1.25, 
+                                                                            px: 2, 
+                                                                            borderColor: 'var(--color-vc-hairline)',
+                                                                            '&:hover': { bgcolor: 'var(--color-vc-canvas-soft)' } 
+                                                                        }}
                                                                         secondaryAction={
                                                                             <Stack direction="row" spacing={0.5}>
                                                                                 <Tooltip title="View">
-                                                                                    <IconButton size="small" color="primary" onClick={() => handleOpenResource(vid.url || vid.videoUrl, vid.type)}>
-                                                                                        <VisibilityIcon sx={{ fontSize: 18 }} />
+                                                                                    <IconButton 
+                                                                                        size="small" 
+                                                                                        onClick={() => handleOpenResource(vid.url || vid.videoUrl, vid.type)}
+                                                                                        sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-link)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)' } }}
+                                                                                    >
+                                                                                        <VisibilityIcon sx={{ fontSize: 16 }} />
                                                                                     </IconButton>
                                                                                 </Tooltip>
                                                                                 <Tooltip title="Copy Link">
-                                                                                    <IconButton size="small" onClick={() => handleCopyLink(vid.url || vid.videoUrl)}>
-                                                                                        <ContentCopyIcon sx={{ fontSize: 16 }} />
+                                                                                    <IconButton 
+                                                                                        size="small" 
+                                                                                        onClick={() => handleCopyLink(vid.url || vid.videoUrl)}
+                                                                                        sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', color: 'var(--color-vc-ink)' } }}
+                                                                                    >
+                                                                                        <ContentCopyIcon sx={{ fontSize: 14 }} />
                                                                                     </IconButton>
                                                                                 </Tooltip>
                                                                                 <Tooltip title="Download">
-                                                                                    <IconButton size="small" color="info" onClick={() => handleOpenResource(vid.url || vid.videoUrl, true)}>
-                                                                                        <DownloadIcon sx={{ fontSize: 18 }} />
+                                                                                    <IconButton 
+                                                                                        size="small" 
+                                                                                        onClick={() => handleOpenResource(vid.url || vid.videoUrl, true)}
+                                                                                        sx={{ border: '1px solid transparent', borderRadius: '4px', p: '4px', color: 'var(--color-vc-mute)', '&:hover': { borderColor: 'var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', color: 'var(--color-vc-ink)' } }}
+                                                                                    >
+                                                                                        <DownloadIcon sx={{ fontSize: 16 }} />
                                                                                     </IconButton>
                                                                                 </Tooltip>
                                                                             </Stack>
                                                                         }
                                                                     >
-                                                                        <ListItemIcon sx={{ minWidth: 40 }}>{getResourceIcon(vid.type)}</ListItemIcon>
+                                                                        <ListItemIcon sx={{ minWidth: 32 }}>{getResourceIcon(vid.type)}</ListItemIcon>
                                                                         <ListItemText
                                                                             primary={vid.title}
-                                                                            secondary={`${vid.type?.toUpperCase()} ${vid.duration ? `• ${vid.duration} min/MB` : ''}`}
-                                                                            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
-                                                                            secondaryTypographyProps={{ variant: 'caption' }}
+                                                                            secondary={`${vid.type?.toUpperCase()} ${vid.duration ? `• ${parseFloat((vid.duration / 60).toFixed(1))} min` : ''}`}
+                                                                            primaryTypographyProps={{ sx: { fontSize: '13px', fontWeight: 500, color: 'var(--color-vc-ink)', fontFamily: 'inherit' } }}
+                                                                            secondaryTypographyProps={{ sx: { fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', mt: 0.25 } }}
                                                                         />
                                                                     </ListItem>
                                                                 ))}
@@ -346,8 +486,8 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                                     </Accordion>
                                                 ))
                                             ) : (
-                                                <Box sx={{ p: 4, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 2 }}>
-                                                    <Typography color="text.secondary">No materials match your search.</Typography>
+                                                <Box sx={{ p: 4, textAlign: 'center', bgcolor: 'var(--color-vc-canvas-soft)', border: '1px dashed var(--color-vc-hairline)', borderRadius: '6px' }}>
+                                                    <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit' }}>No materials match your search.</Typography>
                                                 </Box>
                                             )}
                                         </Box>
@@ -356,49 +496,78 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
                                 {tabIndex === 1 && (
                                     <Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1.5 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3, gap: 1.5 }}>
                                             <Button 
                                                 variant="contained" 
                                                 size="small" 
-                                                color="secondary" 
                                                 startIcon={<AddIcon />}
                                                 onClick={() => setAssignmentFormOpen(true)}
-                                                sx={{ borderRadius: 2, fontWeight: 700 }}
+                                                sx={{ 
+                                                    borderRadius: '6px', 
+                                                    textTransform: 'none', 
+                                                    fontWeight: 500,
+                                                    fontSize: '13px',
+                                                    fontFamily: 'inherit',
+                                                    height: 32,
+                                                    boxShadow: 'none',
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    color: 'var(--color-vc-ink)',
+                                                    border: '1px solid var(--color-vc-hairline)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-canvas-soft)',
+                                                        boxShadow: 'none',
+                                                        borderColor: 'var(--color-vc-hairline-strong)'
+                                                    }
+                                                }}
                                             >
                                                 Add Assignment
                                             </Button>
                                             <Button 
                                                 variant="contained" 
                                                 size="small" 
-                                                color="error" 
                                                 startIcon={<AddIcon />}
                                                 onClick={() => setExamFormOpen(true)}
-                                                sx={{ borderRadius: 2, fontWeight: 700 }}
+                                                sx={{ 
+                                                    borderRadius: '6px', 
+                                                    textTransform: 'none', 
+                                                    fontWeight: 500,
+                                                    fontSize: '13px',
+                                                    fontFamily: 'inherit',
+                                                    height: 32,
+                                                    boxShadow: 'none',
+                                                    bgcolor: 'var(--color-vc-primary)',
+                                                    color: 'var(--color-vc-on-primary)',
+                                                    '&:hover': {
+                                                        bgcolor: 'var(--color-vc-primary)',
+                                                        opacity: 0.9,
+                                                        boxShadow: 'none'
+                                                    }
+                                                }}
                                             >
                                                 Add Exam
                                             </Button>
                                         </Box>
 
                                         {fullCourseData?.exams?.length > 0 && (
-                                            <Box sx={{ mb: 3 }}>
-                                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <ReceiptLongIcon fontSize="small" color="error" /> Exams
+                                            <Box sx={{ mb: 4 }}>
+                                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'inherit' }}>
+                                                    <ReceiptLongIcon fontSize="small" sx={{ color: 'var(--color-vc-mute)' }} /> Exams
                                                 </Typography>
-                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                                                     <Table size="small">
-                                                        <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                                                        <TableHead sx={{ bgcolor: 'var(--color-vc-canvas-soft)' }}>
                                                             <TableRow>
-                                                                <TableCell sx={{ fontWeight: 600 }}>Title</TableCell>
-                                                                <TableCell sx={{ fontWeight: 600 }}>Duration</TableCell>
-                                                                <TableCell sx={{ fontWeight: 600 }}>Total Marks</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-ink)', fontSize: '12px', py: 1, fontFamily: 'inherit' }}>Title</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-ink)', fontSize: '12px', py: 1, fontFamily: 'inherit' }}>Duration</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-ink)', fontSize: '12px', py: 1, fontFamily: 'inherit' }}>Total Marks</TableCell>
                                                             </TableRow>
                                                         </TableHead>
                                                         <TableBody>
                                                             {fullCourseData.exams.map(exam => (
-                                                                <TableRow key={exam._id}>
-                                                                    <TableCell>{exam.title}</TableCell>
-                                                                    <TableCell>{exam.duration} Min</TableCell>
-                                                                    <TableCell>{exam.totalMarks}</TableCell>
+                                                                <TableRow key={exam._id} sx={{ '&:hover': { bgcolor: 'var(--color-vc-canvas-soft)' } }}>
+                                                                    <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-body)', fontSize: '13px', py: 1.25, fontFamily: 'inherit' }}>{exam.title}</TableCell>
+                                                                    <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-body)', fontSize: '13px', py: 1.25, fontFamily: 'inherit' }}>{exam.duration} Min</TableCell>
+                                                                    <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-body)', fontSize: '13px', py: 1.25, fontFamily: 'inherit' }}>{exam.totalMarks}</TableCell>
                                                                 </TableRow>
                                                             ))}
                                                         </TableBody>
@@ -409,24 +578,24 @@ const CourseViewModal = ({ open, onClose, course }) => {
 
                                         {fullCourseData?.assignments?.length > 0 && (
                                             <Box>
-                                                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <DescriptionIcon fontSize="small" color="secondary" /> Assignments
+                                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1, fontFamily: 'inherit' }}>
+                                                    <DescriptionIcon fontSize="small" sx={{ color: 'var(--color-vc-mute)' }} /> Assignments
                                                 </Typography>
-                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', boxShadow: 'none' }}>
                                                     <Table size="small">
-                                                        <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                                                        <TableHead sx={{ bgcolor: 'var(--color-vc-canvas-soft)' }}>
                                                             <TableRow>
-                                                                <TableCell sx={{ fontWeight: 600 }}>Title</TableCell>
-                                                                <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-                                                                <TableCell sx={{ fontWeight: 600 }}>Total Marks</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-ink)', fontSize: '12px', py: 1, fontFamily: 'inherit' }}>Title</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-ink)', fontSize: '12px', py: 1, fontFamily: 'inherit' }}>Type</TableCell>
+                                                                <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-ink)', fontSize: '12px', py: 1, fontFamily: 'inherit' }}>Total Marks</TableCell>
                                                             </TableRow>
                                                         </TableHead>
                                                         <TableBody>
                                                             {fullCourseData.assignments.map(ass => (
-                                                                <TableRow key={ass._id}>
-                                                                    <TableCell>{ass.title}</TableCell>
-                                                                    <TableCell sx={{ textTransform: 'capitalize' }}>{ass.assignmentType?.replace('_', ' ')}</TableCell>
-                                                                    <TableCell>{ass.totalMarks}</TableCell>
+                                                                <TableRow key={ass._id} sx={{ '&:hover': { bgcolor: 'var(--color-vc-canvas-soft)' } }}>
+                                                                    <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-body)', fontSize: '13px', py: 1.25, fontFamily: 'inherit' }}>{ass.title}</TableCell>
+                                                                    <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-body)', fontSize: '13px', py: 1.25, fontFamily: 'inherit', textTransform: 'capitalize' }}>{ass.assignmentType?.replace('_', ' ')}</TableCell>
+                                                                    <TableCell sx={{ borderBottom: '1px solid var(--color-vc-hairline)', color: 'var(--color-vc-body)', fontSize: '13px', py: 1.25, fontFamily: 'inherit' }}>{ass.totalMarks}</TableCell>
                                                                 </TableRow>
                                                             ))}
                                                         </TableBody>
@@ -436,7 +605,7 @@ const CourseViewModal = ({ open, onClose, course }) => {
                                         )}
 
                                         {(!fullCourseData?.assignments?.length && !fullCourseData?.exams?.length) && (
-                                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3, fontStyle: 'italic' }}>
+                                            <Typography sx={{ textAlign: 'center', py: 4, color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit', fontStyle: 'italic' }}>
                                                 No exams or assignments allocated to this course.
                                             </Typography>
                                         )}
@@ -447,35 +616,43 @@ const CourseViewModal = ({ open, onClose, course }) => {
                     </Grid>
 
                     <Grid item xs={12} md={4}>
-                        <Box sx={{ position: 'sticky', top: 20 }}>
-                            <Typography variant="caption" fontWeight={900} color="text.secondary" gutterBottom sx={{ mb: 1, display: 'block', textTransform: 'uppercase' }}>Course Media assets</Typography>
-                            <Card variant="outlined" sx={{ mb: 3, borderRadius: 2, border: '1px solid #eee' }}>
-                                <Box component="img" src={fixUrl(course.thumbnail)} sx={{ width: '100%', height: 160, objectFit: 'cover' }} />
-                                <CardContent sx={{ py: 1, px: 2 }}>
-                                    <Typography variant="caption" fontWeight={700}>THUMBNAIL IMAGE</Typography>
-                                </CardContent>
-                            </Card>
+                        <Box sx={{ position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <Box>
+                                <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1, fontFamily: 'inherit' }}>
+                                    Course Media assets
+                                </Typography>
+                                <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', overflow: 'hidden', boxShadow: 'none' }}>
+                                    <Box component="img" src={fixUrl(course.thumbnail)} sx={{ width: '100%', height: 160, objectFit: 'cover' }} />
+                                    <Box sx={{ p: 1.5, bgcolor: 'var(--color-vc-canvas-soft)', borderTop: '1px solid var(--color-vc-hairline)' }}>
+                                        <Typography sx={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-vc-mute)', fontFamily: '"JetBrains Mono", monospace' }}>THUMBNAIL IMAGE</Typography>
+                                    </Box>
+                                </Card>
+                            </Box>
 
-                            <Card variant="outlined" sx={{ borderRadius: 2, p: 0.5, border: '1px solid #eee', mb: 3 }}>
-                                <Box sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="caption" fontWeight={700}>DEMO PREVIEW</Typography>
+                            <Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                    <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'inherit' }}>
+                                        Demo Preview
+                                    </Typography>
                                     {course.demoVideoUrl && (
-                                        <IconButton size="small" onClick={() => handleCopyLink(course.demoVideoUrl)}>
-                                            <ContentCopyIcon sx={{ fontSize: 12 }} />
+                                        <IconButton size="small" onClick={() => handleCopyLink(course.demoVideoUrl)} sx={{ color: 'var(--color-vc-mute)', '&:hover': { color: 'var(--color-vc-ink)' } }}>
+                                            <ContentCopyIcon sx={{ fontSize: 13 }} />
                                         </IconButton>
                                     )}
                                 </Box>
-                                <Box sx={{ height: 180, bgcolor: 'black', borderRadius: 1.5, overflow: 'hidden' }}>
-                                    {course.demoVideoUrl ? <VideoPreview url={course.demoVideoUrl} height={180} /> : <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '0.8rem' }}>No Demo</Box>}
-                                </Box>
-                            </Card>
+                                <Card variant="outlined" sx={{ borderRadius: '8px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)', overflow: 'hidden', p: 0.5, boxShadow: 'none' }}>
+                                    <Box sx={{ height: 180, bgcolor: 'black', borderRadius: '6px', overflow: 'hidden' }}>
+                                        {course.demoVideoUrl ? <VideoPreview url={course.demoVideoUrl} height={180} /> : <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-vc-mute)', fontSize: '0.8rem', fontFamily: 'inherit' }}>No Demo Video</Box>}
+                                    </Box>
+                                </Card>
+                            </Box>
 
-                            <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'primary.main', color: 'white' }}>
-                                <Typography variant="subtitle2" fontWeight={900} sx={{ mb: 0.5 }}>Advance Ready.</Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.9, lineHeight: 1.4, display: 'block' }}>All materials are double-checked for accessibility and performance.</Typography>
-                                <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                                    <Typography variant="caption" display="block" sx={{ fontWeight: 800 }}>CREATED DATE</Typography>
-                                    <Typography variant="caption" fontWeight={500}>{new Date(course.createdAt).toLocaleDateString()}</Typography>
+                            <Box sx={{ p: 3, borderRadius: '8px', bgcolor: 'var(--color-vc-primary)', color: 'var(--color-vc-on-primary)', border: '1px solid var(--color-vc-primary)', vcShadow: 'vc-shadow-l2' }}>
+                                <Typography sx={{ fontSize: '15px', fontWeight: 600, mb: 0.5, fontFamily: 'inherit' }}>Advance Ready.</Typography>
+                                <Typography sx={{ opacity: 0.8, lineHeight: 1.4, fontSize: '12px', display: 'block', fontFamily: 'inherit' }}>All materials are double-checked for accessibility and performance.</Typography>
+                                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                                    <Typography sx={{ fontSize: '10px', display: 'block', fontWeight: 600, color: 'var(--color-vc-mute)', opacity: 0.9, fontFamily: '"JetBrains Mono", monospace', mb: 0.5 }}>CREATED DATE</Typography>
+                                    <Typography sx={{ fontSize: '12px', fontWeight: 500, fontFamily: 'inherit' }}>{new Date(course.createdAt).toLocaleDateString()}</Typography>
                                 </Box>
                             </Box>
                         </Box>
@@ -488,7 +665,7 @@ const CourseViewModal = ({ open, onClose, course }) => {
                 onClose={() => setActiveVideoUrl(null)}
                 maxWidth="lg"
                 fullWidth
-                PaperProps={{ sx: { borderRadius: 3, bgcolor: '#000', overflow: 'hidden' } }}
+                PaperProps={{ sx: { borderRadius: '8px', bgcolor: '#000', overflow: 'hidden' } }}
             >
                 <Box sx={{ position: 'relative' }}>
                     <IconButton 

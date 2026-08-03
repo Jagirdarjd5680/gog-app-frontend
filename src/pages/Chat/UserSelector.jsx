@@ -116,7 +116,7 @@ const UserSelector = ({ open, onClose, onSelect, onSuccess, initialMode = MODES.
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
-            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+            <DialogTitle component="div" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
                 <Typography variant="h6" fontWeight={800}>
                     {mode === MODES.SINGLE ? 'New Chat' : mode === MODES.BULK_ALL ? 'Broadcast to All Students' : 'Select Recipients'}
                 </Typography>

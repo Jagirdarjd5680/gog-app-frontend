@@ -9,7 +9,7 @@ const UserModals = ({
     modalOpen, setModalOpen, selectedUser, fetchUsers,
     viewModalOpen, setViewModalOpen, viewUserId,
     deleteDialogOpen, setDeleteDialogOpen, confirmDelete, userToDelete,
-    recycleBinOpen, setRecycleBinOpen, fetchBinCount,
+    recycleBinOpen, setRecycleBinOpen, fetchBinCount, binRefreshSignal,
     paymentModalOpen, setPaymentModalOpen, setSearchParams
 }) => {
     const handleClose = (setter) => {
@@ -23,7 +23,17 @@ const UserModals = ({
             <PaymentQuickModal open={paymentModalOpen} onClose={() => handleClose(setPaymentModalOpen)} user={selectedUser} onSuccess={fetchUsers} />
             <UserDetailsModal open={viewModalOpen} onClose={() => handleClose(setViewModalOpen)} userId={viewUserId} />
             <DeleteConfirmDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} onConfirm={confirmDelete} title="Delete User" message={`Are you sure you want to delete ${userToDelete?.name}?`} />
-            <RecycleBin open={recycleBinOpen} onClose={() => setRecycleBinOpen(false)} type="user" onRestore={() => { fetchUsers(); fetchBinCount(); }} />
+            <RecycleBin
+                open={recycleBinOpen}
+                onClose={() => handleClose(setRecycleBinOpen)}
+                type="user"
+                refreshSignal={binRefreshSignal}
+                onRestore={() => {
+                    fetchUsers(); 
+                    fetchBinCount(); 
+                    handleClose(setRecycleBinOpen); 
+                }} 
+            />
         </>
     );
 };

@@ -34,6 +34,7 @@ const BatchManagement = () => {
     const [selectedBatch, setSelectedBatch] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
+        startDate: '',
         startTime: '',
         endTime: '',
         totalSeats: 10,
@@ -42,6 +43,7 @@ const BatchManagement = () => {
             { name: 'Practice Zone', seatCount: 3, seatType: 'PRAC' }
         ]
     });
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
         fetchBatches();
@@ -66,6 +68,7 @@ const BatchManagement = () => {
             setSelectedBatch(batch);
             setFormData({
                 name: batch.name,
+                startDate: batch.startDate ? batch.startDate.substring(0, 10) : '',
                 startTime: batch.startTime,
                 endTime: batch.endTime,
                 totalSeats: batch.totalSeats,
@@ -75,6 +78,7 @@ const BatchManagement = () => {
             setSelectedBatch(null);
             setFormData({
                 name: '',
+                startDate: '',
                 startTime: '',
                 endTime: '',
                 totalSeats: 10,
@@ -88,18 +92,36 @@ const BatchManagement = () => {
     };
 
     const handleSubmit = async () => {
+        if (!formData.name.trim()) return toast.error('Please enter a batch name');
+        if (!formData.startDate) return toast.error('Please select a start date');
+        if (!formData.startTime || !formData.endTime) return toast.error('Please enter start and end time');
+
         try {
-            const res = selectedBatch 
-                ? await api.put(`/booking/batches/${selectedBatch._id}`, formData)
+            const res = selectedBatch
+                ? await api.put(`/booking/batches/${selectedBatch.id}`, formData)
                 : await api.post('/booking/batches', formData);
-            
+
             if (res.data.success) {
                 toast.success(`Batch ${selectedBatch ? 'updated' : 'created'} successfully`);
                 setOpen(false);
                 fetchBatches();
             }
         } catch (error) {
-            toast.error('Operation failed');
+            toast.error(error.response?.data?.message || 'Operation failed');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        try {
+            const res = await api.delete(`/booking/batches/${deleteTarget.id}`);
+            if (res.data.success) {
+                toast.success('Batch deleted successfully');
+                setDeleteTarget(null);
+                fetchBatches();
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete batch');
         }
     };
 
@@ -131,7 +153,7 @@ const BatchManagement = () => {
 
             <Grid container spacing={3}>
                 {batches.map((batch) => (
-                    <Grid item xs={12} sm={6} md={4} key={batch._id}>
+                    <Grid item xs={12} sm={6} md={4} key={batch.id}>
                         <Card sx={{ 
                             p: 3, 
                             borderRadius: 4, 
@@ -143,14 +165,24 @@ const BatchManagement = () => {
                         }}>
                             <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
                                 <IconButton size="small" onClick={() => handleOpen(batch)}><EditIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" onClick={() => setDeleteTarget(batch)} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" /></IconButton>
                             </Box>
-                            
+
                             <Stack direction="row" spacing={2} alignItems="center" mb={2}>
                                 <Avatar sx={{ bgcolor: 'rgba(0,0,0,0.03)', color: 'text.primary', borderRadius: 2 }}>
                                     <CalendarTodayIcon fontSize="small" />
                                 </Avatar>
                                 <Typography variant="h6" fontWeight={800}>{batch.name}</Typography>
                             </Stack>
+
+                            {batch.startDate && (
+                                <Stack direction="row" spacing={1} alignItems="center" color="text.secondary" mb={1}>
+                                    <CalendarTodayIcon sx={{ fontSize: 16 }} />
+                                    <Typography variant="body2" fontWeight={600}>
+                                        {new Date(batch.startDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </Typography>
+                                </Stack>
+                            )}
 
                             <Stack direction="row" spacing={1} alignItems="center" color="text.secondary" mb={3}>
                                 <AccessTimeIcon sx={{ fontSize: 16 }} />
@@ -185,6 +217,14 @@ const BatchManagement = () => {
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         />
+                        <TextField
+                            label="Start Date"
+                            type="date"
+                            fullWidth
+                            InputLabelProps={{ shrink: true }}
+                            value={formData.startDate}
+                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        />
                         <Stack direction="row" spacing={2}>
                             <TextField
                                 label="Start Time"
@@ -214,6 +254,22 @@ const BatchManagement = () => {
                     <Button onClick={() => setOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
                     <Button variant="contained" onClick={handleSubmit} sx={{ borderRadius: 2, textTransform: 'none', px: 4, bgcolor: 'black' }}>
                         Save Batch
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirm Dialog */}
+            <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+                <DialogTitle fontWeight={800}>Delete Batch?</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary">
+                        This will permanently delete <strong>{deleteTarget?.name}</strong> along with all its seat bookings. This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setDeleteTarget(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
+                    <Button variant="contained" color="error" onClick={handleDelete} sx={{ borderRadius: 2, textTransform: 'none', px: 4 }}>
+                        Delete
                     </Button>
                 </DialogActions>
             </Dialog>

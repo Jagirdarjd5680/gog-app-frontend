@@ -10,67 +10,66 @@ import {
     TableHead,
     TableRow,
     Paper,
-    useTheme,
     Checkbox,
-    Pagination,
     IconButton,
     Tooltip,
-    alpha
+    Stack,
+    Chip
 } from '@mui/material';
 import MediaCard from '../MediaCard';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { format } from 'date-fns';
-import { fixUrl } from '../../../utils/api';
-import CheckBoxIcon from '@mui/icons-material/CheckBox';
-
 import ImageIcon from '@mui/icons-material/Image';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CodeIcon from '@mui/icons-material/Code';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import { format } from 'date-fns';
+import { fixUrl } from '../../../utils/api';
+
+const defaultFormatSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
 
 const MediaFileList = ({
-    files,
-    viewMode,
-    selectedFiles,
+    files = [],
+    viewMode = 'grid',
+    selectedFiles = [],
     onToggleSelection,
     onSelectAll,
     onDelete,
     onCopy,
     onPreview,
     onSelect,
-    formatSize
+    formatSize = defaultFormatSize
 }) => {
-    const theme = useTheme();
-
     const getFileIcon = (format) => {
         const fmt = format?.toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fmt)) return <ImageIcon sx={{ color: '#2196f3', fontSize: '1.2rem' }} />;
-        if (['mp4', 'webm', 'mov'].includes(fmt)) return <VideoLibraryIcon sx={{ color: '#f44336', fontSize: '1.2rem' }} />;
-        if (fmt === 'pdf') return <DescriptionIcon sx={{ color: '#ff9800', fontSize: '1.2rem' }} />;
-        if (['js', 'jsx', 'ts', 'tsx', 'json', 'html', 'css'].includes(fmt)) return <CodeIcon sx={{ color: '#4caf50', fontSize: '1.2rem' }} />;
-        return <Box sx={{ fontWeight: 900, fontSize: '0.6rem', color: theme.palette.text.secondary }}>{fmt?.toUpperCase()}</Box>;
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fmt)) return <ImageIcon color="info" fontSize="small" />;
+        if (['mp4', 'webm', 'mov'].includes(fmt)) return <VideoLibraryIcon color="primary" fontSize="small" />;
+        if (fmt === 'pdf') return <DescriptionIcon color="error" fontSize="small" />;
+        if (['js', 'jsx', 'ts', 'tsx', 'json', 'html', 'css'].includes(fmt)) return <CodeIcon color="success" fontSize="small" />;
+        return <Typography variant="caption" fontWeight={800} sx={{ color: 'var(--color-vc-mute)' }}>{(fmt || 'FILE').toUpperCase()}</Typography>;
     };
 
     if (viewMode === 'grid') {
         return (
             <Box>
-                <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2, color: 'text.secondary', opacity: 0.8 }}>
-                    ALL MEDIA FILES
-                </Typography>
                 <Grid container spacing={2}>
                     {files.map((file, idx) => (
-                        <Grid item xs={12} sm={6} md={4} lg={3} xl={3} key={`${file._id}-${idx}`}>
+                        <Grid item xs={12} sm={6} md={4} lg={3} xl={3} key={`${file._id || file.id || file.name}-${idx}`}>
                             <MediaCard
                                 file={file}
                                 isSelected={selectedFiles.includes(file.name)}
-                                onToggleSelection={onToggleSelection}
-                                onDelete={onDelete}
-                                onCopy={onCopy}
-                                onPreview={onPreview}
-                                onSelect={onSelect}
+                                onToggleSelection={() => onToggleSelection && onToggleSelection(file.name)}
+                                onDelete={() => onDelete && onDelete(file.name)}
+                                onCopy={() => onCopy && onCopy(file)}
+                                onPreview={() => onPreview && onPreview(file)}
+                                onSelect={() => onSelect && onSelect(file)}
                             />
                         </Grid>
                     ))}
@@ -80,87 +79,101 @@ const MediaFileList = ({
     }
 
     return (
-        <Box>
-            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2, color: 'text.secondary', opacity: 0.8 }}>
-                PROJECT FILES
-            </Typography>
-            <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}>
-                <Table stickyHeader size="small">
-                    <TableHead>
-                        <TableRow sx={{ bgcolor: 'action.hover' }}>
-                            <TableCell padding="checkbox">
-                                <Checkbox
-                                    size="small"
-                                    indeterminate={selectedFiles.length > 0 && selectedFiles.length < files.length}
-                                    checked={files.length > 0 && selectedFiles.length === files.length}
-                                    onChange={onSelectAll}
-                                />
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem', color: 'text.secondary' }}>NAME</TableCell>
-                            <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem', color: 'text.secondary' }}>SIZE</TableCell>
-                            <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem', color: 'text.secondary' }}>UPLOADED</TableCell>
-                            <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem', color: 'text.secondary' }} align="right">ACTION</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {files.map((file, idx) => (
-                            <TableRow key={`${file._id}-${idx}`} hover selected={selectedFiles.includes(file.name)}>
+        <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+                borderRadius: '16px',
+                border: '1px solid var(--color-vc-hairline)',
+                bgcolor: 'var(--color-vc-canvas-soft)'
+            }}
+        >
+            <Table stickyHeader size="small">
+                <TableHead>
+                    <TableRow sx={{ bgcolor: 'var(--color-vc-canvas)' }}>
+                        <TableCell padding="checkbox">
+                            <Checkbox
+                                size="small"
+                                indeterminate={selectedFiles.length > 0 && selectedFiles.length < files.length}
+                                checked={files.length > 0 && selectedFiles.length === files.length}
+                                onChange={onSelectAll}
+                            />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-vc-mute)' }}>ASSET NAME</TableCell>
+                        <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-vc-mute)' }}>SIZE</TableCell>
+                        <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-vc-mute)' }}>TYPE</TableCell>
+                        <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-vc-mute)' }}>DATE</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--color-vc-mute)' }}>ACTIONS</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {files.map((file) => {
+                        const isSelected = selectedFiles.includes(file.name);
+                        return (
+                            <TableRow
+                                key={file._id || file.id || file.name}
+                                hover
+                                selected={isSelected}
+                                sx={{ '&:hover': { bgcolor: 'var(--color-vc-canvas)' } }}
+                            >
                                 <TableCell padding="checkbox">
                                     <Checkbox
                                         size="small"
-                                        checked={selectedFiles.includes(file.name)}
-                                        onChange={() => onToggleSelection(file.name)}
+                                        checked={isSelected}
+                                        onChange={() => onToggleSelection && onToggleSelection(file.name)}
                                     />
                                 </TableCell>
                                 <TableCell>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                        <Box sx={{ 
-                                            width: 32, 
-                                            height: 32, 
-                                            borderRadius: 1, 
-                                            bgcolor: alpha(theme.palette.action.active, 0.05), 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center' 
-                                        }}>
-                                            {getFileIcon(file.format)}
-                                        </Box>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                            <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: 300, color: file.status === 'upload_failed' ? 'error.main' : 'inherit' }}>
-                                                {file.name}
-                                            </Typography>
-                                            {['uploading', 'upload_failed'].includes(file.status) && (
-                                                <Typography variant="caption" sx={{ color: file.status === 'upload_failed' ? 'error.main' : 'primary.main', fontWeight: 700, mt: 0.5 }}>
-                                                    {file.status === 'upload_failed' ? `Failed at ${file.uploadedChunks}/${file.totalChunks} chunks` : `Uploading ${file.totalChunks ? Math.round((file.uploadedChunks / file.totalChunks) * 100) : 0}% (${file.uploadedChunks}/${file.totalChunks})`}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </Box>
+                                    <Stack direction="row" spacing={1.5} alignItems="center">
+                                        {getFileIcon(file.format || file.type)}
+                                        <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                                            {file.title || file.name}
+                                        </Typography>
+                                    </Stack>
                                 </TableCell>
-                                <TableCell sx={{ fontSize: '0.8rem' }}>{formatSize(file.size)}</TableCell>
-                                <TableCell sx={{ fontSize: '0.8rem' }}>{format(new Date(file.createdAt), 'dd MMM, yyyy')}</TableCell>
+                                <TableCell>
+                                    <Typography variant="caption" fontWeight={600} sx={{ color: 'var(--color-vc-mute)' }}>
+                                        {formatSize(file.size)}
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <Chip
+                                        label={(file.format || file.type || 'FILE').toUpperCase()}
+                                        size="small"
+                                        sx={{ fontWeight: 800, fontSize: '0.65rem', borderRadius: '6px' }}
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    <Typography variant="caption" sx={{ color: 'var(--color-vc-mute)' }}>
+                                        {file.createdAt ? format(new Date(file.createdAt), 'MMM dd, yyyy') : 'Recent'}
+                                    </Typography>
+                                </TableCell>
                                 <TableCell align="right">
-                                    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                                        {onSelect && (
-                                            <Tooltip title="Select File">
-                                                <IconButton size="small" color="primary" onClick={() => onSelect(file)}>
-                                                    <CheckBoxIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        )}
-                                        <Tooltip title="Preview"><IconButton size="small" onClick={() => onPreview(file)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
-                                        <Tooltip title="Copy Link"><IconButton size="small" onClick={() => onCopy(fixUrl(file.url))}><ContentCopyIcon fontSize="small" /></IconButton></Tooltip>
-                                        <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => onDelete(file)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                                    </Box>
+                                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                        <Tooltip title="Preview">
+                                            <IconButton size="small" onClick={() => onPreview && onPreview(file)} sx={{ color: 'var(--color-vc-link)' }}>
+                                                <VisibilityIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Copy Link">
+                                            <IconButton size="small" onClick={() => onCopy && onCopy(file)} sx={{ color: 'var(--color-vc-mute)' }}>
+                                                <ContentCopyIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Delete">
+                                            <IconButton size="small" onClick={() => onDelete && onDelete(file.name)} sx={{ color: 'var(--color-vc-error)' }}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Stack>
                                 </TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-        </Box>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+        </TableContainer>
     );
 };
 
 export default MediaFileList;
-

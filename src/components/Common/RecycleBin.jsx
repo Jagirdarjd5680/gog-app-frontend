@@ -28,7 +28,7 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
-const RecycleBin = ({ open, onClose, type, onRestore }) => {
+const RecycleBin = ({ open, onClose, type, onRestore, refreshSignal }) => {
     const [loading, setLoading] = useState(true);
     const [items, setItems] = useState([]);
     const [selected, setSelected] = useState([]);
@@ -37,7 +37,7 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
         try {
             setLoading(true);
             const endpoint = type === 'user' ? '/users/bin/all' : '/questions/bin/all';
-            const response = await api.get(endpoint);
+            const response = await api.get(`${endpoint}?t=${Date.now()}`);
 
             // Handle different response formats
             const data = type === 'user' ? response.data.data : response.data;
@@ -55,7 +55,15 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
         if (open) {
             fetchDeletedItems();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, type]);
+
+    // Live-refresh while the dialog is open — a real-time archive/restore/permanent-delete
+    // event bumps refreshSignal (see UserList.jsx's socket subscription).
+    useEffect(() => {
+        if (open && refreshSignal) fetchDeletedItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refreshSignal]);
 
     const handleRestore = async (idOrIds) => {
         try {
@@ -97,6 +105,7 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
             
             toast.success('Items permanently deleted');
             fetchDeletedItems();
+            if (onRestore) onRestore();
         } catch (error) {
             
             toast.error('Failed to delete items permanently');
@@ -118,47 +127,108 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
-            <DialogTitle sx={{ fontWeight: 800, bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="h6" fontWeight={800}>
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            maxWidth="sm" 
+            fullWidth 
+            PaperProps={{ 
+                sx: { 
+                    borderRadius: '8px',
+                    bgcolor: 'var(--color-vc-canvas)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: '0px 32px 64px -12px rgba(0,0,0,0.16)'
+                } 
+            }}
+        >
+            <DialogTitle sx={{ 
+                p: 2.5, 
+                borderBottom: '1px solid var(--color-vc-hairline)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                bgcolor: 'var(--color-vc-canvas)'
+            }}>
+                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                     {type === 'user' ? 'User Recycle Bin' : 'Question Recycle Bin'}
                 </Typography>
                 {items.length > 0 && (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <Checkbox 
                             size="small"
                             checked={items.length > 0 && selected.length === items.length}
                             indeterminate={selected.length > 0 && selected.length < items.length}
                             onChange={handleSelectAll}
+                            sx={{
+                                color: 'var(--color-vc-hairline-strong)',
+                                '&.Mui-checked, &.MuiCheckbox-indeterminate': {
+                                    color: 'var(--color-vc-primary)'
+                                }
+                            }}
                         />
-                        <Typography variant="caption" sx={{ ml: -0.5, fontWeight: 700 }}>Select All</Typography>
+                        <Typography sx={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-vc-body)', fontFamily: 'inherit' }}>
+                            Select All
+                        </Typography>
                     </Box>
                 )}
             </DialogTitle>
             
             {selected.length > 0 && (
-                <Box sx={{ px: 2, py: 1, bgcolor: 'primary.light', color: 'primary.contrastText', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Typography variant="subtitle2" fontWeight={700}>
+                <Box sx={{ 
+                    px: 2.5, 
+                    py: 1.5, 
+                    bgcolor: 'var(--color-vc-canvas-soft)', 
+                    borderBottom: '1px solid var(--color-vc-hairline)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between' 
+                }}>
+                    <Typography sx={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                         {selected.length} items selected
                     </Typography>
                     <Stack direction="row" spacing={1}>
                         <Button 
                             size="small" 
-                            color="inherit" 
                             variant="outlined" 
                             startIcon={<RestoreFromTrashIcon />}
                             onClick={() => handleRestore(selected)}
-                            sx={{ borderColor: 'rgba(255,255,255,0.5)', fontWeight: 700 }}
+                            sx={{ 
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                fontSize: '12px',
+                                fontFamily: 'inherit',
+                                borderRadius: '6px',
+                                borderColor: 'var(--color-vc-hairline)',
+                                color: 'var(--color-vc-link)',
+                                '&:hover': {
+                                    borderColor: 'var(--color-vc-link)',
+                                    bgcolor: 'var(--color-vc-canvas)'
+                                }
+                            }}
                         >
                             Restore
                         </Button>
                         <Button 
                             size="small" 
-                            color="error" 
                             variant="contained" 
+                            color="error"
                             startIcon={<DeleteForeverIcon />}
                             onClick={() => handlePermanentDelete(selected)}
-                            sx={{ fontWeight: 700 }}
+                            sx={{ 
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                fontSize: '12px',
+                                fontFamily: 'inherit',
+                                borderRadius: '6px',
+                                boxShadow: 'none',
+                                bgcolor: 'var(--color-vc-error-deep)',
+                                color: '#fff',
+                                '&:hover': {
+                                    bgcolor: 'var(--color-vc-error-deep)',
+                                    opacity: 0.9,
+                                    boxShadow: 'none'
+                                }
+                            }}
                         >
                             Delete
                         </Button>
@@ -166,68 +236,102 @@ const RecycleBin = ({ open, onClose, type, onRestore }) => {
                 </Box>
             )}
 
-            <DialogContent dividers sx={{ p: 0 }}>
+            <DialogContent sx={{ p: 0, bgcolor: 'var(--color-vc-canvas)' }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                        <CircularProgress />
+                        <CircularProgress size={24} sx={{ color: 'var(--color-vc-primary)' }} />
                     </Box>
                 ) : items.length === 0 ? (
                     <Box sx={{ textAlign: 'center', py: 6 }}>
-                        <Typography color="text.secondary">Recycle bin is empty</Typography>
+                        <Typography sx={{ color: 'var(--color-vc-mute)', fontSize: '13px', fontFamily: 'inherit' }}>
+                            Recycle bin is empty
+                        </Typography>
                     </Box>
                 ) : (
                     <List sx={{ p: 0 }}>
                         {items.map((item, index) => (
                             <Box key={item._id}>
                                 <ListItem 
-                                    sx={{ py: 1, '&:hover': { bgcolor: 'action.hover' } }}
+                                    sx={{ 
+                                        py: 1.5, 
+                                        px: 2.5,
+                                        borderBottom: index === items.length - 1 ? 'none' : '1px solid var(--color-vc-hairline)',
+                                        '&:hover': { bgcolor: 'var(--color-vc-canvas-soft)' } 
+                                    }}
                                     button
                                     onClick={() => handleToggleSelect(item._id)}
                                 >
-                                    <ListItemIcon sx={{ minWidth: 40 }}>
+                                    <ListItemIcon sx={{ minWidth: 36 }}>
                                         <Checkbox 
                                             size="small" 
                                             checked={selected.includes(item._id)} 
                                             onClick={(e) => e.stopPropagation()} 
                                             onChange={() => handleToggleSelect(item._id)}
+                                            sx={{
+                                                color: 'var(--color-vc-hairline-strong)',
+                                                '&.Mui-checked': {
+                                                    color: 'var(--color-vc-primary)'
+                                                }
+                                            }}
                                         />
                                     </ListItemIcon>
-                                    <Avatar sx={{ mr: 2, width: 32, height: 32, bgcolor: type === 'user' ? 'primary.main' : 'secondary.main', fontSize: '0.8rem' }}>
-                                        {type === 'user' ? <PersonIcon fontSize="inherit" /> : <HelpOutlineIcon fontSize="inherit" />}
+                                    <Avatar sx={{ 
+                                        mr: 2, 
+                                        width: 32, 
+                                        height: 32, 
+                                        bgcolor: 'var(--color-vc-canvas-soft)', 
+                                        border: '1px solid var(--color-vc-hairline)',
+                                        color: 'var(--color-vc-ink)'
+                                    }}>
+                                        {type === 'user' ? <PersonIcon sx={{ fontSize: 16 }} /> : <HelpOutlineIcon sx={{ fontSize: 16 }} />}
                                     </Avatar>
                                     <ListItemText
                                         primary={
-                                            <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: '0.85rem' }}>
+                                            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                                                 {type === 'user' ? item.name : (item.content.length > 60 ? item.content.substring(0, 60) + '...' : item.content)}
                                             </Typography>
                                         }
                                         secondary={
-                                            <Typography variant="caption" color="text.secondary">
+                                            <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: type === 'user' ? '"JetBrains Mono", monospace' : 'inherit' }}>
                                                 {type === 'user' ? item.email : `Type: ${item.type} | Cat: ${item.category || 'N/A'}`}
                                             </Typography>
                                         }
                                     />
-                                    <ListItemSecondaryAction>
+                                    <ListItemSecondaryAction sx={{ right: 24 }}>
                                         <Tooltip title="Restore">
-                                            <IconButton onClick={(e) => { e.stopPropagation(); handleRestore(item._id); }} color="primary" size="small" sx={{ mr: 0.5 }}>
+                                            <IconButton onClick={(e) => { e.stopPropagation(); handleRestore(item._id); }} sx={{ color: 'var(--color-vc-link)', mr: 0.5 }} size="small">
                                                 <RestoreFromTrashIcon fontSize="small" />
                                             </IconButton>
                                         </Tooltip>
                                         <Tooltip title="Delete Permanently">
-                                            <IconButton onClick={(e) => { e.stopPropagation(); handlePermanentDelete(item._id); }} color="error" size="small">
+                                            <IconButton onClick={(e) => { e.stopPropagation(); handlePermanentDelete(item._id); }} sx={{ color: 'var(--color-vc-error-deep)' }} size="small">
                                                 <DeleteForeverIcon fontSize="small" />
                                             </IconButton>
                                         </Tooltip>
                                     </ListItemSecondaryAction>
                                 </ListItem>
-                                {index < items.length - 1 && <Divider />}
                             </Box>
                         ))}
                     </List>
                 )}
             </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
-                <Button onClick={onClose} variant="outlined" size="small" sx={{ borderRadius: 1.5, fontWeight: 700 }}>Close</Button>
+            <DialogActions sx={{ p: 2.5, borderTop: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas)' }}>
+                <Button 
+                    onClick={onClose} 
+                    sx={{ 
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        color: 'var(--color-vc-mute)',
+                        '&:hover': {
+                            color: 'var(--color-vc-ink)',
+                            bgcolor: 'var(--color-vc-canvas-soft)'
+                        }
+                    }}
+                >
+                    Close
+                </Button>
             </DialogActions>
         </Dialog>
     );

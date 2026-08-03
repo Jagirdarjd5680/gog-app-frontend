@@ -1,31 +1,31 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-    Box,
-    Button,
-    Chip,
-    IconButton,
-    Typography,
-    Paper,
-    Divider,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemSecondaryAction,
-    CircularProgress
-} from '@mui/material';
-import DataTable from '../../components/Common/DataTable';
+import { Box, Typography, IconButton, Stack, Chip, Avatar, CircularProgress, Button } from '@mui/material';
+import TableUI from '../../components/UI/Table/TableUI';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import QuizIcon from '@mui/icons-material/Quiz';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import HelpCenterIcon from '@mui/icons-material/HelpCenter';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import SettingsIcon from '@mui/icons-material/Settings';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+
 import ExamForm from '../../components/Exams/ExamForm';
 import QuestionSelector from '../../components/Exams/QuestionSelector';
 import DeleteConfirmDialog from '../../components/Common/DeleteConfirmDialog';
+import { useAuth } from '../../context/AuthContext';
+import { hasModulePermission } from '../../utils/permissions';
 
 const ExamList = () => {
+    const { user } = useAuth();
+    const canAdd = hasModulePermission(user, 'exams', 'add');
+    const canEdit = hasModulePermission(user, 'exams', 'edit');
+    const canDelete = hasModulePermission(user, 'exams', 'delete');
     const [exams, setExams] = useState([]);
     const [loading, setLoading] = useState(false);
     const [formOpen, setFormOpen] = useState(false);
@@ -35,33 +35,37 @@ const ExamList = () => {
     const [questionSelectorOpen, setQuestionSelectorOpen] = useState(false);
     const [currentExamId, setCurrentExamId] = useState(null);
     const [togglingId, setTogglingId] = useState(null);
+    const [selectedRows, setSelectedRows] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    useEffect(() => {
-        fetchExams();
-    }, []);
-
-    const fetchExams = async () => {
+    const fetchExams = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('/exams');
-            setExams(response.data.data || response.data);
+            const examData = response.data?.data || response.data || [];
+            setExams(Array.isArray(examData) ? examData : []);
         } catch (error) {
-            
-            // toast.error('Failed to load exams');
+            console.error('Failed to fetch exams:', error);
+            toast.error('Failed to load exams');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchExams();
+    }, [fetchExams]);
 
     const handleCreate = () => {
         setSelectedExam(null);
         setFormOpen(true);
     };
 
-    const handleEdit = (exam) => {
+    const handleEdit = useCallback((exam) => {
         setSelectedExam(exam);
         setFormOpen(true);
-    };
+    }, []);
 
     const handleFormSuccess = () => {
         setFormOpen(false);
@@ -72,20 +76,19 @@ const ExamList = () => {
         if (!examToDelete) return;
         try {
             await api.delete(`/exams/${examToDelete._id}`);
-            toast.success('Exam deleted');
+            toast.success('Exam deleted successfully');
             fetchExams();
         } catch (error) {
-            
-            toast.error('Failed to delete');
+            toast.error('Failed to delete exam');
         }
         setExamToDelete(null);
         setDeleteDialogOpen(false);
     };
 
-    const handleOpenQuestionSelector = (examId) => {
+    const handleOpenQuestionSelector = useCallback((examId) => {
         setCurrentExamId(examId);
         setQuestionSelectorOpen(true);
-    };
+    }, []);
 
     const handleAddQuestions = async (questionIds) => {
         try {
@@ -93,43 +96,86 @@ const ExamList = () => {
             toast.success(`${questionIds.length} questions added to exam`);
             fetchExams();
         } catch (error) {
-            
             toast.error('Failed to add questions');
         }
     };
 
-    const handleStatusToggle = async (exam) => {
+    const handleStatusToggle = useCallback(async (exam) => {
         setTogglingId(exam._id);
         try {
-            await api.put(`/exams/${exam._id}`, { isActive: !exam.isActive });
-            toast.success(`Exam ${!exam.isActive ? 'activated' : 'deactivated'}`);
+            await api.put(`/exams/${exam._id}`, { isPublished: !exam.isPublished, isActive: !exam.isActive });
+            toast.success(`Exam ${!exam.isPublished ? 'published' : 'unpublished'}`);
             fetchExams();
         } catch (error) {
-            
-            toast.error('Failed to update status');
+            toast.error('Failed to update exam status');
         } finally {
             setTogglingId(null);
         }
-    };
+    }, [fetchExams]);
 
-    const [selectedRows, setSelectedRows] = useState([]);
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} exams?`)) return;
+        try {
+            await Promise.all(selectedRows.map(e => api.delete(`/exams/${e._id}`)));
+            toast.success('Selected exams deleted');
+            fetchExams();
+            setSelectedRows([]);
+        } catch {
+            toast.error('Failed to delete selected exams');
+        }
+    };
 
     const onSelectionChanged = useCallback((event) => {
         const selectedNodes = event.api.getSelectedNodes();
         setSelectedRows(selectedNodes.map(node => node.data));
     }, []);
 
-    const handleBulkDelete = async () => {
-        if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} exams?`)) return;
-        try {
-            await Promise.all(selectedRows.map(e => api.delete(`/exams/${e._id}`)));
-            toast.success('Exams deleted successfully');
-            fetchExams();
-            setSelectedRows([]);
-        } catch {
-            toast.error('Failed to delete some exams');
+    const filteredExams = useMemo(() => {
+        return exams.filter(exam => {
+            const title = (exam.title || '').toLowerCase();
+            const term = searchTerm.toLowerCase().trim();
+            if (term && !title.includes(term)) return false;
+
+            const isPublished = exam.isPublished !== undefined ? exam.isPublished : exam.isActive;
+            if (statusFilter !== 'all' && (statusFilter === 'published') !== !!isPublished) return false;
+            return true;
+        });
+    }, [exams, searchTerm, statusFilter]);
+
+    const metricsItems = useMemo(() => [
+        { title: 'Total Exams', value: exams.length, icon: <QuizIcon />, color: 'primary' },
+        { title: 'Published', value: exams.filter(e => (e.isPublished !== undefined ? e.isPublished : e.isActive)).length, icon: <CheckCircleIcon />, color: 'success' },
+        { title: 'Drafts', value: exams.filter(e => !(e.isPublished !== undefined ? e.isPublished : e.isActive)).length, icon: <PendingActionsIcon />, color: 'warning' },
+        { title: 'With Questions', value: exams.filter(e => (e.questions?.length || 0) > 0).length, icon: <HelpCenterIcon />, color: 'info' }
+    ], [exams]);
+
+    const filterConfigs = useMemo(() => [
+        {
+            value: statusFilter,
+            onChange: setStatusFilter,
+            minWidth: 160,
+            options: [
+                { value: 'all', label: 'All Statuses' },
+                { value: 'published', label: 'Published' },
+                { value: 'draft', label: 'Drafts' }
+            ]
         }
-    };
+    ], [statusFilter]);
+
+    const bulkDeleteButton = useMemo(() => (
+        selectedRows.length > 0 && canDelete ? (
+            <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                startIcon={<DeleteSweepIcon fontSize="small" />}
+                onClick={handleBulkDelete}
+                sx={{ textTransform: 'none', fontWeight: 600, fontSize: '13px', borderRadius: '6px', height: 36 }}
+            >
+                Delete ({selectedRows.length})
+            </Button>
+        ) : null
+    ), [selectedRows, canDelete]);
 
     const columns = useMemo(() => [
         {
@@ -141,49 +187,67 @@ const ExamList = () => {
             filter: false,
             pinned: 'left'
         },
-        { field: 'title', headerName: 'EXAM TITLE', flex: 1.5, minWidth: 200 },
+        {
+            field: 'title',
+            headerName: 'EXAM TITLE',
+            flex: 1.5,
+            minWidth: 240,
+            cellRenderer: (params) => (
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13, fontWeight: 700 }}>
+                        <QuizIcon fontSize="small" />
+                    </Avatar>
+                    <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink)' }}>
+                        {params.data.title || 'Untitled Exam'}
+                    </Typography>
+                </Stack>
+            )
+        },
         {
             headerName: 'DURATION',
             field: 'duration',
-            width: 120,
-            valueFormatter: (params) => `${params.value} mins`
+            width: 130,
+            valueFormatter: (params) => `${params.value || 60} mins`
         },
         {
-            headerName: 'MARKS',
+            headerName: 'MARKS (PASS/TOTAL)',
             field: 'totalMarks',
-            width: 100,
-            valueGetter: (params) => `${params.data.passingMarks}/${params.data.totalMarks}`
+            width: 170,
+            valueGetter: (params) => `${params.data.passingMarks || 40} / ${params.data.totalMarks || 100}`
         },
         {
             headerName: 'QUESTIONS',
             field: 'questions',
-            width: 120,
-            valueGetter: (params) => params.data.questions?.length || 0,
-            cellRenderer: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    color={params.value > 0 ? 'success' : 'default'}
-                    variant="outlined"
-                />
-            )
+            width: 140,
+            cellRenderer: (params) => {
+                const count = params.data.questions?.length || 0;
+                return (
+                    <Chip
+                        label={`${count} Qs`}
+                        color={count > 0 ? 'success' : 'default'}
+                        size="small"
+                        sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
+                    />
+                );
+            }
         },
         {
             headerName: 'STATUS',
-            field: 'isActive',
-            width: 120,
+            field: 'isPublished',
+            width: 140,
             cellRenderer: (params) => {
                 const isToggling = togglingId === params.data._id;
+                const isPublished = params.data.isPublished !== undefined ? params.data.isPublished : params.data.isActive;
                 return (
                     <Box sx={{ display: 'flex', alignItems: 'center', cursor: isToggling ? 'default' : 'pointer' }} onClick={() => !isToggling && handleStatusToggle(params.data)}>
                         {isToggling ? (
-                            <CircularProgress size={20} thickness={5} />
+                            <CircularProgress size={18} thickness={5} />
                         ) : (
                             <Chip
-                                label={params.value ? 'Active' : 'Draft'}
-                                color={params.value ? 'success' : 'default'}
+                                label={isPublished ? 'PUBLISHED' : 'DRAFT'}
+                                color={isPublished ? 'success' : 'warning'}
                                 size="small"
-                                sx={{ cursor: 'pointer' }}
+                                sx={{ fontWeight: 800, fontSize: '0.7rem', borderRadius: '6px' }}
                             />
                         )}
                     </Box>
@@ -191,64 +255,56 @@ const ExamList = () => {
             }
         },
         {
-            headerName: 'ACTIONS',
             field: 'actions',
-            width: 200,
+            headerName: 'ACTIONS',
+            width: 140,
             cellRenderer: (params) => (
-                <Box>
-                    <IconButton size="small" onClick={() => handleOpenQuestionSelector(params.data._id)} color="info" title="Manage Questions">
-                        <SettingsIcon />
+                <Stack direction="row" spacing={1}>
+                    <IconButton size="small" onClick={() => handleOpenQuestionSelector(params.data._id)} sx={{ color: 'var(--color-vc-mute)' }} title="Manage Questions">
+                        <SettingsIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleEdit(params.data)} color="primary" title="Edit Details">
-                        <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => { setExamToDelete(params.data); setDeleteDialogOpen(true); }} color="error" title="Delete">
-                        <DeleteIcon />
-                    </IconButton>
-                </Box>
+                    {canEdit && (
+                        <IconButton size="small" onClick={() => handleEdit(params.data)} sx={{ color: 'var(--color-vc-mute)' }} title="Edit">
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                    )}
+                    {canDelete && (
+                        <IconButton size="small" onClick={() => { setExamToDelete(params.data); setDeleteDialogOpen(true); }} sx={{ color: 'var(--color-vc-error)' }} title="Delete">
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    )}
+                </Stack>
             )
         }
-    ], []);
+    ], [togglingId, handleStatusToggle, handleOpenQuestionSelector, handleEdit, canEdit, canDelete]);
 
     return (
-        <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
-                <Typography variant="h5" fontWeight={600}>Exam Management</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
-                    Create Exam
-                </Button>
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas)', minHeight: '100vh' }}>
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink)', letterSpacing: -0.5 }}>
+                    Exam Management
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'var(--color-vc-mute)' }}>
+                    Create, publish, and manage online exams and question papers
+                </Typography>
             </Box>
 
-            {selectedRows.length > 0 && (
-                <Box sx={{ 
-                    p: 1.5, 
-                    mb: 2,
-                    bgcolor: 'rgba(255, 0, 0, 0.05)', 
-                    borderRadius: 2,
-                    border: '1px solid', 
-                    borderColor: 'error.light',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between' 
-                }}>
-                    <Typography variant="subtitle2" color="error.main" fontWeight={700}>
-                        {selectedRows.length} exams selected
-                    </Typography>
-                    <Button 
-                        variant="contained" 
-                        color="error" 
-                        size="small" 
-                        startIcon={<DeleteIcon />}
-                        onClick={handleBulkDelete}
-                        sx={{ borderRadius: 1.5, fontWeight: 700 }}
-                    >
-                        Bulk Delete
-                    </Button>
-                </Box>
-            )}
+            <GenericMetrics items={metricsItems} />
 
-            <DataTable
-                rowData={exams}
+            <GenericTableHeader
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                searchPlaceholder="Search exam title..."
+                filters={filterConfigs}
+                actionButtonText={canAdd ? "Create Exam" : undefined}
+                actionButtonIcon={canAdd ? <AddIcon fontSize="small" /> : undefined}
+                onActionClick={canAdd ? handleCreate : undefined}
+                totalCount={filteredExams.length}
+                extraElement={bulkDeleteButton}
+            />
+
+            <TableUI
+                rowData={filteredExams}
                 columnDefs={columns}
                 loading={loading}
                 onSelectionChanged={onSelectionChanged}
@@ -273,7 +329,7 @@ const ExamList = () => {
                 onClose={() => setDeleteDialogOpen(false)}
                 onConfirm={handleDelete}
                 title="Delete Exam"
-                message="Are you sure you want to delete this exam?"
+                message="Are you sure you want to delete this exam? This action cannot be undone."
             />
         </Box>
     );

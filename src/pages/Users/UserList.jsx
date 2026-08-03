@@ -1,44 +1,44 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Box } from '@mui/material';
-import DataTable from '../../components/Common/DataTable';
+import { Box, Badge, Button } from '@mui/material';
+import Papa from 'papaparse';
+import { format } from 'date-fns';
+import TableUI from '../../components/UI/Table/TableUI';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
+import { connectRecycleBinSocket } from '../../utils/adminRecycleBinSocket';
 import { useTheme } from '../../context/ThemeContext';
-import UserTableHeader from './UserTableHeader';
+import { useAuth } from '../../context/AuthContext';
+import { hasModulePermission } from '../../utils/permissions';
+import GenericMetrics from '../../components/Common/GenericMetrics';
+import GenericTableHeader from '../../components/Common/GenericTableHeader';
+import PeopleIcon from '@mui/icons-material/People';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import GoogleIcon from '@mui/icons-material/Google';
+import EmailIcon from '@mui/icons-material/Email';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import AddIcon from '@mui/icons-material/Add';
 
-import UserMetrics from './components/UserMetrics';
 import UserBulkActions from './components/UserBulkActions';
 import UserModals from './components/UserModals';
 import { getUserTableColumns } from './components/UserTableColumns';
 
 const UserList = () => {
     const { isDark } = useTheme();
+    const { user } = useAuth();
+    const canAddStudent = hasModulePermission(user, 'students', 'add');
     const [searchParams, setSearchParams] = useSearchParams();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [userToDelete, setUserToDelete] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [sourceFilter, setSourceFilter] = useState('all');
-    const [authFilter, setAuthFilter] = useState('all');
-    const [roleFilter, setRoleFilter] = useState('all');
-    const [batchFilter, setBatchFilter] = useState('all');
-    const [recycleBinOpen, setRecycleBinOpen] = useState(false);
-    const [binCount, setBinCount] = useState(0);
-    const [viewModalOpen, setViewModalOpen] = useState(false);
-    const [viewUserId, setViewUserId] = useState(null);
-    const [allBatches, setAllBatches] = useState([]);
     const [selectedRows, setSelectedRows] = useState([]);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/users?limit=1000');
+            const response = await api.get(`/users?limit=1000&t=${Date.now()}`);
             if (response.data.success) setUsers(response.data.data);
         } catch {
             toast.error('Failed to load users');
@@ -49,133 +49,202 @@ const UserList = () => {
 
     const fetchBinCount = useCallback(async () => {
         try {
-            const response = await api.get('/users/bin/count');
-            if (response.data.success) setBinCount(response.data.count);
-        } catch { }
-    }, []);
-
-    const fetchAllBatches = useCallback(async () => {
-        try {
-            const response = await api.get('/batches');
-            if (response.data.success) setAllBatches(response.data.data);
-        } catch { }
+            const response = await api.get(`/users/bin/count?t=${Date.now()}`);
+            if (response.data.success) setBinCount(response.data.data);
+        } catch (error) {
+            console.error('Failed to fetch bin count', error);
+        }
     }, []);
 
     useEffect(() => {
         fetchUsers();
         fetchBinCount();
-        fetchAllBatches();
-    }, [fetchUsers, fetchBinCount, fetchAllBatches]);
+    }, [fetchUsers, fetchBinCount]);
 
-    useEffect(() => {
-        const openProfileId = searchParams.get('openProfile');
-        const editId = searchParams.get('edit');
-        const paymentId = searchParams.get('payment');
-        const searchVal = searchParams.get('search');
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+    const [viewUserId, setViewUserId] = useState(null);
+    const [allBatches, setAllBatches] = useState([]);
 
-        if (searchVal !== null && searchVal !== searchTerm) {
-            setSearchTerm(searchVal);
-        }
-
-        if (openProfileId) {
-            setViewUserId(openProfileId);
-            setViewModalOpen(true);
-        }
-
-        if (editId && users.length > 0) {
-            const user = users.find(u => u._id === editId);
-            if (user) { setSelectedUser(user); setModalOpen(true); }
-        }
-
-        if (paymentId && users.length > 0) {
-            const user = users.find(u => u._id === paymentId);
-            if (user) { setSelectedUser(user); setPaymentModalOpen(true); }
-        }
-    }, [searchParams, users]);
-
-    const handleAdd = () => { setSelectedUser(null); setModalOpen(true); };
-    const handleEdit = (user) => { setSelectedUser(user); setModalOpen(true); setSearchParams({ edit: user._id }); };
-    const handleDelete = (user) => { setUserToDelete(user); setDeleteDialogOpen(true); };
-    const handleView = (user) => { setViewUserId(user._id); setViewModalOpen(true); setSearchParams({ openProfile: user._id }); };
-    const handlePayment = (user) => { setSelectedUser(user); setPaymentModalOpen(true); setSearchParams({ payment: user._id }); };
-
-    const confirmDelete = async () => {
-        try {
-            await api.delete(`/users/${userToDelete._id}`);
-            toast.success('User moved to recycle bin');
-            fetchUsers();
-            fetchBinCount();
-        } catch {
-            toast.error('Failed to delete user');
-        }
-        setDeleteDialogOpen(false);
-    };
-
-    const onSelectionChanged = useCallback((event) => {
-        const selectedNodes = event.api.getSelectedNodes();
-        const newSelection = selectedNodes.map(node => node.data);
-        setSelectedRows(prev => {
-            if (prev.length === 0 && newSelection.length === 0) return prev;
-            if (prev.length === newSelection.length && prev.every((u, i) => u._id === newSelection[i]._id)) return prev;
-            return newSelection;
-        });
+    const handleView = useCallback((user) => {
+        setViewUserId(user._id);
+        setViewModalOpen(true);
     }, []);
 
-    const handleBulkDelete = async () => {
-        if (!window.confirm(`Move ${selectedRows.length} users to bin?`)) return;
+    const handleEdit = useCallback(async (user) => {
+        // The list row (from GET /users) never carries enrolledCourses/batches — that data
+        // only comes back from GET /users/:id (findByIdDetails). Passing the raw row straight
+        // into UserFormModal made the course/batch pickers look wiped every time you reopened
+        // Edit, even though the assignment was saved correctly.
+        const toastId = toast.loading('Loading user details...');
         try {
-            await Promise.all(selectedRows.map(u => api.delete(`/users/${u._id}`)));
-            toast.success('Users moved to bin');
-            fetchUsers();
+            const { data } = await api.get(`/users/${user._id || user.id}`);
+            toast.dismiss(toastId);
+            setSelectedUser(data.data);
+        } catch (error) {
+            toast.update(toastId, { render: 'Failed to load full user details — showing basic info', type: 'warning', isLoading: false, autoClose: 3000 });
+            setSelectedUser(user);
+        }
+        setModalOpen(true);
+    }, []);
+
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState(null);
+
+    const handleDelete = useCallback((user) => {
+        setUserToDelete(user);
+        setDeleteDialogOpen(true);
+    }, []);
+
+    const confirmDelete = useCallback(async () => {
+        if (!userToDelete) return;
+        const toastId = toast.loading('Archiving user...');
+        try {
+            const res = await api.delete(`/users/${userToDelete._id}`);
+            if (res.data.success) {
+                toast.update(toastId, { render: 'User moved to recycle bin', type: 'success', isLoading: false, autoClose: 3000 });
+                fetchUsers();
+                fetchBinCount();
+            }
+        } catch (error) {
+            toast.update(toastId, { render: error.response?.data?.message || 'Delete failed', type: 'error', isLoading: false, autoClose: 3000 });
+        } finally {
+            setDeleteDialogOpen(false);
+            setUserToDelete(null);
+        }
+    }, [userToDelete, fetchUsers, fetchBinCount]);
+
+    const handlePayment = useCallback((user) => {
+        setSelectedUser(user);
+        setPaymentModalOpen(true);
+    }, []);
+
+    const [recycleBinOpen, setRecycleBinOpen] = useState(false);
+    const [binCount, setBinCount] = useState(0);
+    const [binRefreshSignal, setBinRefreshSignal] = useState(0);
+
+    // Real-time: another admin (or this one, from a different tab) archiving/restoring/
+    // permanently-deleting a user pushes an event here — the bin badge count and, if the
+    // dialog happens to be open, its list both update without needing a manual refresh.
+    useEffect(() => {
+        const disconnect = connectRecycleBinSocket(({ event, count }) => {
             fetchBinCount();
-            setSelectedRows([]);
-        } catch {
-            toast.error('Failed to delete some users');
-        }
-    };
+            setBinRefreshSignal((s) => s + 1);
+            const label = event === 'archived' ? 'moved to Recycle Bin' : event === 'restored' ? 'restored' : 'permanently deleted';
+            toast.info(`${count} user${count === 1 ? '' : 's'} ${label}`, { autoClose: 3000 });
+        });
+        return disconnect;
+    }, [fetchBinCount]);
 
-    const handleBulkSync = async () => {
-        if (!window.confirm(`Sync subscriptions for ${selectedRows.length} users?`)) return;
-        setLoading(true);
+    const columnDefs = useMemo(() => getUserTableColumns({ handleView, handleEdit, handleDelete, handlePayment, user }), [handleView, handleEdit, handleDelete, handlePayment, user]);
+
+    const onSelectionChanged = useCallback((event) => {
+        setSelectedRows(event.api.getSelectedRows());
+    }, []);
+
+    const handleAdd = useCallback(() => {
+        setSelectedUser(null);
+        setModalOpen(true);
+    }, []);
+
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedRows.length === 0) return;
+        if (window.confirm(`Are you sure you want to archive ${selectedRows.length} users?`)) {
+            const toastId = toast.loading('Archiving users...');
+            try {
+                const ids = selectedRows.map(r => r._id);
+                const res = await api.post('/users/bulk/archive', { ids });
+                if (res.data.success) {
+                    toast.update(toastId, { render: `${selectedRows.length} users moved to recycle bin`, type: 'success', isLoading: false, autoClose: 3000 });
+                    fetchUsers();
+                    fetchBinCount();
+                    setSelectedRows([]);
+                }
+            } catch (error) {
+                toast.update(toastId, { render: error.response?.data?.message || 'Bulk delete failed', type: 'error', isLoading: false, autoClose: 3000 });
+            }
+        }
+    }, [selectedRows, fetchUsers, fetchBinCount]);
+
+    const handleBulkExport = useCallback(() => {
+        if (selectedRows.length === 0) return;
+        const csvData = selectedRows.map((u) => ({
+            Name: u.name || '',
+            'Roll Number': u.rollNumber || '',
+            Email: u.email || '',
+            Phone: u.phone || '',
+            Role: u.role || '',
+            Status: u.isActive ? 'Active' : 'Inactive',
+            Source: u.source || 'web',
+            'Auth Method': u.authMethod || 'email',
+            'Registered On': u.createdAt && !isNaN(new Date(u.createdAt).getTime()) ? format(new Date(u.createdAt), 'yyyy-MM-dd') : '',
+        }));
+        const csv = Papa.unparse(csvData);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `users-export-${format(new Date(), 'yyyy-MM-dd-HHmm')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success(`Exported ${selectedRows.length} users`);
+    }, [selectedRows]);
+
+    const handleBulkBatchAssign = useCallback(async (batchName) => {
+        if (selectedRows.length === 0) return;
+        const toastId = toast.loading('Assigning batch...');
         try {
-            const userIds = selectedRows.map(u => u._id);
-            const response = await api.post('/users/bulk-sync-subscriptions', { userIds });
-            if (response.data.success) { toast.success(response.data.message); fetchUsers(); setSelectedRows([]); }
+            const ids = selectedRows.map(r => r._id);
+            const res = await api.post('/users/bulk/assign-batch', { ids, batch: batchName });
+            if (res.data.success) {
+                toast.update(toastId, { render: `Assigned batch to ${selectedRows.length} users`, type: 'success', isLoading: false, autoClose: 3000 });
+                fetchUsers();
+                setSelectedRows([]);
+            }
         } catch (error) {
-            toast.error('Sync failed: ' + (error.response?.data?.message || error.message));
-        } finally {
-            setLoading(false);
+            toast.update(toastId, { render: error.response?.data?.message || 'Bulk batch assign failed', type: 'error', isLoading: false, autoClose: 3000 });
         }
-    };
+    }, [selectedRows, fetchUsers]);
 
-    const handleBulkBatchAssign = async (batchName) => {
-        if (!batchName && !window.confirm('Clear batch for selected users?')) return;
-        setLoading(true);
+    const handleBulkSync = useCallback(async () => {
+        if (selectedRows.length === 0) return;
+        const toastId = toast.loading('Syncing with portal...');
         try {
-            const userIds = selectedRows.map(u => u._id);
-            const response = await api.put('/users/bulk-assign-batch', { userIds, batchName });
-            if (response.data.success) { toast.success(response.data.message); fetchUsers(); setSelectedRows([]); }
+            const ids = selectedRows.map(r => r._id);
+            const res = await api.post('/users/bulk/sync', { ids });
+            if (res.data.success) {
+                toast.update(toastId, { render: `Synced ${selectedRows.length} users`, type: 'success', isLoading: false, autoClose: 3000 });
+                fetchUsers();
+                setSelectedRows([]);
+            }
         } catch (error) {
-            toast.error('Assignment failed: ' + (error.response?.data?.message || error.message));
-        } finally {
-            setLoading(false);
+            toast.update(toastId, { render: error.response?.data?.message || 'Bulk sync failed', type: 'error', isLoading: false, autoClose: 3000 });
         }
-    };
+    }, [selectedRows, fetchUsers]);
 
-    const columnDefs = useMemo(() => getUserTableColumns({ handleView, handleEdit, handleDelete, handlePayment }), []);
+    useEffect(() => {
+        api.get('/batches').then((res) => {
+            if (res.data.success) setAllBatches(res.data.data);
+        }).catch(err => console.error(err));
+    }, []);
+
+    // Filter states
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [sourceFilter, setSourceFilter] = useState('all');
+    const [authFilter, setAuthFilter] = useState('all');
+    const [roleFilter, setRoleFilter] = useState('all');
+    const [batchFilter, setBatchFilter] = useState('all');
 
     const filteredUsers = useMemo(() => {
-        const search = searchTerm.trim().toLowerCase();
-        // Remove leading zero for cleaner phone matching
-        const searchClean = search.startsWith('0') ? search.substring(1) : search;
-
         return users.filter(user => {
-            if (!searchTerm) return true;
-
-            const name = user.name?.toLowerCase() || '';
-            const email = user.email?.toLowerCase() || '';
-            const phone = user.phone?.toLowerCase() || '';
-            const roll = user.rollNumber?.toLowerCase() || '';
+            const name = (user.name || '').toLowerCase();
+            const email = (user.email || '').toLowerCase();
+            const phone = (user.phone || '').toLowerCase();
+            const roll = (user.rollNumber || '').toLowerCase();
+            const search = searchTerm.toLowerCase().trim();
+            const searchClean = search.replace(/^0+/, '');
 
             const matchesSearch = name.includes(search) ||
                 email.includes(search) ||
@@ -199,42 +268,126 @@ const UserList = () => {
         return [...new Set([...batchNamesFromUsers, ...allBatches.map(b => b.name)])].sort();
     }, [users, allBatches]);
 
-    const metrics = useMemo(() => ({
-        total: users.length,
-        active: users.filter(u => u.isActive).length,
-        google: users.filter(u => u.authMethod === 'google').length,
-        email: users.filter(u => u.authMethod === 'email').length
-    }), [users]);
+    const metricsItems = useMemo(() => [
+        { title: 'Total Users', value: users.length, icon: <PeopleIcon />, color: 'primary' },
+        { title: 'Active Users', value: users.filter(u => u.isActive).length, icon: <CheckCircleIcon />, color: 'success' },
+        { title: 'From Google', value: users.filter(u => u.authMethod === 'google').length, icon: <GoogleIcon />, color: 'error' },
+        { title: 'From Email', value: users.filter(u => u.authMethod === 'email').length, icon: <EmailIcon />, color: 'info' }
+    ], [users]);
+
+    const filterConfigs = useMemo(() => [
+        {
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: [
+                { value: 'all', label: 'Every Status' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' }
+            ]
+        },
+        {
+            value: sourceFilter,
+            onChange: setSourceFilter,
+            options: [
+                { value: 'all', label: 'All Sources' },
+                { value: 'web', label: 'Web' },
+                { value: 'android', label: 'Android App' },
+                { value: 'ios', label: 'iOS App' }
+            ]
+        },
+        {
+            value: authFilter,
+            onChange: setAuthFilter,
+            options: [
+                { value: 'all', label: 'All Auth Types' },
+                { value: 'google', label: 'Google' },
+                { value: 'email', label: 'Email' },
+                { value: 'mobile', label: 'Mobile OTP' }
+            ]
+        },
+        {
+            value: roleFilter,
+            onChange: setRoleFilter,
+            options: [
+                { value: 'all', label: 'All Roles' },
+                { value: 'admin', label: 'Admin' },
+                { value: 'teacher', label: 'Teacher' },
+                { value: 'student', label: 'Student' }
+            ]
+        },
+        {
+            value: batchFilter,
+            onChange: setBatchFilter,
+            options: [
+                { value: 'all', label: 'All Batches' },
+                ...batches.map(b => ({ value: b, label: b }))
+            ]
+        }
+    ], [statusFilter, sourceFilter, authFilter, roleFilter, batchFilter, batches]);
+
+    const recycleBinButton = useMemo(() => (
+        <Badge 
+            badgeContent={binCount} 
+            color="error" 
+            overlap="rectangular"
+            sx={{
+                '& .MuiBadge-badge': { fontSize: '10px', fontWeight: 600, borderRadius: '4px' }
+            }}
+        >
+            <Button
+                variant="outlined"
+                startIcon={<DeleteSweepIcon fontSize="small" />}
+                onClick={() => setRecycleBinOpen(true)}
+                sx={{ 
+                    textTransform: 'none', 
+                    fontWeight: 500, 
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    borderRadius: '6px',
+                    height: 36,
+                    color: 'var(--color-vc-error-deep)',
+                    borderColor: 'var(--color-vc-error-soft)',
+                    bgcolor: 'var(--color-vc-canvas)',
+                    '&:hover': {
+                        bgcolor: 'var(--color-vc-error-soft)',
+                        borderColor: 'var(--color-vc-error-deep)'
+                    }
+                }}
+            >
+                Recycle Bin
+            </Button>
+        </Badge>
+    ), [binCount]);
 
     return (
-        <Box sx={{ p: 2 }}>
-            <UserMetrics {...metrics} />
+        <Box sx={{ p: 0.5 }}>
+            <GenericMetrics items={metricsItems} />
 
-            <Box sx={{ bgcolor: 'transparent', px: '10px' }}>
-                <UserTableHeader
-                    searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-                    statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-                    sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
-                    authFilter={authFilter} setAuthFilter={setAuthFilter}
-                    roleFilter={roleFilter} setRoleFilter={setRoleFilter}
-                    setRecycleBinOpen={setRecycleBinOpen}
-                    batchFilter={batchFilter} setBatchFilter={setBatchFilter}
-                    batches={batches} handleAdd={handleAdd}
-                    binCount={binCount} totalCount={filteredUsers.length} isDark={isDark}
+            <Box sx={{ bgcolor: 'transparent', px: 0 }}>
+                <GenericTableHeader
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    searchPlaceholder="Search students..."
+                    filters={filterConfigs}
+                    actionButtonText={canAddStudent ? "Add Student" : undefined}
+                    onActionClick={canAddStudent ? handleAdd : undefined}
+                    actionButtonIcon={canAddStudent ? <AddIcon fontSize="small" /> : undefined}
+                    totalCount={filteredUsers.length}
+                    extraElement={recycleBinButton}
                 />
 
                 {selectedRows.length > 0 && (
                     <UserBulkActions
                         selectedCount={selectedRows.length} handleBulkSync={handleBulkSync}
                         handleBulkBatchAssign={handleBulkBatchAssign} handleBulkDelete={handleBulkDelete}
-                        batches={batches} isDark={isDark}
+                        handleBulkExport={handleBulkExport}
+                        batches={batches} isDark={isDark} user={user}
                     />
                 )}
 
-                <DataTable
+                <TableUI
                     rowData={filteredUsers} columnDefs={columnDefs} loading={loading}
-                    enableGlobalSearch={false} externalSearchTerm=""
-                    pagination={true} paginationPageSize={10} height="auto"
+                    pagination={true} paginationPageSize={10}
                     onSelectionChanged={onSelectionChanged} getRowId={useCallback(row => row?._id || Math.random().toString(), [])}
                 />
             </Box>
@@ -244,6 +397,7 @@ const UserList = () => {
                 viewModalOpen={viewModalOpen} setViewModalOpen={setViewModalOpen} viewUserId={viewUserId}
                 deleteDialogOpen={deleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} confirmDelete={confirmDelete} userToDelete={userToDelete}
                 recycleBinOpen={recycleBinOpen} setRecycleBinOpen={setRecycleBinOpen} fetchBinCount={fetchBinCount}
+                binRefreshSignal={binRefreshSignal}
                 paymentModalOpen={paymentModalOpen} setPaymentModalOpen={setPaymentModalOpen}
                 setSearchParams={setSearchParams}
             />

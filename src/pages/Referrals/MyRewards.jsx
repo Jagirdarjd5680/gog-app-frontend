@@ -1,27 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import { useTheme } from '../../context/ThemeContext';
-import { 
-    Gift, 
-    TrendingUp, 
-    History, 
-    ArrowUpRight, 
-    ArrowDownLeft,
-    Clock,
-    CheckCircle,
-    XCircle,
-    Wallet
-} from 'lucide-react';
+import {
+    Box,
+    Typography,
+    Paper,
+    Grid,
+    Avatar,
+    Chip,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    LinearProgress,
+    Container,
+    Stack
+} from '@mui/material';
+import {
+    CardGiftcard as GiftIcon,
+    TrendingUp as TrendingUpIcon,
+    History as HistoryIcon,
+    ArrowUpward as ArrowUpIcon,
+    ArrowDownward as ArrowDownIcon,
+    Schedule as ClockIcon,
+    CheckCircle as CheckCircleIcon,
+    Cancel as XCircleIcon,
+    AccountBalanceWallet as WalletIcon
+} from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
+import socket, { connectSocket } from '../../realtime/socketClient';
+
+const STATUS_STYLES = {
+    approved: { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669' },
+    pending: { bg: 'rgba(245, 158, 11, 0.1)', color: '#b45309' },
+    rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+};
+
+const StatCard = ({ icon, iconColor, iconBg, label, value, sub }) => (
+    <Paper elevation={0} sx={{ p: 3, borderRadius: '16px', bgcolor: 'var(--color-vc-canvas-soft, #fff)', border: '1px solid var(--color-vc-hairline, rgba(0,0,0,0.08))', height: '100%' }}>
+        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <Avatar sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: iconBg, color: iconColor }}>
+                {icon}
+            </Avatar>
+            <Typography variant="caption" fontWeight={800} sx={{ color: 'var(--color-vc-mute, text.secondary)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                {label}
+            </Typography>
+        </Stack>
+        <Typography variant="h4" fontWeight={900} sx={{ color: 'var(--color-vc-ink, text.primary)' }}>{value}</Typography>
+        <Typography variant="caption" sx={{ color: 'var(--color-vc-mute, text.secondary)' }}>{sub}</Typography>
+    </Paper>
+);
 
 const MyRewards = () => {
     const [withdrawals, setWithdrawals] = useState([]);
     const [stats, setStats] = useState({ points: 0, walletBalance: 0, totalReferrals: 0 });
     const [loading, setLoading] = useState(true);
-    const { darkMode } = useTheme();
 
     useEffect(() => {
         fetchData();
+
+        connectSocket();
+        const handleRealtimeUpdate = (payload) => {
+            if (payload?.type === 'REFERRAL_UPDATED') fetchData();
+        };
+        socket.on('realtime_update', handleRealtimeUpdate);
+        return () => socket.off('realtime_update', handleRealtimeUpdate);
     }, []);
 
     const fetchData = async () => {
@@ -39,139 +83,132 @@ const MyRewards = () => {
         }
     };
 
-    if (loading) return <div className={`p-8 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Loading rewards...</div>;
+    if (loading) return <Box sx={{ p: 10, textAlign: 'center' }}><LinearProgress /></Box>;
 
     return (
-        <div className={`p-6 min-h-screen ${darkMode ? 'bg-[#020617] text-slate-200' : 'bg-slate-50 text-slate-700'}`}>
-            <div className="mb-10">
-                <h1 className={`text-3xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    <Gift className="text-purple-500" />
-                    My Rewards
-                </h1>
-                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Track your points, earnings and withdrawals</p>
-            </div>
+        <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'var(--color-vc-canvas, #f8fafc)', minHeight: '100vh' }}>
+            <Container maxWidth="lg" disableGutters>
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="h5" fontWeight={900} sx={{ color: 'var(--color-vc-ink, text.primary)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <GiftIcon color="primary" /> My Rewards
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'var(--color-vc-mute, text.secondary)' }}>
+                        Track your points, earnings and withdrawals
+                    </Typography>
+                </Box>
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <div className={`border p-6 rounded-3xl relative overflow-hidden group ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-                            <TrendingUp size={24} />
-                        </div>
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Points</span>
-                    </div>
-                    <h2 className={`text-4xl font-black mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stats.points}</h2>
-                    <p className="text-xs text-slate-500">Value: ₹{(stats.points / 10).toFixed(2)}</p>
-                </div>
+                <Grid container spacing={2.5} sx={{ mb: 3 }}>
+                    <Grid item xs={12} sm={4}>
+                        <StatCard
+                            icon={<TrendingUpIcon />}
+                            iconColor="#2563eb"
+                            iconBg="rgba(37, 99, 235, 0.1)"
+                            label="Total Points"
+                            value={stats.points}
+                            sub={`Value: ₹${(stats.points / 10).toFixed(2)}`}
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <StatCard
+                            icon={<WalletIcon />}
+                            iconColor="#059669"
+                            iconBg="rgba(16, 185, 129, 0.1)"
+                            label="Wallet Balance"
+                            value={`₹${stats.walletBalance}`}
+                            sub="Available for withdrawal"
+                        />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <StatCard
+                            icon={<ArrowUpIcon />}
+                            iconColor="#7c3aed"
+                            iconBg="rgba(124, 58, 237, 0.1)"
+                            label="Total Referrals"
+                            value={stats.totalReferrals}
+                            sub="Successful invites"
+                        />
+                    </Grid>
+                </Grid>
 
-                <div className={`border p-6 rounded-3xl relative overflow-hidden group ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                            <Wallet size={24} />
-                        </div>
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Wallet Balance</span>
-                    </div>
-                    <h2 className={`text-4xl font-black mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>₹{stats.walletBalance}</h2>
-                    <p className="text-xs text-slate-500">Available for withdrawal</p>
-                </div>
-
-                <div className={`border p-6 rounded-3xl relative overflow-hidden group ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500">
-                            <ArrowUpRight size={24} />
-                        </div>
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Referrals</span>
-                    </div>
-                    <h2 className={`text-4xl font-black mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stats.totalReferrals}</h2>
-                    <p className="text-xs text-slate-500">Successful invites</p>
-                </div>
-            </div>
-
-            {/* Withdrawal History */}
-            <div className={`border rounded-3xl overflow-hidden shadow-sm ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                <div className={`p-6 border-b flex items-center justify-between ${darkMode ? 'border-slate-800 bg-slate-950/50' : 'border-slate-200 bg-slate-50'}`}>
-                    <h3 className={`text-lg font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                        <History size={20} className="text-slate-500" />
-                        Withdrawal History
-                    </h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className={`text-[10px] font-black uppercase tracking-widest ${darkMode ? 'bg-slate-950/30 text-slate-500' : 'bg-slate-100 text-slate-500'}`}>
-                                <th className="px-6 py-4">Transaction Details</th>
-                                <th className="px-6 py-4">Amount</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Reference</th>
-                            </tr>
-                        </thead>
-                        <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-                            {withdrawals.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-20 text-center text-slate-500">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <Clock size={40} className="opacity-20" />
-                                            <p className="font-bold uppercase tracking-widest text-xs">No withdrawal history yet</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                withdrawals.map(w => (
-                                    <tr key={w._id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}`}>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                                    w.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 
-                                                    w.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
-                                                }`}>
-                                                    {w.status === 'approved' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                                                </div>
-                                                <div>
-                                                    <p className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Points Redemption</p>
-                                                    <p className="text-[10px] text-slate-500 font-mono">{w.upiId}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <p className={`font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>₹{w.amount}</p>
-                                            <p className="text-[10px] text-slate-500 font-bold">{w.points} Points</p>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                                w.status === 'pending' ? 'bg-amber-500/10 text-amber-600' :
-                                                w.status === 'approved' ? 'bg-emerald-500/10 text-emerald-600' :
-                                                'bg-red-500/10 text-red-600'
-                                            }`}>
-                                                {w.status === 'pending' && <Clock size={12} />}
-                                                {w.status === 'approved' && <CheckCircle size={12} />}
-                                                {w.status === 'rejected' && <XCircle size={12} />}
-                                                {w.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
-                                            {new Date(w.createdAt).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {w.transactionId ? (
-                                                <span className={`text-[10px] font-mono px-2 py-1 rounded border ${darkMode ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                                                    {w.transactionId}
-                                                </span>
-                                            ) : (
-                                                <span className="text-[10px] text-slate-500 italic">Processing...</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+                <Paper elevation={0} sx={{ borderRadius: '16px', border: '1px solid var(--color-vc-hairline, rgba(0,0,0,0.08))', overflow: 'hidden' }}>
+                    <Box sx={{ p: 2.5, borderBottom: '1px solid var(--color-vc-hairline, rgba(0,0,0,0.08))', bgcolor: 'var(--color-vc-canvas-soft, #f8fafc)' }}>
+                        <Typography variant="subtitle1" fontWeight={800} sx={{ color: 'var(--color-vc-ink, text.primary)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <HistoryIcon fontSize="small" sx={{ color: 'var(--color-vc-mute, text.secondary)' }} /> Withdrawal History
+                        </Typography>
+                    </Box>
+                    <TableContainer>
+                        <Table>
+                            <TableHead>
+                                <TableRow sx={{ '& th': { fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--color-vc-mute, text.secondary)', bgcolor: 'var(--color-vc-canvas-soft, #f8fafc)' } }}>
+                                    <TableCell>Transaction Details</TableCell>
+                                    <TableCell>Amount</TableCell>
+                                    <TableCell>Status</TableCell>
+                                    <TableCell>Date</TableCell>
+                                    <TableCell>Reference</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {withdrawals.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} sx={{ py: 8, textAlign: 'center' }}>
+                                            <Stack alignItems="center" spacing={1}>
+                                                <ClockIcon sx={{ fontSize: 40, opacity: 0.2 }} />
+                                                <Typography variant="caption" fontWeight={800} sx={{ color: 'var(--color-vc-mute, text.secondary)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                                    No withdrawal history yet
+                                                </Typography>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    withdrawals.map((w) => {
+                                        const style = STATUS_STYLES[w.status] || STATUS_STYLES.pending;
+                                        return (
+                                            <TableRow key={w._id} hover>
+                                                <TableCell>
+                                                    <Stack direction="row" spacing={1.5} alignItems="center">
+                                                        <Avatar sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: style.bg, color: style.color }}>
+                                                            {w.status === 'approved' ? <ArrowDownIcon fontSize="small" /> : <ArrowUpIcon fontSize="small" />}
+                                                        </Avatar>
+                                                        <Box>
+                                                            <Typography variant="body2" fontWeight={700} sx={{ color: 'var(--color-vc-ink, text.primary)' }}>Points Redemption</Typography>
+                                                            <Typography variant="caption" sx={{ color: 'var(--color-vc-mute, text.secondary)', fontFamily: 'monospace' }}>{w.upiId}</Typography>
+                                                        </Box>
+                                                    </Stack>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight={800} sx={{ color: 'var(--color-vc-ink, text.primary)' }}>₹{w.amount}</Typography>
+                                                    <Typography variant="caption" sx={{ color: 'var(--color-vc-mute, text.secondary)' }}>{w.points} Points</Typography>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip
+                                                        size="small"
+                                                        icon={w.status === 'pending' ? <ClockIcon sx={{ fontSize: 14 }} /> : w.status === 'approved' ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : <XCircleIcon sx={{ fontSize: 14 }} />}
+                                                        label={w.status}
+                                                        sx={{ bgcolor: style.bg, color: style.color, fontWeight: 800, textTransform: 'uppercase', fontSize: '0.65rem' }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="caption" fontWeight={700} sx={{ color: 'var(--color-vc-mute, text.secondary)' }}>
+                                                        {new Date(w.createdAt).toLocaleDateString()}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {w.transactionId ? (
+                                                        <Chip size="small" label={w.transactionId} sx={{ fontFamily: 'monospace', fontSize: '0.65rem', bgcolor: 'var(--color-vc-canvas-soft, #f1f5f9)' }} />
+                                                    ) : (
+                                                        <Typography variant="caption" sx={{ color: 'var(--color-vc-mute, text.disabled)', fontStyle: 'italic' }}>Processing...</Typography>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Paper>
+            </Container>
+        </Box>
     );
 };
 

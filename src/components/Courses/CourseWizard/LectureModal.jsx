@@ -29,10 +29,11 @@ import FolderZipIcon from '@mui/icons-material/FolderZip';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AudiotrackIcon from '@mui/icons-material/Audiotrack';
 import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
-import Chip from '@mui/material/Chip';
-import QuestionPickerModal from '../../Exams/QuestionPickerModal';
-import ReactQuill from 'react-quill-new';
-import 'react-quill-new/dist/quill.snow.css';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import api from '../../../utils/api';
+import { getYoutubeVideoDuration } from '../../../utils/youtube';
+
 
 const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
     const [uploading, setUploading] = useState(false);
@@ -46,12 +47,10 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
         isFree: false,
         resourceId: '',
         resourceModel: '',
-        // Google Meet fields
         meetLink: '',
         meetTitle: '',
         meetScheduledAt: '',
         meetEndsAt: '',
-        // Assessment/Assignment fields
         selectedQuestions: [],
         assignmentType: 'file_upload',
         assignmentDesc: '',
@@ -59,7 +58,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
     });
     const [exams, setExams] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
-    const [questionPickerOpen, setQuestionPickerOpen] = useState(false);
 
     useEffect(() => {
         if (open) {
@@ -72,7 +70,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     isFree: initialData.freePreview || false,
                     resourceId: initialData.resourceId || '',
                     resourceModel: initialData.resourceModel || '',
-                    // Google Meet fields
                     meetLink: initialData.meetLink || '',
                     meetTitle: initialData.meetTitle || '',
                     meetScheduledAt: initialData.meetScheduledAt ? initialData.meetScheduledAt.slice(0, 16) : '',
@@ -93,11 +90,9 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
             setUploadProgress(0);
             setUploading(false);
             
-            // Pre-fetch if needed
             if (initialData?.type === 'exam') fetchExams();
         }
     }, [open, initialData]);
-
 
     const fetchExams = async () => {
         try {
@@ -115,17 +110,12 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
             videoUrl: type === 'none' ? 'none' : '', 
             resourceId: '', 
             resourceModel: type === 'exam' ? 'Exam' : '',
-            // Reset assignment fields
             assignmentType: 'file_upload',
             assignmentDesc: '',
             maxMb: 10,
             selectedQuestions: []
         });
         if (type === 'exam') fetchExams();
-    };
-
-    const handleQuestionSelect = (ids) => {
-        setVideoForm(prev => ({ ...prev, selectedQuestions: ids }));
     };
 
     const [generating, setGenerating] = useState(false);
@@ -135,7 +125,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
         if (!tokens) {
             try {
                 const response = await api.get('/live-classes/auth/url');
-                // Redirect to Google Auth - it will return to CourseList which we will handle
                 window.location.href = response.data.url;
             } catch (error) {
                 toast.error('Failed to get auth URL');
@@ -155,7 +144,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                 classInfo: {
                     title: videoForm.title,
                     scheduledDate: videoForm.meetScheduledAt,
-                    duration: 60 // Default duration
+                    duration: 60
                 }
             });
             if (response.data.success) {
@@ -163,7 +152,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                 toast.success('Meet link generated successfully!');
             }
         } catch (error) {
-            
             toast.error('Failed to generate Meet link. You might need to re-connect Google.');
             localStorage.removeItem('googleMeetTokens');
         } finally {
@@ -195,13 +183,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     return;
                 }
             } catch (error) {
-                console.error('🚀 [GOG UPLOAD DEBUG] Failed to upload file:', {
-                    fileName: selectedFile?.name,
-                    fileSize: selectedFile?.size,
-                    error: error.response?.data || error.message,
-                    status: error.response?.status
-                });
-                
                 const errorMsg = error.response?.data?.message || error.message || 'Upload failed';
                 toast.error(`❌ ${errorMsg}`);
                 setUploading(false);
@@ -211,7 +192,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
 
         let finalResourceId = videoForm.resourceId;
         let finalResourceModel = videoForm.resourceModel;
-
 
         const saveData = { 
             ...videoForm, 
@@ -229,13 +209,38 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
 
     const getTypeIcon = () => {
         switch (videoForm.type) {
-            case 'pdf': return <PictureAsPdfIcon color="error" />;
-            case 'audio': return <AudiotrackIcon color="warning" />;
-            case 'zip': return <FolderZipIcon color="primary" />;
-            case 'exam': return <ReceiptLongIcon color="error" />;
+            case 'pdf': return <PictureAsPdfIcon sx={{ color: 'var(--color-vc-error-deep)' }} />;
+            case 'audio': return <AudiotrackIcon sx={{ color: 'var(--color-vc-violet-deep)' }} />;
+            case 'zip': return <FolderZipIcon sx={{ color: 'var(--color-vc-link-deep)' }} />;
+            case 'exam': return <ReceiptLongIcon sx={{ color: 'var(--color-vc-error-deep)' }} />;
             case 'google_meet': return <VideoCallIcon sx={{ color: '#1A73E8' }} />;
-            case 'none': return <LibraryBooksIcon sx={{ color: '#64748b' }} />;
-            default: return <OndemandVideoIcon color="success" />;
+            case 'none': return <LibraryBooksIcon sx={{ color: 'var(--color-vc-mute)' }} />;
+            default: return <OndemandVideoIcon sx={{ color: 'var(--color-vc-cyan-deep)' }} />;
+        }
+    };
+
+    const inputStyles = {
+        fontFamily: 'inherit',
+        fontSize: '13px',
+        color: 'var(--color-vc-ink)',
+        '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--color-vc-hairline)',
+            borderRadius: '6px'
+        },
+        '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--color-vc-hairline-strong)'
+        },
+        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'var(--color-vc-hairline-strong)'
+        }
+    };
+
+    const labelStyles = {
+        fontFamily: 'inherit',
+        fontSize: '13px',
+        color: 'var(--color-vc-mute)',
+        '&.Mui-focused': {
+            color: 'var(--color-vc-ink)'
         }
     };
 
@@ -245,22 +250,44 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
             onClose={onClose}
             fullWidth
             maxWidth="sm"
-            PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
+            PaperProps={{ 
+                sx: { 
+                    borderRadius: '8px', 
+                    p: 1,
+                    bgcolor: 'var(--color-vc-canvas)',
+                    color: 'var(--color-vc-ink)',
+                    border: '1px solid var(--color-vc-hairline)',
+                    boxShadow: '0px 24px 32px -8px rgba(0,0,0,0.1)'
+                } 
+            }}
         >
             <DialogTitle sx={{ 
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, pt: 2, pb: 1 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 3, pt: 2, pb: 1.5 
             }}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Box sx={{ p: 1, borderRadius: '10px', bgcolor: 'primary.light', color: 'primary.dark' }}>
+                    <Box sx={{ p: 1, borderRadius: '6px', bgcolor: 'var(--color-vc-canvas-soft-2)', border: '1px solid var(--color-vc-hairline)', display: 'flex' }}>
                         {getTypeIcon()}
                     </Box>
-                    <Typography variant="h6" fontWeight={800}>{initialData ? 'Edit Lecture' : 'New Lecture'}</Typography>
+                    <Typography sx={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit', letterSpacing: '-0.02em' }}>
+                        {initialData ? 'Edit Lecture' : 'New Lecture'}
+                    </Typography>
                 </Stack>
-                <IconButton onClick={onClose} size="small" sx={{ bgcolor: '#f1f5f9' }}>
-                    <CloseIcon fontSize="small" />
+                <IconButton 
+                    onClick={onClose} 
+                    size="small" 
+                    sx={{ 
+                        color: 'var(--color-vc-mute)',
+                        '&:hover': {
+                            color: 'var(--color-vc-ink)',
+                            bgcolor: 'var(--color-vc-canvas-soft)'
+                        }
+                    }}
+                >
+                    <CloseIcon sx={{ fontSize: 18 }} />
                 </IconButton>
             </DialogTitle>
-            <Divider />
+            <Divider sx={{ borderColor: 'var(--color-vc-hairline)' }} />
+            
             <DialogContent sx={{ px: 3, pt: 3 }}>
                 <Grid container spacing={3}>
                     <Grid item xs={12}>
@@ -270,7 +297,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             placeholder="e.g. Introduction to React Hooks"
                             value={videoForm.title || ''}
                             onChange={(e) => setVideoForm({ ...videoForm, title: e.target.value })}
-                            InputProps={{ sx: { borderRadius: '12px' } }}
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         />
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -280,7 +308,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             select
                             value={videoForm.type || 'video'}
                             onChange={(e) => handleTypeChange(e.target.value)}
-                            InputProps={{ sx: { borderRadius: '12px' } }}
+                            InputLabelProps={{ sx: labelStyles }}
+                            InputProps={{ sx: inputStyles }}
                         >
                             <MenuItem value="video">🎥 High Quality Video</MenuItem>
                             <MenuItem value="pdf">📄 PDF Document</MenuItem>
@@ -292,7 +321,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                         </TextField>
                     </Grid>
 
-                    {/* Dynamic Selection for Exam */}
                     {videoForm.type === 'exam' && (
                         <Grid item xs={12}>
                             <TextField
@@ -310,7 +338,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                         videoUrl: `linked_exam_${selectedId}`
                                     });
                                 }}
-                                InputProps={{ sx: { borderRadius: '12px' } }}
+                                InputLabelProps={{ sx: labelStyles }}
+                                InputProps={{ sx: inputStyles }}
                             >
                                 <MenuItem value=""><em>Select an exam</em></MenuItem>
                                 {exams.map(ex => <MenuItem key={ex._id} value={ex._id}>{ex.title}</MenuItem>)}
@@ -324,18 +353,19 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             type="number"
                             value={videoForm.duration && videoForm.duration > 0 ? (videoForm.duration / 60).toFixed(1) : ''}
                             onChange={(e) => {
-                                const mins = Math.max(0, parseFloat(e.target.value) || 0);
-                                setVideoForm({ ...videoForm, duration: Math.round(mins * 60) });
+                                  const mins = Math.max(0, parseFloat(e.target.value) || 0);
+                                  setVideoForm({ ...videoForm, duration: Math.round(mins * 60) });
                             }}
+                            InputLabelProps={{ sx: labelStyles }}
                             InputProps={{ 
-                                sx: { borderRadius: '12px' },
-                                startAdornment: <Typography variant="caption" sx={{ mr: 1, color: 'text.disabled' }}>m</Typography>
+                                  sx: inputStyles,
+                                  startAdornment: <Typography variant="caption" sx={{ mr: 1, color: 'var(--color-vc-mute)', fontFamily: 'inherit' }}>m</Typography>
                             }}
                         />
                     </Grid>
                     {videoForm.type !== 'assignment' && videoForm.type !== 'exam' && videoForm.type !== 'google_meet' && videoForm.type !== 'none' && (
                         <Grid item xs={12}>
-                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                            <Typography sx={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-vc-mute)', textTransform: 'uppercase', letterSpacing: '0.08em', mb: 1.5, display: 'block', fontFamily: 'inherit' }}>
                                 Lecture Source
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1.5 }}>
@@ -346,29 +376,51 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                     value={videoForm.videoUrl || ''}
                                     onChange={async (e) => {
                                         const url = e.target.value;
-                                        setVideoForm({ ...videoForm, videoUrl: url });
+                                        setVideoForm(prev => ({ ...prev, videoUrl: url }));
                                         
-                                        // Auto-fetch duration if it's a direct video link
                                         if (url && (url.match(/\.(mp4|webm|ogg|mov)$/) || url.includes('storage.googleapis.com'))) {
                                             const video = document.createElement('video');
                                             video.preload = 'metadata';
                                             video.onloadedmetadata = () => {
                                                 setVideoForm(prev => ({ ...prev, duration: Math.round(video.duration) }));
-                                                window.URL.revokeObjectURL(video.src);
                                             };
                                             video.src = url;
+                                        } else if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+                                            toast.info('Fetching YouTube video duration...');
+                                            const { duration: dur, errorCode } = await getYoutubeVideoDuration(url);
+                                            if (dur > 0) {
+                                                setVideoForm(prev => ({ ...prev, duration: dur }));
+                                                toast.success(`Fetched duration: ${Math.round(dur / 60)} mins`);
+                                            } else if (errorCode === 101 || errorCode === 150) {
+                                                toast.warning('This video\'s owner disabled playback on other websites — preview/embed won\'t work here. Please enter the duration manually.');
+                                            } else if (errorCode === 100) {
+                                                toast.error('This YouTube video is private or was removed.');
+                                            } else if (errorCode === 2 || errorCode === 'invalid_url') {
+                                                toast.error('Couldn\'t read a valid YouTube video ID from that link.');
+                                            } else {
+                                                toast.warning('Couldn\'t auto-detect the duration — please enter it manually.');
+                                            }
                                         }
                                     }}
-                                    InputProps={{ sx: { borderRadius: '12px' } }}
+                                    InputLabelProps={{ sx: labelStyles }}
+                                    InputProps={{ sx: inputStyles }}
                                 />
                                 <Tooltip title="Upload from Device">
                                     <Button
                                         variant="outlined"
                                         component="label"
-                                        sx={{ minWidth: 56, height: 56, borderRadius: '12px', borderStyle: 'dashed' }}
+                                        sx={{ 
+                                            minWidth: 56, 
+                                            height: 40, 
+                                            borderRadius: '6px', 
+                                            borderColor: 'var(--color-vc-hairline)',
+                                            color: 'var(--color-vc-ink)',
+                                            bgcolor: 'var(--color-vc-canvas)',
+                                            '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' }
+                                        }}
                                         disabled={uploading}
                                     >
-                                        {uploading ? <CircularProgress size={20} /> : '↑'}
+                                        {uploading ? <CircularProgress size={16} /> : '↑'}
                                         <input
                                             type="file"
                                             hidden
@@ -384,7 +436,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                                     setSelectedFile(file);
                                                     setVideoForm({ ...videoForm, videoUrl: file.name });
                                                     
-                                                    // Auto-fetch duration for local file
                                                     if (videoForm.type === 'video' || videoForm.type === 'audio') {
                                                         const media = document.createElement(videoForm.type);
                                                         media.preload = 'metadata';
@@ -401,39 +452,44 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                 <Tooltip title="Open Media Library">
                                     <Button
                                         variant="contained"
-                                        sx={{ minWidth: 56, height: 56, borderRadius: '12px', bgcolor: '#1e293b' }}
+                                        sx={{ 
+                                            minWidth: 56, 
+                                            height: 40, 
+                                            borderRadius: '6px', 
+                                            boxShadow: 'none',
+                                            bgcolor: 'var(--color-vc-ink)',
+                                            color: 'var(--color-vc-on-primary)',
+                                            '&:hover': { bgcolor: 'var(--color-vc-ink)', opacity: 0.9, boxShadow: 'none' } 
+                                        }}
                                         onClick={() => setMediaPickerOpen(true)}
                                     >
-                                        <LibraryBooksIcon size="small" />
+                                        <LibraryBooksIcon sx={{ fontSize: 18 }} />
                                     </Button>
                                 </Tooltip>
-                            </Box>
+                             </Box>
                         </Grid>
                     )}
 
                     {uploading && (
                         <Grid item xs={12}>
                             <Box sx={{ 
-                                p: 3, 
-                                bgcolor: 'primary.light', 
-                                borderRadius: '16px', 
-                                border: '1px solid',
-                                borderColor: 'primary.main',
+                                p: 2.5, 
+                                bgcolor: 'var(--color-vc-canvas-soft)', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--color-vc-hairline)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 gap: 2,
-                                textAlign: 'center',
-                                position: 'relative',
-                                overflow: 'hidden'
+                                textAlign: 'center'
                             }}>
-                                <CircularProgress size={40} thickness={4} />
+                                <CircularProgress size={32} thickness={4} sx={{ color: 'var(--color-vc-ink)' }} />
                                 <Box sx={{ width: '100%' }}>
                                     <Stack direction="row" justifyContent="space-between" mb={1}>
-                                        <Typography variant="body2" fontWeight={800} color="primary.dark">
+                                        <Typography sx={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                                             {uploadProgress < 100 ? '🚀 Uploading Content...' : '⚙️ Processing & Encrypting...'}
                                         </Typography>
-                                        <Typography variant="body2" fontWeight={800} color="primary.dark">
+                                        <Typography sx={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>
                                             {uploadProgress}%
                                         </Typography>
                                     </Stack>
@@ -441,46 +497,38 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                         variant="determinate" 
                                         value={uploadProgress} 
                                         sx={{ 
-                                            borderRadius: 10, 
-                                            height: 10,
-                                            bgcolor: 'rgba(255,255,255,0.5)',
+                                            borderRadius: 5, 
+                                            height: 4,
                                             '& .MuiLinearProgress-bar': {
-                                                borderRadius: 10,
-                                                backgroundImage: 'linear-gradient(90deg, #6366f1 0%, #a855f7 100%)'
+                                                bgcolor: 'var(--color-vc-ink)'
                                             }
                                         }} 
                                     />
                                 </Box>
-                                <Typography variant="caption" color="primary.dark" sx={{ opacity: 0.8, fontWeight: 600 }}>
-                                    {uploadProgress < 100 
-                                        ? 'Please wait while we upload your file to our secure local storage.' 
-                                        : 'Finalizing security encryption for high-quality streaming...'}
-                                </Typography>
                             </Box>
                         </Grid>
                     )}
 
                     <Grid item xs={12}>
                         {videoForm.type === 'video' ? (
-                            <Box sx={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                            <Box sx={{ borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--color-vc-hairline)' }}>
                                 <VideoPreview url={videoForm.videoUrl} height={180} />
                             </Box>
                         ) : videoForm.videoUrl ? (
-                            <Box sx={{ p: 3, bgcolor: '#f0fdf4', textAlign: 'center', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
-                                <PlaylistAddCheckIcon sx={{ color: '#16a34a', mb: 1 }} />
-                                <Typography variant="body2" fontWeight={800} color="#166534">Content Linked Successfully</Typography>
-                                <Typography variant="caption" color="#166534" noWrap display="block" sx={{ opacity: 0.7 }}>{videoForm.videoUrl}</Typography>
+                            <Box sx={{ p: 2.5, bgcolor: 'var(--color-vc-canvas-soft)', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--color-vc-hairline)' }}>
+                                <PlaylistAddCheckIcon sx={{ color: 'var(--color-vc-cyan-deep)', mb: 1 }} />
+                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Content Linked Successfully</Typography>
+                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', noWrap: true, display: 'block', mt: 0.25 }}>{videoForm.videoUrl}</Typography>
                             </Box>
                         ) : null}
                     </Grid>
 
-                    {/* Google Meet Fields */}
                     {videoForm.type === 'google_meet' && (
                         <Grid item xs={12}>
-                            <Box sx={{ p: 2.5, bgcolor: '#E8F0FE', borderRadius: 3, border: '1px solid #1A73E8' }}>
-                                <Stack direction="row" alignItems="center" spacing={1} mb={2}>
-                                    <VideoCallIcon sx={{ color: '#1A73E8', fontSize: 24 }} />
-                                    <Typography fontWeight={700} color="#1A73E8">Google Meet Session</Typography>
+                            <Box sx={{ p: 2.5, bgcolor: 'var(--color-vc-canvas-soft)', borderRadius: '6px', border: '1px solid var(--color-vc-hairline)' }}>
+                                <Stack direction="row" alignItems="center" spacing={1.5} mb={2}>
+                                    <VideoCallIcon sx={{ color: '#1A73E8', fontSize: 22 }} />
+                                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Google Meet Session</Typography>
                                 </Stack>
                                 <Grid container spacing={2}>
                                     <Grid item xs={12}>
@@ -490,7 +538,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                             value={videoForm.meetTitle || ''}
                                             onChange={(e) => setVideoForm({ ...videoForm, meetTitle: e.target.value })}
                                             placeholder="e.g. Week 3 Live Session"
-                                            InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                            InputLabelProps={{ sx: labelStyles }}
+                                            InputProps={{ sx: { ...inputStyles, bgcolor: 'var(--color-vc-canvas)' } }}
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
@@ -500,8 +549,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                             type="datetime-local"
                                             value={videoForm.meetScheduledAt || ''}
                                             onChange={(e) => setVideoForm({ ...videoForm, meetScheduledAt: e.target.value })}
-                                            InputLabelProps={{ shrink: true }}
-                                            InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                            InputLabelProps={{ shrink: true, sx: labelStyles }}
+                                            InputProps={{ sx: { ...inputStyles, bgcolor: 'var(--color-vc-canvas)' } }}
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
@@ -511,27 +560,38 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                             type="datetime-local"
                                             value={videoForm.meetEndsAt || ''}
                                             onChange={(e) => setVideoForm({ ...videoForm, meetEndsAt: e.target.value })}
-                                            InputLabelProps={{ shrink: true }}
-                                            InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                            InputLabelProps={{ shrink: true, sx: labelStyles }}
+                                            InputProps={{ sx: { ...inputStyles, bgcolor: 'var(--color-vc-canvas)' } }}
                                         />
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <Box sx={{ display: 'flex', gap: 1.5 }}>
                                             <TextField
                                                 fullWidth
                                                 label="Google Meet Link"
                                                 value={videoForm.meetLink || ''}
                                                 onChange={(e) => setVideoForm({ ...videoForm, meetLink: e.target.value })}
                                                 placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                                                InputProps={{ sx: { borderRadius: '10px', bgcolor: 'white' } }}
+                                                InputLabelProps={{ sx: labelStyles }}
+                                                InputProps={{ sx: { ...inputStyles, bgcolor: 'var(--color-vc-canvas)' } }}
                                             />
                                             <Button
                                                 variant="outlined"
                                                 onClick={handleGenerateMeet}
                                                 disabled={generating}
-                                                sx={{ minWidth: 140, borderRadius: 2 }}
+                                                sx={{ 
+                                                    minWidth: 130, 
+                                                    borderRadius: '6px',
+                                                    textTransform: 'none',
+                                                    fontSize: '12px',
+                                                    fontFamily: 'inherit',
+                                                    borderColor: 'var(--color-vc-hairline)',
+                                                    color: 'var(--color-vc-ink)',
+                                                    bgcolor: 'var(--color-vc-canvas)',
+                                                    '&:hover': { borderColor: 'var(--color-vc-hairline-strong)', bgcolor: 'var(--color-vc-canvas-soft)' }
+                                                }}
                                             >
-                                                {generating ? <CircularProgress size={20} /> : 'Auto Generate'}
+                                                {generating ? <CircularProgress size={16} /> : 'Auto Generate'}
                                             </Button>
                                         </Box>
                                     </Grid>
@@ -542,7 +602,16 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                                 variant="contained"
                                                 href={videoForm.meetLink}
                                                 target="_blank"
-                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, bgcolor: '#1A73E8', '&:hover': { bgcolor: '#1557B0' } }}
+                                                sx={{ 
+                                                    borderRadius: '6px', 
+                                                    textTransform: 'none', 
+                                                    fontWeight: 500, 
+                                                    fontSize: '13px',
+                                                    fontFamily: 'inherit',
+                                                    bgcolor: '#1A73E8', 
+                                                    boxShadow: 'none',
+                                                    '&:hover': { bgcolor: '#1557B0', boxShadow: 'none' } 
+                                                }}
                                                 startIcon={<VideoCallIcon />}
                                             >
                                                 Join Meeting (Preview)
@@ -555,24 +624,46 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     )}
 
                     <Grid item xs={12}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ bgcolor: 'var(--color-vc-canvas-soft)', p: 2, borderRadius: '6px', border: '1px solid var(--color-vc-hairline)' }}>
                             <Box>
-                                <Typography variant="body2" fontWeight={700}>Free Preview</Typography>
-                                <Typography variant="caption" color="text.secondary">Allow students to watch this for free</Typography>
+                                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-vc-ink)', fontFamily: 'inherit' }}>Free Preview</Typography>
+                                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', fontFamily: 'inherit', display: 'block', mt: 0.25 }}>Allow students to watch this for free</Typography>
                             </Box>
                             <Switch
                                 checked={videoForm.isFree}
                                 onChange={(e) => setVideoForm({ ...videoForm, isFree: e.target.checked })}
-                                color="primary"
+                                sx={{
+                                    '& .MuiSwitch-thumb': {
+                                        bgcolor: videoForm.isFree ? 'var(--color-vc-ink)' : 'var(--color-vc-mute)'
+                                    },
+                                    '& .MuiSwitch-track': {
+                                        bgcolor: videoForm.isFree ? 'var(--color-vc-ink) !important' : 'var(--color-vc-hairline) !important'
+                                    }
+                                }}
                             />
                         </Stack>
                     </Grid>
                 </Grid>
             </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
-                <Button onClick={onClose} sx={{ 
-                    borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 3, color: 'text.secondary' 
-                }}>
+            
+            <DialogActions sx={{ px: 3, pb: 3, pt: 1.5 }}>
+                <Button 
+                    onClick={onClose} 
+                    sx={{ 
+                        borderRadius: '6px', 
+                        textTransform: 'none', 
+                        fontWeight: 500, 
+                        px: 3, 
+                        height: 36,
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        color: 'var(--color-vc-body)',
+                        '&:hover': {
+                            bgcolor: 'var(--color-vc-canvas-soft)',
+                            color: 'var(--color-vc-ink)'
+                        }
+                    }}
+                >
                     Cancel
                 </Button>
                 <Button 
@@ -580,11 +671,24 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     onClick={handleSave} 
                     disabled={uploading}
                     sx={{ 
-                        borderRadius: '10px', textTransform: 'none', fontWeight: 800, px: 4, py: 1,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        borderRadius: '6px', 
+                        textTransform: 'none', 
+                        fontWeight: 500, 
+                        px: 4, 
+                        height: 36,
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        boxShadow: 'none',
+                        bgcolor: 'var(--color-vc-primary)',
+                        color: 'var(--color-vc-on-primary)',
+                        '&:hover': {
+                            bgcolor: 'var(--color-vc-primary)',
+                            opacity: 0.9,
+                            boxShadow: 'none'
+                        }
                     }}
                 >
-                    {uploading ? <CircularProgress size={24} color="inherit" /> : 'Save Lecture'}
+                    {uploading ? <CircularProgress size={16} color="inherit" /> : 'Save Lecture'}
                 </Button>
             </DialogActions>
 
@@ -597,7 +701,6 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     setVideoForm(prev => ({ ...prev, videoUrl: url }));
                     setSelectedFile(null);
                     
-                    // Auto-fetch duration from library file
                     if (url && (videoForm.type === 'video' || videoForm.type === 'audio')) {
                         const media = document.createElement(videoForm.type);
                         media.preload = 'metadata';
@@ -608,16 +711,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                     }
                 }}
             />
-
-            <QuestionPickerModal
-                open={questionPickerOpen}
-                onClose={() => setQuestionPickerOpen(false)}
-                onSelect={handleQuestionSelect}
-                selectedIds={videoForm.selectedQuestions}
-            />
         </Dialog>
     );
 };
 
 export default LectureModal;
-
