@@ -18,6 +18,7 @@ import {
     getDay
 } from 'date-fns';
 import api from '../../../utils/api';
+import socket from '../../../utils/socket';
 
 const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -39,6 +40,31 @@ const UserAttendanceCalendar = ({ userId, enrolledDate }) => {
             }
         };
         fetchAttendance();
+    }, [userId]);
+
+    useEffect(() => {
+        if (!socket.connected) {
+            socket.connect();
+        }
+        // Join the user's room to receive personal updates
+        socket.emit('setup', userId);
+
+        const handleRealtimeAttendance = (data) => {
+            const { student, attendance } = data;
+            if (student?._id !== userId) return;
+
+            setAttendanceData(prev => {
+                const exists = prev.some(a => isSameDay(new Date(a.date), new Date(attendance.date)));
+                if (exists) return prev;
+                return [...prev, attendance];
+            });
+        };
+
+        socket.on('attendance_marked', handleRealtimeAttendance);
+
+        return () => {
+            socket.off('attendance_marked', handleRealtimeAttendance);
+        };
     }, [userId]);
 
     const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));

@@ -44,7 +44,7 @@ const TimetableStudent = () => {
             const res = await api.get('/timetables/my');
             setTimetable(res.data.data || []);
         } catch (error) {
-            console.error('Failed to load timetable');
+            
         } finally {
             setLoading(false);
         }

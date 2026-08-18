@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import Webcam from 'react-webcam';
 import api from '../../utils/api';
+import socket from '../../utils/socket';
+import { useAuth } from '../../context/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as faceapi from 'face-api.js';
 import { toast } from 'react-toastify';

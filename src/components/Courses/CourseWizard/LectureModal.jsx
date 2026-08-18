@@ -22,6 +22,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import VideoPreview from '../../Common/VideoPreview';
 import { uploadFile } from '../../../utils/upload';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { toast } from 'react-toastify';
 import MediaPickerModal from '../../Media/MediaPickerModal';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
@@ -317,6 +319,8 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                             <MenuItem value="zip">📦 Resource Pack (ZIP)</MenuItem>
                             <MenuItem value="exam">🏆 Quiz/Exam</MenuItem>
                             <MenuItem value="google_meet">📹 Google Meet</MenuItem>
+                            <MenuItem value="youtube_live">▶️ YouTube Live</MenuItem>
+                            <MenuItem value="zoom">🔵 Zoom Meet</MenuItem>
                             <MenuItem value="none">📖 Informational (No File)</MenuItem>
                         </TextField>
                     </Grid>
@@ -568,7 +572,11 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                         <Box sx={{ display: 'flex', gap: 1.5 }}>
                                             <TextField
                                                 fullWidth
-                                                label="Google Meet Link"
+                                                label={
+                                                    videoForm.type === 'youtube_live' ? "YouTube Live Link" :
+                                                    videoForm.type === 'zoom' ? "Zoom Invite Link" :
+                                                    "Google Meet Link"
+                                                }
                                                 value={videoForm.meetLink || ''}
                                                 onChange={(e) => setVideoForm({ ...videoForm, meetLink: e.target.value })}
                                                 placeholder="https://meet.google.com/xxx-xxxx-xxx"
@@ -614,7 +622,7 @@ const LectureModal = ({ open, onClose, onSave, initialData, courseId }) => {
                                                 }}
                                                 startIcon={<VideoCallIcon />}
                                             >
-                                                Join Meeting (Preview)
+                                                Join/Preview Session
                                             </Button>
                                         </Grid>
                                     )}

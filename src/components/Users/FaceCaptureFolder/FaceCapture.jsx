@@ -268,6 +268,10 @@ const FaceCapture = ({ userId, user, onComplete }) => {
                                     screenshotFormat="image/jpeg"
                                     width="100%"
                                     videoConstraints={{ facingMode: "user" }}
+                                    onUserMediaError={(err) => {
+                                        console.error("Camera error:", err);
+                                        toast.error("Camera access denied or unavailable (Check HTTPS/Permissions)");
+                                    }}
                                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                                 />
 
