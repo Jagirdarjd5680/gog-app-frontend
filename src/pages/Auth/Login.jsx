@@ -305,14 +305,14 @@ const Login = () => {
                                 <Box sx={{ mb: 1.5 }}>
                                     <TextField
                                         fullWidth
-                                        placeholder="Email Address"
+                                        placeholder="Email Address or Phone Number"
                                         name="email"
-                                        type="email"
+                                        type="text"
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
                                         variant="outlined"
-                                        autoComplete="email"
+                                        autoComplete="username"
                                         sx={{
                                             '& .MuiOutlinedInput-root': {
                                                 borderRadius: '10px',

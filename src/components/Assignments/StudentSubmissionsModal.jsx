@@ -12,12 +12,14 @@ import EditIcon from '@mui/icons-material/Edit';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
+import SubmissionPreviewModal from './SubmissionPreviewModal';
 
 const StudentSubmissionsModal = ({ open, onClose, student, onGraded }) => {
     const [editingId, setEditingId] = useState(null);
     const [gradeInput, setGradeInput] = useState('');
     const [feedbackInput, setFeedbackInput] = useState('');
     const [saving, setSaving] = useState(false);
+    const [previewSubmission, setPreviewSubmission] = useState(null);
 
     const submissions = student?.submissions || [];
 
@@ -109,13 +111,11 @@ const StudentSubmissionsModal = ({ open, onClose, student, onGraded }) => {
                                         </TableCell>
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                {sub.fileUrl && (
-                                                    <Tooltip title="View Submission">
-                                                        <IconButton size="small" onClick={() => window.open(sub.fileUrl, '_blank')}>
-                                                            <VisibilityIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
+                                                <Tooltip title="View Submission">
+                                                    <IconButton size="small" onClick={() => setPreviewSubmission({ ...sub, student })}>
+                                                        <VisibilityIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
                                                 {editingId === sub.id ? (
                                                     <>
                                                         <Tooltip title="Save">
@@ -159,6 +159,12 @@ const StudentSubmissionsModal = ({ open, onClose, student, onGraded }) => {
             <DialogActions sx={{ p: 2 }}>
                 <Button onClick={onClose} variant="outlined">Close</Button>
             </DialogActions>
+
+            <SubmissionPreviewModal
+                open={Boolean(previewSubmission)}
+                onClose={() => setPreviewSubmission(null)}
+                submission={previewSubmission}
+            />
         </Dialog>
     );
 };

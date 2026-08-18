@@ -1,12 +1,10 @@
 import React from 'react';
-import { Grid, Typography, Divider, Paper, Chip, Stack, Box, Button } from '@mui/material';
+import { Grid, Typography, Divider, Paper, Chip, Stack } from '@mui/material';
 import { format } from 'date-fns';
-import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GroupsIcon from '@mui/icons-material/Groups';
-import EmailIcon from '@mui/icons-material/Email';
 
-const GeneralTab = ({ user, loading, actionLoading, handleResendLetter }) => {
+const GeneralTab = ({ user }) => {
     return (
         <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
@@ -111,33 +109,6 @@ const GeneralTab = ({ user, loading, actionLoading, handleResendLetter }) => {
                         </Typography>
                     </Stack>
                 </Paper>
-
-                <Box sx={{ mt: 3 }}>
-                    <Button
-                        fullWidth
-                        startIcon={<EmailIcon />}
-                        onClick={handleResendLetter}
-                        disabled={actionLoading || loading}
-                        variant="outlined"
-                        sx={{
-                            borderRadius: '6px',
-                            fontWeight: 500,
-                            textTransform: 'none',
-                            fontSize: '13px',
-                            fontFamily: 'inherit',
-                            color: 'var(--color-vc-ink)',
-                            borderColor: 'var(--color-vc-hairline)',
-                            bgcolor: 'var(--color-vc-canvas)',
-                            py: 1,
-                            '&:hover': {
-                                bgcolor: 'var(--color-vc-canvas-soft)',
-                                borderColor: 'var(--color-vc-hairline-strong)'
-                            }
-                        }}
-                    >
-                        {actionLoading ? 'Sending...' : 'Resend Registration Letter'}
-                    </Button>
-                </Box>
             </Grid>
         </Grid>
     );

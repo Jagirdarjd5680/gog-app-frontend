@@ -121,25 +121,25 @@ const CourseTab = ({ user, loading, handleSyncSubscriptions, calculateCorrectExp
                                     </Stack>
                                     <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
                                         <Chip
-                                            label={`${course.assignmentCount || 0} Assignments`}
+                                            label={`${course.assignmentsSubmitted ?? 0}/${course.assignmentCount || 0} Assignments`}
                                             size="small"
-                                            sx={{ 
-                                                height: 22, 
-                                                fontSize: '11px', 
-                                                bgcolor: 'var(--color-vc-link-bg-soft)', 
-                                                color: 'var(--color-vc-link-deep)', 
+                                            sx={{
+                                                height: 22,
+                                                fontSize: '11px',
+                                                bgcolor: 'var(--color-vc-link-bg-soft)',
+                                                color: 'var(--color-vc-link-deep)',
                                                 borderRadius: '4px',
-                                                fontWeight: 600 
+                                                fontWeight: 600
                                             }}
                                         />
                                         <Chip
-                                            label={`${course.examCount || 0} Exams`}
+                                            label={`${course.examsAttempted ?? 0}/${course.examCount || 0} Exams`}
                                             size="small"
-                                            sx={{ 
-                                                height: 22, 
-                                                fontSize: '11px', 
-                                                bgcolor: 'var(--color-vc-violet-soft)', 
-                                                color: 'var(--color-vc-violet-deep)', 
+                                            sx={{
+                                                height: 22,
+                                                fontSize: '11px',
+                                                bgcolor: 'var(--color-vc-violet-soft)',
+                                                color: 'var(--color-vc-violet-deep)',
                                                 borderRadius: '4px',
                                                 fontWeight: 600 
                                             }}

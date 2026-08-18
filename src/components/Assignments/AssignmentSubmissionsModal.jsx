@@ -6,14 +6,15 @@ import {
     Chip, CircularProgress, IconButton, Tooltip, Stack 
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import DownloadIcon from '@mui/icons-material/Download';
 import api from '../../utils/api';
 import { format } from 'date-fns';
+import SubmissionPreviewModal from './SubmissionPreviewModal';
 
 const AssignmentSubmissionsModal = ({ open, onClose, assignmentId }) => {
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [assignmentTitle, setAssignmentTitle] = useState('');
+    const [previewSubmission, setPreviewSubmission] = useState(null);
 
     useEffect(() => {
         if (open && assignmentId) {
@@ -26,7 +27,10 @@ const AssignmentSubmissionsModal = ({ open, onClose, assignmentId }) => {
         try {
             const response = await api.get(`/assignments/${assignmentId}`);
             if (response.data.success) {
-                setSubmissions(response.data.data.submissions || []);
+                const sorted = [...(response.data.data.submissions || [])].sort((a, b) =>
+                    (a.student?.name || '').localeCompare(b.student?.name || '')
+                );
+                setSubmissions(sorted);
                 setAssignmentTitle(response.data.data.title);
             }
         } catch (error) {
@@ -86,13 +90,11 @@ const AssignmentSubmissionsModal = ({ open, onClose, assignmentId }) => {
                                         <TableCell>{sub.grade !== undefined ? sub.grade : '-'}</TableCell>
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                {sub.fileUrl && (
-                                                    <Tooltip title="View Submission">
-                                                        <IconButton size="small" onClick={() => window.open(sub.fileUrl, '_blank')}>
-                                                            <VisibilityIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
+                                                <Tooltip title="View Submission">
+                                                    <IconButton size="small" onClick={() => setPreviewSubmission(sub)}>
+                                                        <VisibilityIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
                                             </Stack>
                                         </TableCell>
                                     </TableRow>
@@ -105,6 +107,12 @@ const AssignmentSubmissionsModal = ({ open, onClose, assignmentId }) => {
             <DialogActions sx={{ p: 2 }}>
                 <Button onClick={onClose} variant="outlined">Close</Button>
             </DialogActions>
+
+            <SubmissionPreviewModal
+                open={Boolean(previewSubmission)}
+                onClose={() => setPreviewSubmission(null)}
+                submission={previewSubmission}
+            />
         </Dialog>
     );
 };

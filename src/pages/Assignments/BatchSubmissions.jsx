@@ -65,13 +65,15 @@ const BatchSubmissions = () => {
     const students = data?.students || [];
 
     const filteredStudents = useMemo(() => {
-        if (!searchTerm.trim()) return students;
-        const term = searchTerm.toLowerCase();
-        return students.filter(s =>
-            (s.name || '').toLowerCase().includes(term) ||
-            (s.email || '').toLowerCase().includes(term) ||
-            (s.rollNumber || '').toLowerCase().includes(term)
-        );
+        const term = searchTerm.trim().toLowerCase();
+        const matched = term
+            ? students.filter(s =>
+                (s.name || '').toLowerCase().includes(term) ||
+                (s.email || '').toLowerCase().includes(term) ||
+                (s.rollNumber || '').toLowerCase().includes(term)
+            )
+            : students;
+        return [...matched].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }, [students, searchTerm]);
 
     const metricsItems = useMemo(() => {

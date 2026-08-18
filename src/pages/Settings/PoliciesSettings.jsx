@@ -18,7 +18,10 @@ const PoliciesSettings = ({ settings, onSave, isSaving }) => {
         address: settings?.company?.address || '',
         email: settings?.company?.email || '',
         contact: settings?.company?.contact || '',
-        jurisdiction: settings?.company?.jurisdiction || ''
+        jurisdiction: settings?.company?.jurisdiction || '',
+        gstNumber: settings?.company?.gstNumber || '',
+        tagline: settings?.company?.tagline || '',
+        signatoryName: settings?.company?.signatoryName || ''
     });
 
     const [policies, setPolicies] = useState({
@@ -90,6 +93,33 @@ const PoliciesSettings = ({ settings, onSave, isSaving }) => {
                                 placeholder="Gota"
                             />
                         </Stack>
+                        <TextField
+                            fullWidth
+                            label="GST Number"
+                            name="gstNumber"
+                            value={company.gstNumber}
+                            onChange={handleCompanyChange}
+                            placeholder="08JGDPK1363L1Z2"
+                            helperText="Printed on fee receipts / tax invoices. Leave blank to hide the GST line."
+                        />
+                        <TextField
+                            fullWidth
+                            label="Certificate Tagline"
+                            name="tagline"
+                            value={company.tagline}
+                            onChange={handleCompanyChange}
+                            placeholder="Premier Academy for Multimedia & Computer Education"
+                            helperText="Shown under the company name on the certificate."
+                        />
+                        <TextField
+                            fullWidth
+                            label="Certificate Signatory"
+                            name="signatoryName"
+                            value={company.signatoryName}
+                            onChange={handleCompanyChange}
+                            placeholder="Founder & CEO - Jitendra Rajpurohit"
+                            helperText="Printed under the signature on the certificate. The signature image itself is set in General Settings → PDF Cert. Signature."
+                        />
                     </Stack>
                 </Grid>
             </Grid>

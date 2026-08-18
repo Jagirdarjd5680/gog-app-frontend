@@ -67,6 +67,12 @@ const FaceCapture = ({ userId, user, onComplete }) => {
         if (!webcamRef.current || !webcamRef.current.video || isCapturing || step < 0 || step >= steps.length) return;
 
         const video = webcamRef.current.video;
+        // The webcam <video> element mounts with videoWidth/videoHeight still 0 until its
+        // metadata finishes loading; running detection against it in that window makes
+        // face-api.js resize its result box to a null/0 rect and throw "Box.constructor -
+        // expected box to be IBoundingBox" instead of just finding no face. Skip those frames.
+        if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+
         const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks();
 
         if (detection) {
@@ -152,16 +158,59 @@ const FaceCapture = ({ userId, user, onComplete }) => {
         if (capturedImages.length === 0) return;
         setLoading(true);
         try {
-            const response = await api.put(`/users/${userId}/biometric-face`, {
-                imagesBase64: capturedImages
-            });
-            if (response.data.success) {
-                toast.success('Face ID Registered');
-                if (onComplete) onComplete(response.data.data);
-                resetCapture();
+            // The face-api.js scan above is purely client-side pose guidance (make sure a real,
+            // moving face is in frame) — the actual recognition descriptor comes from
+            // python_service via this real backend endpoint. This used to only call
+            // PUT /users/:id/biometric-face, which just stuffed the raw images into
+            // studentProfile.faceDescriptor (a display-only JSON blob) and never touched the
+            // real User.faceDescriptor column attendance verification actually reads, so
+            // admin-registered faces could never be recognized during check-in.
+            //
+            // capturedImages is [Look Up, Look Down, Look Left, Look Right] — every one of
+            // those poses tilts/turns the head away from the camera, so face_recognition's
+            // detector very often finds nothing in the frontal-shot image (index 0, "Look Up")
+            // and enrollment failed with "No face detected" almost every time. Try each
+            // captured angle (mild turns first) until one actually contains a detectable face.
+            const angleOrder = [2, 3, 1, 0].filter((i) => i < capturedImages.length);
+            let lastErrorMessage = 'No face detected in any captured angle — please retake with better lighting, facing the camera more directly.';
+            let enrolled = false;
+
+            for (const idx of angleOrder) {
+                try {
+                    const enrollResponse = await api.post('/attendance/enroll-face', {
+                        imageBase64: capturedImages[idx],
+                        userId,
+                    });
+                    if (enrollResponse.data.success) {
+                        enrolled = true;
+                        break;
+                    }
+                } catch (err) {
+                    lastErrorMessage = err.response?.data?.message || err.message || lastErrorMessage;
+                }
             }
+
+            if (!enrolled) {
+                throw new Error(lastErrorMessage);
+            }
+
+            // Best-effort only — keeps a preview thumbnail on this tab; not required for
+            // real recognition to work, so a failure here shouldn't block success feedback.
+            let profileData = null;
+            try {
+                const previewResponse = await api.put(`/users/${userId}/biometric-face`, {
+                    imagesBase64: capturedImages,
+                });
+                profileData = previewResponse.data.data;
+            } catch (previewErr) {
+                // Non-fatal — the real enrollment above already succeeded.
+            }
+
+            toast.success('Face ID Registered — this student can now check in via face recognition');
+            if (onComplete) onComplete(profileData);
+            resetCapture();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Upload failed");
+            toast.error(error.response?.data?.message || error.message || 'Face enrollment failed — try a clearer, well-lit photo');
         } finally {
             setLoading(false);
         }

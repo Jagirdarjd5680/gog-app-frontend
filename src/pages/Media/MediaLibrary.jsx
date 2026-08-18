@@ -11,6 +11,7 @@ import MediaCard from './MediaCard';
 import SelectionBar from './components/SelectionBar';
 import MediaModals from './components/MediaModals';
 import MediaPreviewModal from './components/MediaPreviewModal';
+import FaceRegistrationsPanel from './components/FaceRegistrationsPanel';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
 import ImageIcon from '@mui/icons-material/Image';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
@@ -127,7 +128,7 @@ const MediaLibrary = ({ onSelect }) => {
         setFiles(prev => prev.filter(f => f.name !== fileName && f.title !== fileName && f.id !== fileName));
         setSelectedFiles(prev => prev.filter(name => name !== fileName));
         try {
-            await api.delete(`/upload/${fileName}`);
+            await api.delete(`/upload/${encodeURIComponent(fileName)}`);
             toast.success('Asset deleted');
             await fetchFiles(true);
         } catch (error) {
@@ -143,7 +144,7 @@ const MediaLibrary = ({ onSelect }) => {
         setFiles(prev => prev.filter(f => !toDelete.includes(f.name) && !toDelete.includes(f.id)));
         setSelectedFiles([]);
         try {
-            await Promise.all(toDelete.map(name => api.delete(`/upload/${name}`)));
+            await Promise.all(toDelete.map(name => api.delete(`/upload/${encodeURIComponent(name)}`)));
             toast.success('Selected files deleted');
             await fetchFiles(true);
         } catch (error) {
@@ -244,18 +245,20 @@ const MediaLibrary = ({ onSelect }) => {
                             onImportUrlClick={() => setImportModalOpen(true)}
                             onStatsClick={() => setStatsModalOpen(true)}
                         />
-                        <Button
-                            variant="contained"
-                            startIcon={<CloudUploadIcon />}
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
-                            sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 3, py: 1 }}
-                        >
-                            {uploading ? `Uploading ${uploadProgress}%...` : 'Upload Media'}
-                        </Button>
+                        {activeTab !== 'faceRegistrations' && (
+                            <Button
+                                variant="contained"
+                                startIcon={<CloudUploadIcon />}
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 3, py: 1 }}
+                            >
+                                {uploading ? `Uploading ${uploadProgress}%...` : 'Upload Media'}
+                            </Button>
+                        )}
                     </Box>
 
-                    {selectedFiles.length > 0 && (
+                    {selectedFiles.length > 0 && activeTab !== 'faceRegistrations' && (
                         <SelectionBar
                             selectedCount={selectedFiles.length}
                             onClearSelection={() => setSelectedFiles([])}
@@ -263,7 +266,9 @@ const MediaLibrary = ({ onSelect }) => {
                         />
                     )}
 
-                    {loading ? (
+                    {activeTab === 'faceRegistrations' ? (
+                        <FaceRegistrationsPanel />
+                    ) : loading ? (
                         <MediaGridSkeleton count={8} />
                     ) : viewMode === 'list' ? (
                         <MediaFileList

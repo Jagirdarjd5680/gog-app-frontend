@@ -61,23 +61,55 @@ const UserList = () => {
         fetchBinCount();
     }, [fetchUsers, fetchBinCount]);
 
+    // Restore whichever modal the URL says was open (?view=/?edit=/?pay=<id>) on first load —
+    // e.g. a page refresh while Quick Payment was open for a student. Runs once on mount only;
+    // handleView/handleEdit/handlePayment already update state directly on click, so this isn't
+    // needed (and would be actively wrong) on every searchParams change afterward.
+    useEffect(() => {
+        const viewId = searchParams.get('view');
+        const editId = searchParams.get('edit');
+        const payId = searchParams.get('pay');
+        if (!viewId && !editId && !payId) return;
+
+        if (viewId) {
+            setViewUserId(viewId);
+            setViewModalOpen(true);
+        } else if (editId) {
+            api.get(`/users/${editId}`)
+                .then(({ data }) => { if (data.success) setSelectedUser(data.data); })
+                .catch(() => {})
+                .finally(() => setModalOpen(true));
+        } else if (payId) {
+            api.get(`/users/${payId}`)
+                .then(({ data }) => { if (data.success) setSelectedUser(data.data); })
+                .catch(() => {})
+                .finally(() => setPaymentModalOpen(true));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [viewUserId, setViewUserId] = useState(null);
     const [allBatches, setAllBatches] = useState([]);
 
+    // Which user's View/Edit/Quick-Payment modal is open lives in the URL (?view=/?edit=/?pay=
+    // + the user's id) — so a refresh (or sharing the link) reopens the same modal on the same
+    // user instead of silently dropping back to the bare list, which is what happened before.
     const handleView = useCallback((user) => {
         setViewUserId(user._id);
         setViewModalOpen(true);
-    }, []);
+        setSearchParams({ view: user._id });
+    }, [setSearchParams]);
 
     const handleEdit = useCallback(async (user) => {
+        const id = user._id || user.id;
         // The list row (from GET /users) never carries enrolledCourses/batches — that data
         // only comes back from GET /users/:id (findByIdDetails). Passing the raw row straight
         // into UserFormModal made the course/batch pickers look wiped every time you reopened
         // Edit, even though the assignment was saved correctly.
         const toastId = toast.loading('Loading user details...');
         try {
-            const { data } = await api.get(`/users/${user._id || user.id}`);
+            const { data } = await api.get(`/users/${id}`);
             toast.dismiss(toastId);
             setSelectedUser(data.data);
         } catch (error) {
@@ -85,7 +117,8 @@ const UserList = () => {
             setSelectedUser(user);
         }
         setModalOpen(true);
-    }, []);
+        setSearchParams({ edit: id });
+    }, [setSearchParams]);
 
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
@@ -116,7 +149,8 @@ const UserList = () => {
     const handlePayment = useCallback((user) => {
         setSelectedUser(user);
         setPaymentModalOpen(true);
-    }, []);
+        setSearchParams({ pay: user._id || user.id });
+    }, [setSearchParams]);
 
     const [recycleBinOpen, setRecycleBinOpen] = useState(false);
     const [binCount, setBinCount] = useState(0);

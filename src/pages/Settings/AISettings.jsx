@@ -32,12 +32,38 @@ import {
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 
+// Provider APIs retire model names faster than this list can be kept perfectly current
+// (e.g. gemini-1.5-flash 404ing on generateContent as of this writing) — these are just
+// starting points. The "Custom / Other" option lets the admin type whatever the provider's
+// docs say is live right now without waiting on a code change here.
+const MODEL_OPTIONS = {
+    openai: [
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Fast & Cheap)' },
+        { value: 'gpt-4', label: 'GPT-4 (Smart & Robust)' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+        { value: 'gpt-4o', label: 'GPT-4o (Omni)' },
+        { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+    ],
+    gemini: [
+        { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+        { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
+        { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+        { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (older — may be retired)' },
+    ],
+    claude: [
+        { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Fast & Cheap)' },
+        { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+        { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+        { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku (older)' },
+    ],
+};
+
 const AISettings = ({ settings, onSave, isSaving }) => {
     const [activeTab, setActiveTab] = useState(0);
     const [localSettings, setLocalSettings] = useState(settings?.ai || {
         openai: { apiKey: '', model: 'gpt-3.5-turbo', enabled: false },
-        gemini: { apiKey: '', enabled: false },
-        claude: { apiKey: '', enabled: false }
+        gemini: { apiKey: '', model: 'gemini-2.0-flash', enabled: false },
+        claude: { apiKey: '', model: 'claude-3-5-haiku-20241022', enabled: false }
     });
 
     const [testResults, setTestResults] = useState({
@@ -217,21 +243,39 @@ const AISettings = ({ settings, onSave, isSaving }) => {
                                     }}
                                 />
 
-                                {currentProvider === 'openai' && (
-                                    <TextField
-                                        fullWidth
-                                        select
-                                        label="Select Model"
-                                        value={localSettings.openai.model}
-                                        onChange={(e) => handleInputChange('openai', 'model', e.target.value)}
-                                        SelectProps={{ native: true }}
-                                    >
-                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast & Cheap)</option>
-                                        <option value="gpt-4">GPT-4 (Smart & Robust)</option>
-                                        <option value="gpt-4-turbo">GPT-4 Turbo (Latest)</option>
-                                        <option value="gpt-4o">GPT-4o (Omni - Best)</option>
-                                    </TextField>
-                                )}
+                                {(() => {
+                                    const currentModel = localSettings[currentProvider]?.model || '';
+                                    const options = MODEL_OPTIONS[currentProvider] || [];
+                                    const isKnownModel = options.some((o) => o.value === currentModel);
+                                    return (
+                                        <Stack spacing={1.5}>
+                                            <TextField
+                                                fullWidth
+                                                select
+                                                label="Select Model"
+                                                value={isKnownModel ? currentModel : '__custom__'}
+                                                onChange={(e) => handleInputChange(currentProvider, 'model', e.target.value === '__custom__' ? '' : e.target.value)}
+                                                SelectProps={{ native: true }}
+                                            >
+                                                {options.map((o) => (
+                                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                                ))}
+                                                <option value="__custom__">Custom / Other (type below)</option>
+                                            </TextField>
+                                            {!isKnownModel && (
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    label="Custom model ID"
+                                                    value={currentModel}
+                                                    onChange={(e) => handleInputChange(currentProvider, 'model', e.target.value)}
+                                                    placeholder={`e.g. ${MODEL_OPTIONS[currentProvider]?.[0]?.value || 'model-id'}`}
+                                                    helperText="Provider model names change over time — if the dropdown above doesn't have the right one, type it here."
+                                                />
+                                            )}
+                                        </Stack>
+                                    );
+                                })()}
 
                                 <Box sx={{ display: 'flex', gap: 2 }}>
                                     <Button 

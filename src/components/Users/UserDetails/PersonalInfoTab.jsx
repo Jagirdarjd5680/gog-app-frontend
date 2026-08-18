@@ -5,14 +5,28 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import SyncIcon from '@mui/icons-material/Sync';
 import DownloadIcon from '@mui/icons-material/Download';
+import EmailIcon from '@mui/icons-material/Email';
 import { fixUrl } from '../../../utils/api';
 
-const PersonalInfoTab = ({ 
-    user, isEditingProfile, setIsEditingProfile, editedProfile, 
-    handleProfileChange, handleSaveProfile, handleApproveRegistration, 
-    handleRejectRegistration, handleResendLetter, actionLoading 
+const PersonalInfoTab = ({
+    user, isEditingProfile, setIsEditingProfile, editedProfile,
+    handleProfileChange, handleSaveProfile, handleApproveRegistration,
+    handleRejectRegistration, handleResendLetter, handleSetPassword, actionLoading
 }) => {
     const [pdfLoading, setPdfLoading] = React.useState(false);
+    const [newPassword, setNewPassword] = React.useState('');
+    const [passwordSaving, setPasswordSaving] = React.useState(false);
+
+    const onSetPassword = async () => {
+        if (!newPassword || newPassword.length < 6) return;
+        setPasswordSaving(true);
+        try {
+            await handleSetPassword(newPassword);
+            setNewPassword('');
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
 
     const handleDownloadPdf = async () => {
         setPdfLoading(true);
@@ -94,6 +108,20 @@ const PersonalInfoTab = ({
                         </Button>
                     )}
 
+                    <Button
+                        startIcon={<EmailIcon sx={{ fontSize: 14 }} />}
+                        onClick={handleResendLetter}
+                        disabled={actionLoading}
+                        variant="outlined"
+                        sx={{
+                            textTransform: 'none', fontSize: '12px', fontWeight: 500, fontFamily: 'inherit',
+                            borderRadius: '6px', color: 'var(--color-vc-ink)', borderColor: 'var(--color-vc-hairline)',
+                            bgcolor: 'var(--color-vc-canvas)', '&:hover': { bgcolor: 'var(--color-vc-canvas-soft)', borderColor: 'var(--color-vc-hairline-strong)' }
+                        }}
+                    >
+                        {actionLoading ? 'Sending...' : 'Resend Registration Letter'}
+                    </Button>
+
                     {(user?.registrationStatus === 'pending' || user?.registrationStatus === 'none') && (
                         <Stack direction="row" spacing={1}>
                             <Button
@@ -171,6 +199,38 @@ const PersonalInfoTab = ({
                         />
                     )}
                 </Stack>
+            </Box>
+
+            <Box sx={{ mb: 3, p: 2, borderRadius: '6px', border: '1px solid var(--color-vc-hairline)', bgcolor: 'var(--color-vc-canvas-soft)' }}>
+                <Typography sx={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-vc-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 }}>
+                    Login & Security
+                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="flex-start" flexWrap="wrap" useFlexGap>
+                    <TextField
+                        size="small"
+                        type="password"
+                        label="Set / Change Password"
+                        placeholder="Minimum 6 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        sx={{ minWidth: 240, '& .MuiInputBase-root': { height: 36, fontSize: '12px', fontFamily: 'inherit' } }}
+                    />
+                    <Button
+                        variant="contained"
+                        onClick={onSetPassword}
+                        disabled={passwordSaving || !newPassword || newPassword.length < 6}
+                        sx={{
+                            textTransform: 'none', fontSize: '12px', fontWeight: 500, fontFamily: 'inherit', height: 36,
+                            borderRadius: '6px', color: '#fff', bgcolor: 'var(--color-vc-primary)',
+                            boxShadow: 'none', '&:hover': { bgcolor: 'var(--color-vc-primary)', opacity: 0.9, boxShadow: 'none' }
+                        }}
+                    >
+                        {passwordSaving ? 'Saving...' : 'Set Password'}
+                    </Button>
+                </Stack>
+                <Typography sx={{ fontSize: '11px', color: 'var(--color-vc-mute)', mt: 1 }}>
+                    Student can log in with this password using their email{user?.phone ? ' or phone number' : ''} once set.
+                </Typography>
             </Box>
 
             {user?.studentProfile || isEditingProfile ? (

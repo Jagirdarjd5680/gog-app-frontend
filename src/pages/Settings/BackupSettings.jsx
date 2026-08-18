@@ -35,8 +35,8 @@ const BackupSettings = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-            
-            toast.success('Backup downloaded successfully');
+
+            toast.success('Full backup downloaded — every table, not just a subset');
         } catch (error) {
             
             toast.error('Failed to export backup');
@@ -49,30 +49,33 @@ const BackupSettings = () => {
         const file = event.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const jsonData = JSON.parse(e.target.result);
-                
-                if (window.confirm('Are you sure? This will OVERWRITE existing data in the database with the backup data.')) {
-                    setRestoring(true);
-                    const response = await api.post('/backup/import', jsonData);
-                    if (response.data.success) {
-                        toast.success('Database restored successfully!');
-                    } else {
-                        toast.error(response.data.message || 'Restoration failed');
-                    }
-                }
-            } catch (error) {
-                
-                toast.error('Invalid backup file or restoration failed');
-            } finally {
-                setRestoring(false);
-                // Reset file input
-                event.target.value = '';
+        if (!window.confirm('Are you sure? This will DELETE all current data in every table and replace it with the backup content. This cannot be undone.')) {
+            event.target.value = '';
+            return;
+        }
+
+        setRestoring(true);
+        try {
+            // Sent as a real file upload (not JSON.parse + a JSON POST body) — a full-database
+            // backup easily exceeds the default request body size limit for JSON payloads.
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await api.post('/backup/import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 10 * 60 * 1000,
+            });
+            if (response.data.success) {
+                const tableCount = Object.keys(response.data.restoredCounts || {}).length;
+                toast.success(`Database restored successfully — ${tableCount} tables reloaded.`);
+            } else {
+                toast.error(response.data.message || 'Restoration failed');
             }
-        };
-        reader.readAsText(file);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Invalid backup file or restoration failed');
+        } finally {
+            setRestoring(false);
+            event.target.value = '';
+        }
     };
 
     return (
@@ -81,7 +84,8 @@ const BackupSettings = () => {
                 Database Backup & Restore
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-                Export your entire database to a JSON file for backup, or restore data from a previous backup file.
+                Export every table in the database — users, courses, payments, settings (SMTP, payment gateway, etc.), everything —
+                to a single JSON file, or restore the entire database from a previous backup file.
             </Typography>
 
             <Stack spacing={3}>
@@ -94,7 +98,7 @@ const BackupSettings = () => {
                             </Box>
                             <Box>
                                 <Typography variant="subtitle1" fontWeight={700}>Download Full Backup</Typography>
-                                <Typography variant="body2" color="text.secondary">Save all collections, users, courses, and transactions to your computer.</Typography>
+                                <Typography variant="body2" color="text.secondary">Every table in the database, uncapped — users, courses, payments, settings, and everything else.</Typography>
                             </Box>
                         </Stack>
                         <Button
@@ -154,11 +158,11 @@ const BackupSettings = () => {
                             <Box>
                                 <Typography variant="subtitle2" fontWeight={700}>Migrating to a New Database?</Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                    If you change your MongoDB URL in the .env file, follow these steps:
+                                    If you change your <code>DATABASE_URL</code> in the backend's <code>.env</code> file, follow these steps:
                                     <ol style={{ paddingLeft: '20px', marginTop: '8px' }}>
                                         <li>Download the backup from the current database.</li>
-                                        <li>Update the MONGO_URI in your backend .env file to the new URL.</li>
-                                        <li>Restart the backend server.</li>
+                                        <li>Update <code>DATABASE_URL</code> in your backend <code>.env</code> file to the new MySQL connection string.</li>
+                                        <li>Run <code>npx prisma db push</code> (or <code>migrate deploy</code>) against the new database, then restart the backend server.</li>
                                         <li>Come back here and use the "Restore" option to upload your backup file.</li>
                                     </ol>
                                 </Typography>

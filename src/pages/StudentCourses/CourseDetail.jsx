@@ -17,6 +17,7 @@ import { courseViewerService } from '../../api/courseViewer/service';
 import { ReviewsTab } from './components/ReviewsTab';
 import { AssignmentsTab } from './components/AssignmentsTab';
 import { LiveClassesTab } from './components/LiveClassesTab';
+import { CourseTimetableTab } from './components/CourseTimetableTab';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 
@@ -34,7 +35,7 @@ function loadRazorpayScript() {
     return razorpayScriptPromise;
 }
 
-const TABS = ['Overview', 'Curriculum', 'Live Classes', 'Reviews', 'Materials', 'Assignments', 'Certificate'];
+const BASE_TABS = ['Overview', 'Curriculum', 'Live Classes', 'Reviews', 'Materials', 'Assignments', 'Certificate'];
 
 const ComingSoon = ({ label }) => (
     <Box sx={{ py: 6, textAlign: 'center' }}>
@@ -173,6 +174,9 @@ const CourseDetail = () => {
     if (!course) return null;
 
     const isEnrolled = progress.isEnrolled;
+    // Only enrolled students have a batch assignment, so the timetable tab
+    // stays hidden entirely for everyone else rather than showing an empty state.
+    const TABS = isEnrolled ? [...BASE_TABS, 'Timetable'] : BASE_TABS;
     const hasDiscount = course.originalPrice > 0 && course.originalPrice > course.price;
     const discountPercent = hasDiscount ? Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100) : 0;
 
@@ -374,6 +378,7 @@ const CourseDetail = () => {
                     {tab === 4 && <ComingSoon label="Materials" />}
                     {tab === 5 && <AssignmentsTab courseId={id} />}
                     {tab === 6 && <ComingSoon label="Certificate details" />}
+                    {tab === 7 && isEnrolled && <CourseTimetableTab courseId={id} />}
                 </Grid>
 
                 <Grid item xs={12} md={5}>

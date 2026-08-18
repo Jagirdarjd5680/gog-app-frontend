@@ -22,6 +22,7 @@ import { UserDetailsSkeleton } from '../../Common/ModalSkeletons';
 // Sub-components
 import GeneralTab from './GeneralTab';
 import CourseTab from './CourseTab';
+import ExamTab from './ExamTab';
 import PersonalInfoTab from './PersonalInfoTab';
 import SubmissionsTab from './SubmissionsTab';
 import TokenTab from './TokenTab';
@@ -132,6 +133,16 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
             if (response.data.success) { toast.success(response.data.message); fetchUserDetails(); }
         } catch (error) { toast.error(error.response?.data?.message || 'Failed to sync subscriptions'); }
         finally { setLoading(false); }
+    };
+
+    const handleSetPassword = async (newPassword) => {
+        try {
+            const res = await api.put(`/users/${userId}/set-password`, { password: newPassword });
+            if (res.data.success) toast.success(res.data.message || 'Password updated');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update password');
+            throw error;
+        }
     };
 
     const handleResendLetter = async () => {
@@ -292,13 +303,13 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                         </Box>
 
                         <TabPanel value={value} index={0}>
-                            <GeneralTab user={user} loading={loading} actionLoading={actionLoading} handleResendLetter={handleResendLetter} />
+                            <GeneralTab user={user} />
                         </TabPanel>
                         <TabPanel value={value} index={1}>
                             <CourseTab user={user} loading={loading} handleSyncSubscriptions={handleSyncSubscriptions} calculateCorrectExpiry={calculateCorrectExpiry} />
                         </TabPanel>
                         <TabPanel value={value} index={2}>
-                            {/* Exam Logic */}
+                            <ExamTab user={user} />
                         </TabPanel>
                         <TabPanel value={value} index={3}>
                             <UserFeeHistory userId={userId} user={user} />
@@ -309,6 +320,7 @@ const UserDetailsModal = ({ open, onClose, userId }) => {
                                 editedProfile={editedProfile} handleProfileChange={(e) => setEditedProfile({ ...editedProfile, [e.target.name]: e.target.value })}
                                 handleSaveProfile={handleSaveProfile} handleApproveRegistration={handleApproveRegistration}
                                 handleRejectRegistration={handleRejectRegistration} handleResendLetter={handleResendLetter}
+                                handleSetPassword={handleSetPassword}
                                 actionLoading={actionLoading}
                             />
                         </TabPanel>

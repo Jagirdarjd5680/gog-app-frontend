@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Box, Typography, IconButton, Stack, Chip, Avatar, Button,
-    Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress
+    Dialog, DialogTitle, DialogContent, DialogActions, TextField, CircularProgress,
+    Paper, Table, TableHead, TableBody, TableRow, TableCell
 } from '@mui/material';
 import TableUI from '../../components/UI/Table/TableUI';
 import GenericMetrics from '../../components/Common/GenericMetrics';
@@ -15,6 +16,92 @@ import CloseIcon from '@mui/icons-material/Close';
 import axios from '../../utils/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
+
+// Sits one step before the withdrawal-request table below: a completed tutor conversation
+// debits the student's tokens immediately, but doesn't become part of the tutor's withdrawable
+// earnings until an admin explicitly approves it here.
+const PendingSessionEarnings = () => {
+    const [pending, setPending] = useState([]);
+    const [tokenValue, setTokenValue] = useState(10);
+    const [loading, setLoading] = useState(false);
+    const [approvingId, setApprovingId] = useState(null);
+
+    const fetchPending = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data } = await axios.get('/support-sessions/pending-earnings');
+            setPending(Array.isArray(data.data) ? data.data : []);
+            setTokenValue(data.tokenValueInRupees || 10);
+        } catch (error) {
+            toast.error('Failed to load pending session earnings');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchPending(); }, [fetchPending]);
+
+    const handleApprove = async (sessionId) => {
+        setApprovingId(sessionId);
+        try {
+            const { data } = await axios.post(`/support-sessions/${sessionId}/approve-earning`);
+            toast.success(data.message || 'Approved');
+            fetchPending();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to approve');
+        } finally {
+            setApprovingId(null);
+        }
+    };
+
+    if (!loading && pending.length === 0) return null;
+
+    return (
+        <Paper variant="outlined" sx={{ borderRadius: 2, mb: 3, overflow: 'hidden' }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="subtitle1" fontWeight={700}>Pending Session Earnings</Typography>
+                <Typography variant="caption" color="text.secondary">
+                    Completed conversations awaiting approval before their tokens count toward the tutor's withdrawable balance (1 token = ₹{tokenValue}).
+                </Typography>
+            </Box>
+            <Table size="small">
+                <TableHead>
+                    <TableRow>
+                        <TableCell>Tutor</TableCell>
+                        <TableCell>Completed On</TableCell>
+                        <TableCell>Duration</TableCell>
+                        <TableCell>Tokens</TableCell>
+                        <TableCell>Payout</TableCell>
+                        <TableCell align="right">Action</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {pending.map((s) => (
+                        <TableRow key={s._id}>
+                            <TableCell>{s.tutorName || `Tutor #${s.tutorId}`}</TableCell>
+                            <TableCell>{s.completedAt ? format(new Date(s.completedAt), 'MMM dd, yyyy') : '-'}</TableCell>
+                            <TableCell>{s.durationMinutes ?? '-'} min</TableCell>
+                            <TableCell>{s.tokensCost ?? 0}</TableCell>
+                            <TableCell>₹{s.estimatedPayout ?? 0}</TableCell>
+                            <TableCell align="right">
+                                <Button
+                                    size="small"
+                                    variant="contained"
+                                    color="success"
+                                    disabled={approvingId === s.id}
+                                    startIcon={approvingId === s.id ? <CircularProgress size={14} color="inherit" /> : <CheckIcon fontSize="small" />}
+                                    onClick={() => handleApprove(s.id)}
+                                >
+                                    Approve
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </Paper>
+    );
+};
 
 const AdminTutorWithdrawals = () => {
     const [requests, setRequests] = useState([]);
@@ -185,6 +272,8 @@ const AdminTutorWithdrawals = () => {
                     Review and process point-to-cash withdrawal requests from tutors
                 </Typography>
             </Box>
+
+            <PendingSessionEarnings />
 
             <GenericMetrics items={metrics} />
 

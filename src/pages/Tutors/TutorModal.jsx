@@ -16,7 +16,8 @@ const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
     skills: [], experience: 0, description: '',
     perConversation: 0, perHour: 0, defaultDuration: 30,
     googleMeetEnabled: false, userId: '', status: 'offline',
-    password: '', minWithdrawal: 5
+    password: '', minWithdrawal: 5,
+    tokensPerSession: 20, sessionDurationMinutes: 10
   });
 
   // New Category States
@@ -57,7 +58,8 @@ const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
         skills: [], experience: 0, description: '',
         perConversation: 0, perHour: 0, defaultDuration: 30,
         googleMeetEnabled: false, userId: '', status: 'offline',
-        password: '', minWithdrawal: 5
+        password: '', minWithdrawal: 5,
+        tokensPerSession: 20, sessionDurationMinutes: 10
       });
     }
   }, [tutor, open]);
@@ -178,12 +180,32 @@ const TutorModal = ({ open, onClose, tutor, onSuccess }) => {
               </FormControl>
             </Grid>
             <Grid item xs={6}>
-              <TextField 
-                fullWidth 
-                type="number" 
-                label="Per Conversation (₹)" 
-                value={formData.perConversation} 
-                onChange={(e) => setFormData({...formData, perConversation: e.target.value})} 
+              <TextField
+                fullWidth
+                type="number"
+                label="Per Conversation (₹)"
+                value={formData.perConversation}
+                onChange={(e) => setFormData({...formData, perConversation: e.target.value})}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Session Length (Minutes)"
+                value={formData.sessionDurationMinutes}
+                onChange={(e) => setFormData({...formData, sessionDurationMinutes: e.target.value})}
+                helperText="How long one conversation lasts"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Tokens per Session"
+                value={formData.tokensPerSession}
+                onChange={(e) => setFormData({...formData, tokensPerSession: e.target.value})}
+                helperText="Student tokens charged for one conversation of the length above"
               />
             </Grid>
             <Grid item xs={6}>

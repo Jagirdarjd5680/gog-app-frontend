@@ -21,6 +21,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CodeIcon from '@mui/icons-material/Code';
 import ChatIcon from '@mui/icons-material/Chat';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import FaceRetouchingNaturalIcon from '@mui/icons-material/FaceRetouchingNatural';
 
 const MediaSidebar = (props) => {
     const activeFilter = props.activeFilter || props.activeTab || 'all';
@@ -37,6 +38,7 @@ const MediaSidebar = (props) => {
         { id: 'code', label: 'Code Files', icon: <CodeIcon fontSize="small" /> },
         { id: 'chat', label: 'Chat Media', icon: <ChatIcon fontSize="small" /> },
         { id: 'other', label: 'Other Files', icon: <MoreHorizIcon fontSize="small" /> },
+        { id: 'faceRegistrations', label: 'Face Registrations', icon: <FaceRetouchingNaturalIcon fontSize="small" /> },
     ];
 
     return (

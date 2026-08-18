@@ -35,6 +35,24 @@ const BatchAttendance = () => {
     const canvasRef = useRef(null);
     const [modelsLoaded, setModelsLoaded] = useState(false);
 
+    // Refs mirror the "live" values `capture` needs to read. Previously capture was a
+    // useCallback depending on presentStudents/lastDetection/livenessStatus/isProcessing —
+    // all of which change on nearly every tick while scanning — so the setInterval effect
+    // below tore down and rebuilt its timer almost continuously instead of ticking on a
+    // steady cadence. With 20-30 students in frame (more matches per frame, more state
+    // updates per second) that thrashing got severe enough to feel like lag. Reading from
+    // refs instead keeps `capture` referentially stable so the interval just ticks.
+    const isProcessingRef = useRef(false);
+    const livenessScoreRef = useRef(0);
+    const presentIdsRef = useRef(new Set());
+    // Per-student de-dupe for toasts/status text. The old code only remembered the single
+    // "lastDetection" student, so with several students in one frame every match after the
+    // first re-toasted "Already Marked" / "Marked" on every single tick — the exact
+    // back-and-forth spam being reported. Now each student notifies at most once per
+    // scanning session.
+    const notifiedRef = useRef(new Set());
+    const lastVerifyAtRef = useRef(0);
+
     useEffect(() => {
         const loadModels = async () => {
             const MODEL_URL = '/models';
@@ -75,6 +93,7 @@ const BatchAttendance = () => {
             if (response.data.success || Array.isArray(response.data.data)) {
                 const list = response.data.data || [];
                 setPresentStudents(list);
+                presentIdsRef.current = new Set(list.map(p => p.student?._id).filter(Boolean));
                 setStats(prev => ({ ...prev, present: list.length }));
             }
         } catch (error) {
@@ -82,28 +101,56 @@ const BatchAttendance = () => {
         }
     };
 
+    // Caps how big a frame we actually send for recognition. The webcam can hand back a
+    // 720p+ screenshot; python_service's face_recognition (HOG) has to locate + encode every
+    // face in that frame, and with 20-30 students in one photo that cost scales with both
+    // pixel count and face count. Downscaling here keeps a full-classroom frame fast without
+    // hurting recognition accuracy (faces are still plenty large at this width).
+    const MAX_CAPTURE_WIDTH = 960;
+    const captureCanvasRef = useRef(null);
+    const getResizedScreenshot = (video) => {
+        if (!captureCanvasRef.current) captureCanvasRef.current = document.createElement('canvas');
+        const scale = Math.min(1, MAX_CAPTURE_WIDTH / video.videoWidth);
+        const w = Math.round(video.videoWidth * scale);
+        const h = Math.round(video.videoHeight * scale);
+        const canvas = captureCanvasRef.current;
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+        return canvas.toDataURL('image/jpeg', 0.85);
+    };
+
     const capture = useCallback(async () => {
         if (!isScanning || !webcamRef.current) return;
+        const video = webcamRef.current.video;
+        if (!video || video.readyState < 2 || !video.videoWidth) return;
 
-        const imageSrc = webcamRef.current.getScreenshot();
-        if (!imageSrc) return;
-
-        if (modelsLoaded && canvasRef.current && webcamRef.current.video) {
-            const video = webcamRef.current.video;
-            const detections = await faceapi.detectAllFaces(
-                video, 
-                new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 })
-            ).withFaceLandmarks();
+        if (modelsLoaded && canvasRef.current) {
+            // Cheap pass: locate every face (no landmarks) just to draw boxes — this is the
+            // part whose cost scales with how many students are in frame, so it deliberately
+            // skips the landmark model entirely.
+            const boxDetections = await faceapi.detectAllFaces(
+                video,
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 })
+            );
 
             const displaySize = { width: video.videoWidth, height: video.videoHeight };
             faceapi.matchDimensions(canvasRef.current, displaySize);
-
-            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+            const resizedBoxes = faceapi.resizeResults(boxDetections, displaySize);
             const ctx = canvasRef.current.getContext('2d');
             ctx.clearRect(0, 0, displaySize.width, displaySize.height);
 
-            if (resizedDetections.length > 0) {
-                const currentLandmarks = resizedDetections[0].landmarks.positions;
+            // Liveness/anti-spoof only ever needs ONE face's landmarks (whichever is
+            // largest/closest) — running the landmark model per detected face used to mean a
+            // full classroom frame paid for 20-30 landmark passes every single tick, which is
+            // exactly the kind of per-frame cost that turns into visible lag.
+            const landmarkTarget = await faceapi.detectSingleFace(
+                video,
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.3 })
+            ).withFaceLandmarks();
+
+            if (landmarkTarget) {
+                const currentLandmarks = landmarkTarget.landmarks.positions;
                 if (lastLandmarks.current) {
                     let movement = 0;
                     for (let i = 0; i < currentLandmarks.length; i += 5) {
@@ -113,30 +160,31 @@ const BatchAttendance = () => {
                     }
                     const avgMovement = movement / (currentLandmarks.length / 5);
                     if (avgMovement > 0.1 && avgMovement < 20) {
-                        setLivenessStatus(prev => ({ active: true, score: Math.min(100, prev.score + 50) }));
+                        livenessScoreRef.current = Math.min(100, livenessScoreRef.current + 50);
                     } else {
-                        setLivenessStatus(prev => ({ ...prev, score: Math.max(0, prev.score - 5) }));
+                        livenessScoreRef.current = Math.max(0, livenessScoreRef.current - 5);
                     }
                 }
                 lastLandmarks.current = currentLandmarks;
             }
+            setLivenessStatus({ active: true, score: livenessScoreRef.current });
 
-            let boxColor = 'var(--color-vc-success-deep)'; 
+            let boxColor = 'var(--color-vc-success-deep)';
             let label = 'Real Human Verified';
 
-            if (livenessStatus.score < 50) {
-                boxColor = '#ffc107'; 
+            if (livenessScoreRef.current < 50) {
+                boxColor = '#ffc107';
                 label = 'Please Move or Blink...';
             }
-            if (isProcessing) {
+            if (isProcessingRef.current) {
                 boxColor = 'var(--color-vc-primary)';
                 label = 'Marking Attendance...';
             }
 
-            resizedDetections.forEach(det => {
-                const box = det.detection ? det.detection.box : det.box;
+            resizedBoxes.forEach(det => {
+                const box = det.box || det;
                 if (!box) return;
-                
+
                 const drawBox = new faceapi.draw.DrawBox(box, {
                     label,
                     boxColor,
@@ -146,11 +194,20 @@ const BatchAttendance = () => {
             });
         }
 
-        if (isProcessing) return;
-        if (livenessStatus.score < 30) return;
+        // The visual overlay above stays smooth every tick; the actual backend recognition
+        // call — the expensive part when a room full of students is in frame — is gated so
+        // it never overlaps itself and never fires more than once a second.
+        if (isProcessingRef.current) return;
+        if (livenessScoreRef.current < 30) return;
+        if (Date.now() - lastVerifyAtRef.current < 1000) return;
+
+        const imageSrc = getResizedScreenshot(video);
+        if (!imageSrc) return;
 
         try {
+            isProcessingRef.current = true;
             setIsProcessing(true);
+            lastVerifyAtRef.current = Date.now();
             setScanStatus({ type: 'scanning', message: 'Analyzing frame...' });
             const response = await api.post('/attendance/verify', {
                 batchId,
@@ -159,30 +216,39 @@ const BatchAttendance = () => {
 
             if (response.data.success) {
                 const results = response.data.results || [];
-                
+                let lastLabel = null;
+
                 results.forEach(res => {
                     const student = res.student;
                     if (!student) return;
+                    lastLabel = student.name;
 
                     if (res.alreadyMarked) {
-                        setScanStatus({ type: 'warning', message: `${student.name}: Already Marked` });
-                        if (lastDetection?.student?._id !== student._id) {
+                        // De-duped per student for the whole scanning session — otherwise every
+                        // already-present student in a group frame re-toasts on every tick.
+                        if (!notifiedRef.current.has(student._id)) {
+                            notifiedRef.current.add(student._id);
                             toast.info(`${student.name}: Already marked today`, { autoClose: 1500 });
                         }
-                    } else {
-                        setScanStatus({ type: 'success', message: `Marked: ${student.name}` });
-                        const isAlreadyInList = presentStudents.some(p => p.student?._id === student._id);
-                        if (!isAlreadyInList) {
-                            setPresentStudents(prev => [
-                                { ...res.attendance, student },
-                                ...prev
-                            ]);
-                            setStats(prev => ({ ...prev, present: prev.present + 1 }));
-                            toast.success(`Marked: ${student.name}`, { autoClose: 2000 });
-                        }
+                    } else if (!presentIdsRef.current.has(student._id)) {
+                        presentIdsRef.current.add(student._id);
+                        notifiedRef.current.add(student._id);
+                        setPresentStudents(prev => [
+                            { ...res.attendance, student },
+                            ...prev
+                        ]);
+                        setStats(prev => ({ ...prev, present: prev.present + 1 }));
+                        toast.success(`Marked: ${student.name}`, { autoClose: 2000 });
                     }
                     setLastDetection({ student, time: new Date() });
                 });
+
+                if (results.length > 0) {
+                    setScanStatus({
+                        type: 'success',
+                        message: results.length === 1 ? `Processed: ${lastLabel}` : `Processed ${results.length} students`,
+                    });
+                }
             }
         } catch (error) {
             const msg = error.response?.data?.message || 'Error';
@@ -197,19 +263,41 @@ const BatchAttendance = () => {
                 setScanStatus({ type: 'error', message: 'Connection Error' });
             }
         } finally {
+            isProcessingRef.current = false;
             setIsProcessing(false);
         }
-    }, [isScanning, batchId, presentStudents, modelsLoaded, isProcessing, livenessStatus, lastDetection]);
+    }, [isScanning, batchId, modelsLoaded]);
 
     useEffect(() => {
-        let interval;
-        if (isScanning) {
-            interval = setInterval(capture, 500);
-        } else {
+        if (!isScanning) {
             setScanStatus({ type: 'idle', message: '' });
+            return;
         }
-        return () => clearInterval(interval);
+
+        // Self-scheduling loop instead of a fixed setInterval: the next tick is only queued
+        // once the current one (including any in-flight /attendance/verify call) fully
+        // finishes. A fixed interval would keep firing every 500ms regardless of how long a
+        // crowded-frame recognition call takes, piling up work and making the whole scanner
+        // feel laggy/unpredictable exactly when there are the most students to process.
+        let cancelled = false;
+        let timeoutId;
+        const tick = async () => {
+            if (cancelled) return;
+            await capture();
+            if (!cancelled) timeoutId = setTimeout(tick, 400);
+        };
+        tick();
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeoutId);
+        };
     }, [isScanning, capture]);
+
+    // Starting a fresh scan session should forget who's already been toasted about this run.
+    useEffect(() => {
+        if (isScanning) notifiedRef.current = new Set();
+    }, [isScanning]);
 
     const metricsItems = useMemo(() => [
         { title: 'Total Students', value: stats.total, icon: <PeopleIcon />, color: 'primary' },

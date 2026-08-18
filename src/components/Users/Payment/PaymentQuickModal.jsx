@@ -38,6 +38,7 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
     const [courseFees, setCourseFees] = useState({});
     const [settings, setSettings] = useState(null);
     const [actionLoading, setActionLoading] = useState(null); // 'email-id-idx' or 'download-id-idx'
+    const [enrolledCourseIds, setEnrolledCourseIds] = useState(null); // null = not loaded yet
 
     const fieldStyles = {
         '& .MuiInputBase-root': {
@@ -93,11 +94,28 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
 
     useEffect(() => {
         if (open && user?._id) {
+            setEnrolledCourseIds(null);
             fetchCourses();
             fetchExistingFeeRecords();
             fetchSettings();
+            fetchEnrolledCourseIds();
         }
     }, [open, user]);
+
+    // The users list endpoint that feeds `selectedUser` (and therefore this modal's `user`
+    // prop) never includes enrollments, so `user.enrolledCourses` is always undefined there —
+    // this modal used to render completely blank (no course accordions, no "not enrolled"
+    // warning either) for every student regardless of actual enrollment. Fetch the real
+    // enrollment list straight from GET /users/:id, which does populate it.
+    const fetchEnrolledCourseIds = async () => {
+        try {
+            const response = await api.get(`/users/${user._id}`);
+            const details = response.data?.data || response.data;
+            setEnrolledCourseIds(details?.enrolledCourses || []);
+        } catch (error) {
+            setEnrolledCourseIds(user?.enrolledCourses?.map(c => typeof c === 'object' ? c._id : c) || []);
+        }
+    };
 
     const fetchSettings = async () => {
         try {
@@ -181,8 +199,7 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
 
     // Ensure enrolled courses have fee state
     useEffect(() => {
-        const enrolledCourseIds = user?.enrolledCourses?.map(c => typeof c === 'object' ? c._id : c) || [];
-        if (courses.length > 0 && enrolledCourseIds.length > 0) {
+        if (courses.length > 0 && enrolledCourseIds?.length > 0) {
             setCourseFees(prev => {
                 const newFeeState = { ...prev };
                 let updated = false;
@@ -206,14 +223,12 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                 return updated ? newFeeState : prev;
             });
         }
-    }, [courses, user]);
+    }, [courses, enrolledCourseIds]);
 
     const handleSave = async () => {
         setLoading(true);
         try {
-            const enrolledCourseIds = user?.enrolledCourses?.map(c => typeof c === 'object' ? c._id : c) || [];
-
-            for (const courseId of enrolledCourseIds) {
+            for (const courseId of enrolledCourseIds || []) {
                 const feeData = courseFees[courseId];
                 if (!feeData) continue;
 
@@ -226,31 +241,33 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                     return;
                 }
 
+                const normalizedNewPayments = (feeData.newPayments || [])
+                    .filter(p => p.amount && Number(p.amount) > 0)
+                    .map(p => ({
+                        amount: Number(p.amount),
+                        method: p.method || 'cash',
+                        note: p.note || '',
+                        paidAt: new Date()
+                    }));
+
                 if (feeData.feeRecordId) {
-                    const combinedPayments = [...(feeData.payments || []), ...(feeData.newPayments || [])]
-                        .filter(p => p.amount && Number(p.amount) > 0)
-                        .map(p => ({
-                            amount: Number(p.amount),
-                            method: p.method || 'cash',
-                            note: p.note || '',
-                            paidAt: p.paidAt || new Date()
-                        }));
+                    const combinedPayments = [...(feeData.payments || []), ...normalizedNewPayments];
 
                     await api.put(`/fee-records/${feeData.feeRecordId}`, {
                         discount: feeData.discount,
+                        totalFee: feeData.totalFee,
+                        finalFee: feeData.finalFee,
                         emiEnabled: feeData.emiEnabled,
                         emiCount: feeData.emiCount,
-                        payments: combinedPayments
+                        payments: combinedPayments,
+                        // Only these actually trigger the invoice email + push notification —
+                        // `payments` above is the full authoritative ledger (which can also
+                        // shrink, e.g. via the per-payment "Delete Record" button), so the
+                        // backend can't infer "what's new" just by diffing array lengths.
+                        newPayments: normalizedNewPayments
                     });
                 } else {
-                    const initialPayments = (feeData.newPayments || [])
-                        .filter(p => p.amount && Number(p.amount) > 0)
-                        .map(p => ({
-                            amount: Number(p.amount),
-                            method: p.method || 'cash',
-                            note: p.note || '',
-                            paidAt: new Date()
-                        }));
+                    const initialPayments = normalizedNewPayments;
 
                     await api.post('/fee-records', {
                         user: user._id,
@@ -260,7 +277,8 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                         finalFee: feeData.finalFee || 0,
                         emiEnabled: feeData.emiEnabled || false,
                         emiCount: feeData.emiCount || 1,
-                        payments: initialPayments
+                        payments: initialPayments,
+                        newPayments: initialPayments
                     });
                 }
             }
@@ -308,8 +326,12 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                 </Box>
             </DialogTitle>
             <DialogContent sx={{ bgcolor: 'var(--color-vc-canvas)', py: 3 }}>
-                {user?.enrolledCourses?.length === 0 ? (
-                    <Alert 
+                {enrolledCourseIds === null ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <CircularProgress size={24} />
+                    </Box>
+                ) : enrolledCourseIds.length === 0 ? (
+                    <Alert
                         severity="warning"
                         sx={{
                             borderRadius: '6px',
@@ -324,8 +346,7 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                     </Alert>
                 ) : (
                     <Box>
-                        {user?.enrolledCourses?.map(c => {
-                            const courseId = typeof c === 'object' ? c._id : c;
+                        {enrolledCourseIds.map(courseId => {
                             const courseObj = courses.find(item => item._id === courseId);
                             const feeState = courseFees[courseId];
                             if (!courseObj || !feeState) return null;
@@ -454,7 +475,8 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                                                     </Button>
                                                 </Box>
                                                 {feeState.newPayments?.map((p, idx) => (
-                                                    <Box key={idx} sx={{ display: 'flex', gap: 1.5, mb: 1.5, alignItems: 'center' }}>
+                                                    <Box key={idx} sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1.5, p: 1.25, bgcolor: 'var(--color-vc-canvas)', borderRadius: '6px', border: '1px solid var(--color-vc-hairline)' }}>
+                                                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                                                         <TextField
                                                             fullWidth label="Amount" size="small" type="number" value={p.amount || ''}
                                                             onChange={(e) => {
@@ -477,7 +499,7 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                                                             <MenuItem value="bank_transfer">Bank</MenuItem>
                                                             <MenuItem value="online">Online</MenuItem>
                                                         </TextField>
-                                                        <IconButton 
+                                                        <IconButton
                                                             size="small"
                                                             onClick={() => {
                                                                 const updated = feeState.newPayments.filter((_, i) => i !== idx);
@@ -487,6 +509,15 @@ const PaymentQuickModal = ({ open, onClose, user, onSuccess }) => {
                                                         >
                                                             <DeleteIcon />
                                                         </IconButton>
+                                                    </Box>
+                                                    <TextField
+                                                        fullWidth label="Note (optional)" size="small" value={p.note || ''}
+                                                        onChange={(e) => {
+                                                            const updated = [...feeState.newPayments]; updated[idx].note = e.target.value;
+                                                            setCourseFees(prev => ({ ...prev, [courseId]: { ...feeState, newPayments: updated } }));
+                                                        }}
+                                                        sx={fieldStyles}
+                                                    />
                                                     </Box>
                                                 ))}
                                             </Grid>
